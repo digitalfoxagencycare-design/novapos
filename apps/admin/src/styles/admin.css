@@ -1,0 +1,131 @@
+/*
+ * Admin dashboard.
+ *
+ * Unlike the POS this is used at a desk, on a laptop, usually by the owner
+ * doing paperwork after service. So: light by default, denser, keyboard- and
+ * mouse-friendly, and tables rather than tiles. It still respects the system
+ * theme, because a lot of that paperwork happens late at night.
+ */
+
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f0f2f7;
+  --line: #dfe3ec;
+  --text: #101828;
+  --text-dim: #5a6478;
+  --text-faint: #8b95a8;
+  --accent: #2563eb;
+  --good: #059669;
+  --warn: #b45309;
+  --bad: #dc2626;
+  --radius: 10px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1120;
+    --surface: #131c31;
+    --surface-2: #1b2740;
+    --line: #2c3b58;
+    --text: #eef2f9;
+    --text-dim: #9aa8c2;
+    --text-faint: #6b7c99;
+    --accent: #3b82f6;
+    --good: #10b981;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; border-radius: var(--radius); }
+input, select, textarea {
+  font: inherit; color: inherit; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px;
+}
+input:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.shell { display: grid; grid-template-columns: 232px 1fr; height: 100%; }
+@media (max-width: 820px) { .shell { grid-template-columns: 1fr; } .side { display: none; } }
+
+.side {
+  background: var(--surface); border-right: 1px solid var(--line);
+  padding: 18px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.side__brand { font-weight: 800; font-size: 17px; padding: 0 10px 14px; }
+.side__link {
+  display: block; text-align: left; padding: 10px 12px;
+  color: var(--text-dim); font-weight: 600; width: 100%;
+}
+.side__link--active { background: var(--surface-2); color: var(--text); }
+.side__foot { margin-top: auto; padding: 10px; color: var(--text-faint); font-size: 12px; }
+
+.main { overflow: auto; padding: 22px 26px; }
+.page__title { font-size: 24px; font-weight: 800; margin: 0 0 4px; }
+.page__sub { color: var(--text-dim); margin: 0 0 20px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.card__label { color: var(--text-dim); font-size: 13px; font-weight: 600; }
+.card__value { font-size: 26px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.card__hint { color: var(--text-faint); font-size: 12px; margin-top: 4px; }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
+}
+.panel__head {
+  padding: 14px 16px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px;
+}
+.panel__title { font-weight: 700; font-size: 15px; }
+.panel__spacer { flex: 1; }
+.panel__body { padding: 16px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+th { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+tbody tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--surface-2); }
+
+.btn { background: var(--surface-2); padding: 8px 14px; font-weight: 600; border: 1px solid var(--line); }
+.btn:hover { background: var(--line); }
+.btn--primary { background: var(--accent); color: #fff; border-color: transparent; }
+.btn--primary:hover { filter: brightness(1.1); }
+.btn--sm { padding: 5px 10px; font-size: 13px; }
+
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.pill--good { background: rgba(5,150,105,0.15); color: var(--good); }
+.pill--warn { background: rgba(180,83,9,0.15); color: var(--warn); }
+.pill--bad { background: rgba(220,38,38,0.15); color: var(--bad); }
+
+.error-banner {
+  background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.35);
+  color: var(--bad); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 16px;
+}
+.empty { color: var(--text-faint); padding: 28px; text-align: center; }
+
+.field { display: grid; gap: 5px; margin-bottom: 12px; }
+.field label { font-size: 13px; color: var(--text-dim); font-weight: 600; }
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+
+.login { height: 100%; display: grid; place-items: center; }
+.login__card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 26px; width: min(400px, 92vw);
+}
+
+/* A minimal bar chart — no dependency needed for one chart. */
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 160px; padding: 10px 0; }
+.bars__col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; min-width: 0; }
+.bars__bar { background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+.bars__label { font-size: 11px; color: var(--text-faint); text-align: center; white-space: nowrap; overflow: hidden; }

@@ -1,0 +1,11 @@
+{
+  "name": "NovaPOS",
+  "short_name": "NovaPOS",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Point of sale — works offline",
+  "icons": []
+}

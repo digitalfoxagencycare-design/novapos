@@ -1,0 +1,53 @@
+{
+  "name": "@novapos/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx src/db/seed.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/platform-socket.io": "^10.4.15",
+    "@nestjs/swagger": "^8.1.0",
+    "@nestjs/throttler": "^6.3.0",
+    "@nestjs/websockets": "^10.4.15",
+    "@novapos/escpos": "workspace:*",
+    "@novapos/shared": "workspace:*",
+    "@novapos/tax-engine": "workspace:*",
+    "argon2": "^0.41.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "drizzle-orm": "^0.38.3",
+    "helmet": "^8.0.0",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@nestjs/testing": "^10.4.15",
+    "@swc/core": "^1.16.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
+    "drizzle-kit": "^0.30.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,402 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as argon2 from 'argon2';
+import { randomBytes, createHash, randomUUID } from 'node:crypto';
+import { and, eq, isNull, or } from 'drizzle-orm';
+import { DatabaseService } from '../db/db.service';
+import { staff as staffTable, tenants, outlets, refreshTokens } from '../db/schema';
+import { Errors } from '../common/errors';
+import { ROLE_PERMISSIONS, type JwtClaims, type Permission, type StaffRole } from '@novapos/shared';
+
+/**
+ * Argon2id parameters.
+ *
+ * Tuned so a hash costs roughly 100–200ms on a small cloud instance: slow
+ * enough that offline cracking of a stolen dump is expensive, fast enough that
+ * a cashier logging in at the start of a shift does not notice.
+ */
+const ARGON_OPTIONS = {
+  type: argon2.argon2id,
+  memoryCost: 19456, // 19 MiB — the OWASP minimum
+  timeCost: 2,
+  parallelism: 1,
+} as const;
+
+const MAX_FAILED_LOGINS = 8;
+const LOCKOUT_MINUTES = 15;
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+type StaffRow = {
+  id: string; tenantId: string; outletId: string | null; name: string;
+  email: string | null; role: StaffRole; extraPermissions: string[];
+};
+
+/** Result of the credential check, so the side effects can be sequenced. */
+type LoginOutcome =
+  | { kind: 'ok'; member: StaffRow }
+  | { kind: 'bad-password'; staffId: string; failedCount: number }
+  | { kind: 'no-such-account' }
+  | { kind: 'locked'; until: Date };
+
+export interface SafeStaff {
+  id: string;
+  name: string;
+  email: string | null;
+  role: StaffRole;
+  outletId: string | null;
+  permissions: Permission[];
+}
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly jwt: JwtService,
+  ) {}
+
+  static permissionsFor(role: StaffRole, extra: string[] = []): Permission[] {
+    return [...new Set([...ROLE_PERMISSIONS[role], ...(extra as Permission[])])];
+  }
+
+  hashSecret(secret: string): Promise<string> {
+    return argon2.hash(secret, ARGON_OPTIONS);
+  }
+
+  /**
+   * Sign in with email and password.
+   *
+   * Runs as system because a login happens *before* a tenant context exists —
+   * the tenant is resolved from the credential itself.
+   */
+  async login(input: {
+    tenantSlug: string;
+    email: string;
+    password: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }): Promise<{ tokens: TokenPair; staff: SafeStaff }> {
+    /*
+     * Note on structure: the credential check, the failure bookkeeping and the
+     * token issue happen in *separate* transactions.
+     *
+     * That is not incidental. Recording a failed attempt and then throwing
+     * inside one transaction rolls the record back along with everything else,
+     * so the lockout counter never increments and brute-force protection
+     * silently does nothing. The side effect has to commit before the throw.
+     */
+    const outcome = await this.db.system(async (db): Promise<LoginOutcome> => {
+      const [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.slug, input.tenantSlug)).limit(1);
+
+      if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) {
+        return { kind: 'no-such-account' };
+      }
+
+      const [member] = await db.select().from(staffTable)
+        .where(and(
+          eq(staffTable.tenantId, tenant.id),
+          eq(staffTable.email, input.email.toLowerCase()),
+          isNull(staffTable.deletedAt),
+        )).limit(1);
+
+      if (member?.lockedUntil && member.lockedUntil > new Date()) {
+        return { kind: 'locked', until: member.lockedUntil };
+      }
+
+      // Always verify against *something*, even with no matching row, so
+      // response timing does not reveal which email addresses exist.
+      const hash = member?.passwordHash ?? (await dummyHash());
+      const ok = await argon2.verify(hash, input.password).catch(() => false);
+
+      if (!member || !member.isActive || !ok) {
+        return member
+          ? { kind: 'bad-password', staffId: member.id, failedCount: member.failedLoginCount }
+          : { kind: 'no-such-account' };
+      }
+      return { kind: 'ok', member };
+    });
+
+    if (outcome.kind === 'locked') {
+      throw Errors.unauthorized(
+        'This account is locked after too many failed attempts. ' +
+        `Try again after ${outcome.until.toISOString()}.`,
+      );
+    }
+
+    if (outcome.kind !== 'ok') {
+      if (outcome.kind === 'bad-password') {
+        // Its own transaction, so it survives the throw below.
+        await this.db.system((db) =>
+          this.registerFailedLogin(db, outcome.staffId, outcome.failedCount));
+      }
+      // Never distinguish "no such tenant/account" from "wrong password":
+      // that difference is a free account-enumeration oracle.
+      throw Errors.unauthorized('Invalid credentials.');
+    }
+
+    const member = outcome.member;
+    const tokens = await this.db.system(async (db) => {
+      await db.update(staffTable)
+        .set({ lastLoginAt: new Date(), failedLoginCount: 0, lockedUntil: null })
+        .where(eq(staffTable.id, member.id));
+      return this.issueTokens(db, member, randomUUID(), input.userAgent, input.ipAddress);
+    });
+
+    return { tokens, staff: toSafeStaff(member) };
+  }
+
+  /**
+   * Sign in with a till PIN, for fast operator switching at a shared terminal
+   * where typing a password between orders is not workable.
+   *
+   * A PIN is weak by construction, so it is only accepted against staff at one
+   * named outlet, and it is rate-limited harder than a password at the edge.
+   */
+  async loginWithPin(input: {
+    tenantSlug: string;
+    outletCode: string;
+    pin: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }): Promise<{ tokens: TokenPair; staff: SafeStaff }> {
+    return this.db.system(async (db) => {
+      const [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.slug, input.tenantSlug)).limit(1);
+      if (!tenant) throw Errors.unauthorized('Invalid credentials.');
+
+      const [outlet] = await db.select().from(outlets)
+        .where(and(
+          eq(outlets.tenantId, tenant.id),
+          eq(outlets.code, input.outletCode),
+          eq(outlets.isActive, true),
+        )).limit(1);
+      if (!outlet) throw Errors.unauthorized('Invalid credentials.');
+
+      const candidates = await db.select().from(staffTable)
+        .where(and(
+          eq(staffTable.tenantId, tenant.id),
+          or(eq(staffTable.outletId, outlet.id), isNull(staffTable.outletId)),
+          eq(staffTable.isActive, true),
+          isNull(staffTable.deletedAt),
+        ));
+
+      // PINs are not unique, so every active candidate must be checked. The
+      // loop is bounded by the outlet's staff count, which is small.
+      for (const member of candidates) {
+        if (!member.pinHash) continue;
+        if (member.lockedUntil && member.lockedUntil > new Date()) continue;
+        if (await argon2.verify(member.pinHash, input.pin).catch(() => false)) {
+          await db.update(staffTable)
+            .set({ lastLoginAt: new Date(), failedLoginCount: 0 })
+            .where(eq(staffTable.id, member.id));
+          const tokens = await this.issueTokens(
+            db,
+            { ...member, outletId: member.outletId ?? outlet.id },
+            randomUUID(), input.userAgent, input.ipAddress,
+          );
+          return { tokens, staff: toSafeStaff(member) };
+        }
+      }
+      throw Errors.unauthorized('Invalid PIN.');
+    });
+  }
+
+  /**
+   * Rotate a refresh token, with reuse detection.
+   *
+   * Each refresh mints a new token and revokes the old one. If a *revoked*
+   * token is presented, the whole family is revoked — that is the signature of
+   * a stolen token being replayed, and the safe response is to sign every
+   * session in that chain out rather than to serve the thief.
+   */
+  async refresh(rawToken: string, meta?: { userAgent?: string; ipAddress?: string }): Promise<TokenPair> {
+    const tokenHash = sha256(rawToken);
+
+    const record = await this.db.system(async (db) => {
+      const [row] = await db.select().from(refreshTokens)
+        .where(eq(refreshTokens.tokenHash, tokenHash)).limit(1);
+      return row;
+    });
+
+    if (!record) throw Errors.unauthorized('Invalid refresh token.');
+
+    if (record.revokedAt) {
+      // A token that was already consumed is being presented again — the
+      // signature of a stolen token being replayed. Revoke the entire rotation
+      // chain so the thief's newer token dies with it.
+      //
+      // This commits in its own transaction *before* the throw. Doing it in
+      // the same transaction would roll the revocation back along with the
+      // error, leaving every descendant token valid — reuse detection that
+      // detects and then does nothing.
+      this.logger.warn(
+        `Refresh token reuse detected for staff ${record.staffId}; revoking family ${record.familyId}.`,
+      );
+      await this.db.system(async (db) => {
+        await db.update(refreshTokens)
+          .set({ revokedAt: new Date() })
+          .where(and(eq(refreshTokens.familyId, record.familyId), isNull(refreshTokens.revokedAt)));
+      });
+      throw Errors.unauthorized(
+        'That refresh token was already used. All sessions have been signed out as a precaution.',
+      );
+    }
+
+    if (record.expiresAt < new Date()) throw Errors.unauthorized('Refresh token expired.');
+
+    return this.db.system(async (db) => {
+      const [member] = await db.select().from(staffTable)
+        .where(eq(staffTable.id, record.staffId)).limit(1);
+      if (!member || !member.isActive || member.deletedAt) {
+        throw Errors.unauthorized('This account is no longer active.');
+      }
+
+      await db.update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(eq(refreshTokens.id, record.id));
+
+      return this.issueTokens(db, member, record.familyId, meta?.userAgent, meta?.ipAddress);
+    });
+  }
+
+  async logout(rawToken: string): Promise<void> {
+    await this.db.system(async (db) => {
+      await db.update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokens.tokenHash, sha256(rawToken)), isNull(refreshTokens.revokedAt)));
+    });
+  }
+
+  /** Sign out every device for a staff member — used when a role is revoked. */
+  async logoutAll(staffId: string): Promise<void> {
+    await this.db.system(async (db) => {
+      await db.update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokens.staffId, staffId), isNull(refreshTokens.revokedAt)));
+    });
+  }
+
+  verifyAccessToken(token: string): JwtClaims {
+    try {
+      return this.jwt.verify<JwtClaims>(token);
+    } catch (err) {
+      throw Errors.unauthorized(
+        (err as Error).name === 'TokenExpiredError' ? 'Access token expired.' : 'Invalid access token.',
+      );
+    }
+  }
+
+  /* ───────────────────────── internals ───────────────────────── */
+
+  private async issueTokens(
+    db: Parameters<Parameters<DatabaseService['system']>[0]>[0],
+    member: {
+      id: string; tenantId: string; outletId: string | null;
+      role: StaffRole; extraPermissions: string[];
+    },
+    familyId: string,
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<TokenPair> {
+    const perms = AuthService.permissionsFor(member.role, member.extraPermissions);
+    const claims: JwtClaims = {
+      sub: member.id,
+      tenantId: member.tenantId,
+      outletId: member.outletId,
+      role: member.role,
+      perms,
+    };
+
+    const accessTtl = process.env.JWT_ACCESS_TTL ?? '15m';
+    const accessToken = this.jwt.sign(claims, { expiresIn: accessTtl });
+
+    const rawRefresh = randomBytes(48).toString('base64url');
+    const refreshDays = parseDays(process.env.JWT_REFRESH_TTL ?? '30d');
+    await db.insert(refreshTokens).values({
+      tenantId: member.tenantId,
+      staffId: member.id,
+      tokenHash: sha256(rawRefresh),
+      familyId,
+      expiresAt: new Date(Date.now() + refreshDays * 86400_000),
+      userAgent: userAgent?.slice(0, 255),
+      ipAddress,
+    });
+
+    return { accessToken, refreshToken: rawRefresh, expiresIn: parseSeconds(accessTtl) };
+  }
+
+  private async registerFailedLogin(
+    db: Parameters<Parameters<DatabaseService['system']>[0]>[0],
+    staffId: string,
+    current: number,
+  ): Promise<void> {
+    const next = current + 1;
+    await db.update(staffTable).set({
+      failedLoginCount: next,
+      lockedUntil: next >= MAX_FAILED_LOGINS
+        ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000)
+        : null,
+    }).where(eq(staffTable.id, staffId));
+  }
+
+  /** Spend the same time on a miss as on a hit. */
+  private async burnTime(password: string): Promise<void> {
+    await argon2.verify(await dummyHash(), password).catch(() => false);
+  }
+}
+
+function toSafeStaff(member: {
+  id: string; name: string; email: string | null; role: StaffRole;
+  outletId: string | null; extraPermissions: string[];
+}): SafeStaff {
+  return {
+    id: member.id,
+    name: member.name,
+    email: member.email,
+    role: member.role,
+    outletId: member.outletId,
+    permissions: AuthService.permissionsFor(member.role, member.extraPermissions),
+  };
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+/**
+ * A hash of a random value nobody knows, verified against whenever no staff
+ * row matched. Without it, a failed login returns measurably faster than a
+ * successful one, and that timing difference enumerates valid accounts.
+ *
+ * Computed at first use rather than hardcoded: a hardcoded string that does
+ * not parse would make `argon2.verify` throw immediately, which defeats the
+ * entire point while looking correct in review.
+ */
+let dummyHashPromise: Promise<string> | null = null;
+function dummyHash(): Promise<string> {
+  if (!dummyHashPromise) {
+    dummyHashPromise = argon2.hash(randomBytes(32).toString('hex'), ARGON_OPTIONS);
+  }
+  return dummyHashPromise;
+}
+
+function parseDays(ttl: string): number {
+  const m = /^(\d+)([dhm])$/.exec(ttl);
+  if (!m) return 30;
+  const n = Number(m[1]);
+  return m[2] === 'd' ? n : m[2] === 'h' ? n / 24 : n / 1440;
+}
+
+function parseSeconds(ttl: string): number {
+  const m = /^(\d+)([dhms])$/.exec(ttl);
+  if (!m) return 900;
+  const n = Number(m[1]);
+  return { d: n * 86400, h: n * 3600, m: n * 60, s: n }[m[2] as 'd' | 'h' | 'm' | 's'];
+}

@@ -1,0 +1,104 @@
+/*
+ * Kitchen display.
+ *
+ * Read from two metres away, in bad light, by someone holding a pan. Type is
+ * large, contrast is extreme, and colour means one thing only: how long this
+ * ticket has been waiting.
+ */
+
+.kds { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+
+.kds__bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 18px; background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.kds__title { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; }
+.kds__count { color: var(--text-dim); font-weight: 600; }
+
+.kds__empty {
+  display: grid; place-items: center; color: var(--text-faint); font-size: 22px;
+}
+
+.kds__grid {
+  overflow: auto;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.ticket {
+  background: var(--surface-2);
+  border: 3px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Age, not status, drives the colour. "How long has this been waiting" is the
+   only question a cook is asking. */
+.ticket--warn { border-color: var(--warn); }
+.ticket--late { border-color: var(--bad); animation: nudge 2s ease-in-out infinite; }
+@keyframes nudge { 50% { border-color: #7f1d1d; } }
+
+.ticket--preparing { background: var(--surface-3); }
+.ticket--ready { opacity: 0.65; }
+
+.ticket__head { display: flex; justify-content: space-between; align-items: baseline; }
+.ticket__no { font-size: 22px; font-weight: 800; }
+.ticket__age { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; color: var(--text-dim); }
+.ticket--warn .ticket__age { color: var(--warn); }
+.ticket--late .ticket__age { color: var(--bad); }
+
+.ticket__meta { color: var(--text-dim); font-size: 14px; text-transform: capitalize; }
+
+.ticket__banner {
+  background: var(--warn); color: #1a1206;
+  font-weight: 800; text-align: center; padding: 4px;
+  border-radius: 6px; letter-spacing: 0.05em;
+}
+
+.ticket__lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.ticket__line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.ticket__qty {
+  font-weight: 800; font-variant-numeric: tabular-nums;
+  background: var(--surface-3); border-radius: 6px;
+  padding: 2px 8px; min-width: 40px; text-align: center;
+}
+
+.ticket__name { font-weight: 700; }
+
+.ticket__mods, .ticket__note {
+  grid-column: 2; font-size: 15px; color: var(--text-dim); font-weight: 600;
+}
+.ticket__note { color: var(--warn); }
+.ticket__note--order { font-size: 17px; padding-top: 4px; border-top: 1px solid var(--line); }
+
+.ticket__line--voided .ticket__name { text-decoration: line-through; opacity: 0.6; }
+.ticket__line--voided .ticket__qty { background: rgba(239,68,68,0.3); }
+.ticket__line--added .ticket__qty { background: rgba(16,185,129,0.3); }
+.ticket__line--qty_changed .ticket__qty { background: rgba(245,158,11,0.3); }
+
+.ticket__action {
+  margin-top: auto;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  padding: 16px;
+  border-radius: var(--radius);
+}
+.ticket--preparing .ticket__action { background: var(--good); color: #06281d; }
+.ticket__action:active { filter: brightness(1.15); }
