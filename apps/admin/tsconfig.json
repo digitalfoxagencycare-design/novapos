@@ -11,6 +11,11 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@novapos/shared": ["../../packages/shared/src/index.ts"],
+      "@novapos/tax-engine": ["../../packages/tax-engine/src/index.ts"]
+    },
     "types": ["vite/client"]
   },
   "include": ["src"]

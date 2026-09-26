@@ -476,7 +476,7 @@ function TaxSettings({ outlet }: { outlet: Outlet }) {
         setResult(
           `Taxable ${(computed.taxableMinor / 100).toFixed(2)}  ·  ` +
           computed.componentTotals
-            .map((c) => `${c.code} ${(c.rate * 100).toFixed(2)}% = ${(c.amountMinor / 100).toFixed(2)}`)
+            .map((c: { code: string; rate: number; amountMinor: number }) => `${c.code} ${(c.rate * 100).toFixed(2)}% = ${(c.amountMinor / 100).toFixed(2)}`)
             .join('  ·  ') +
           `  ·  Total ${(computed.totalMinor / 100).toFixed(2)}`,
         );
