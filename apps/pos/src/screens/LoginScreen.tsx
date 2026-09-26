@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
+import { sendFirebasePhoneOtp, confirmFirebasePhoneOtp } from '../lib/firebaseAuth';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { cloudApi } from '../lib/cloudSession';
 import { refreshSubscription } from '../lib/subscription';
@@ -84,7 +85,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     } finally { setIsLoading(false); }
   };
 
-  // 2. Dispatch Real SMS OTP (New Store Sign-Up or OTP Sign-In)
+  // 2. Dispatch Real SMS OTP via Firebase Phone Auth (New Store Sign-Up or OTP Sign-In)
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -109,6 +110,18 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
+      // 1. Send SMS OTP using Firebase Phone Auth
+      const fbRes = await sendFirebasePhoneOtp(cleanPhone);
+      if (fbRes.success) {
+        setSuccessMessage(`SMS OTP sent to +91 ${cleanPhone} via Firebase`);
+        setOtpStep(true);
+        setCountdown(60);
+        setOtp('');
+        return;
+      }
+
+      // 2. Fallback to Cloud API SMS OTP if Firebase encountered an issue
+      console.warn('[Auth] Firebase SMS failed, trying Cloud API OTP:', fbRes.message);
       const res: any = await cloudApi.sendOtp(cleanPhone);
       if (res.success) {
         setSuccessMessage(res.message || `SMS OTP sent to +91 ${cleanPhone}`);
@@ -122,7 +135,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
           setOtp('');
         }
       } else {
-        setErrorMessage(res.message || 'Failed to dispatch SMS OTP. Please retry.');
+        setErrorMessage(res.message || fbRes.message || 'Failed to dispatch SMS OTP. Please retry.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Network error while dispatching SMS. Please retry.');
@@ -131,7 +144,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     }
   };
 
-  // 3. Verify SMS OTP & Activate 3-Day Free Trial
+  // 3. Verify SMS OTP with Firebase & Provision / Activate in Database
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -145,8 +158,18 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
 
     try {
+      // 1. Verify code with Firebase
+      let isFirebaseVerified = false;
+      const fbVerify = await confirmFirebasePhoneOtp(otp.trim());
+      if (fbVerify.success) {
+        isFirebaseVerified = true;
+      }
+
+      // 2. Provision Tenant/User in Supabase & issue JWT session
       const result = await cloudApi.verifyOtp({
-        phone: cleanPhone, otp: otp.trim(),
+        phone: cleanPhone,
+        otp: otp.trim(),
+        isFirebaseVerified,
         ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim() } : {}),
       });
       await refreshSubscription();

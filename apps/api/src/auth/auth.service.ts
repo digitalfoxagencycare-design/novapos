@@ -99,6 +99,7 @@ export class AuthService {
   async verifyOtp(input: {
     phone: string;
     otp: string;
+    isFirebaseVerified?: boolean;
     storeName?: string;
     profile?: string;
     pin?: string;
@@ -108,7 +109,7 @@ export class AuthService {
   }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
     const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
     const stored = otpStore.get(cleanPhone);
-    const isMasterOtp = input.otp.trim() === '123456';
+    const isMasterOtp = input.otp.trim() === '123456' || Boolean(input.isFirebaseVerified);
     const isStoredOtpMatch = (stored && stored.otp === input.otp.trim() && stored.expiresAt > Date.now()) || isMasterOtp;
 
     if (!isStoredOtpMatch) {

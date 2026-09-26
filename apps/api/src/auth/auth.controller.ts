@@ -12,6 +12,7 @@ class SendOtpDto {
 class VerifyOtpDto {
   @IsString() phone!: string;
   @IsString() otp!: string;
+  @IsOptional() isFirebaseVerified?: boolean;
   @IsOptional() @IsString() storeName?: string;
   @IsOptional() @IsString() profile?: string;
   @IsOptional() @IsString() pin?: string;

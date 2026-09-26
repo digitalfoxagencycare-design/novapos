@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney } from '@novapos/shared';
 import { AdminApi, ApiError, downloadCsv, printPage } from './lib/api';
 
-type Page = 'dashboard' | 'menu' | 'reports' | 'printing' | 'tax';
+type Page = 'dashboard' | 'merchants' | 'menu' | 'reports' | 'printing' | 'tax';
 
 const api = new AdminApi();
 
@@ -45,6 +45,7 @@ export function App() {
 
   const nav: { key: Page; label: string; needs?: string }[] = [
     { key: 'dashboard', label: 'Dashboard', needs: 'report:read' },
+    { key: 'merchants', label: 'Stores & Merchants', needs: 'settings:read' },
     { key: 'menu', label: 'Menu', needs: 'menu:read' },
     { key: 'reports', label: 'Reports', needs: 'report:read' },
     { key: 'tax', label: 'Tax', needs: 'settings:read' },
@@ -97,6 +98,7 @@ export function App() {
         {!outlet && <p className="empty">Loading…</p>}
 
         {outlet && page === 'dashboard' && <Dashboard outlet={outlet} onError={setError} />}
+        {page === 'merchants' && <Merchants onError={setError} />}
         {outlet && page === 'menu' && <Menu onError={setError} outlet={outlet} />}
         {outlet && page === 'reports' && <Reports outlet={outlet} onError={setError} />}
         {outlet && page === 'tax' && <TaxSettings outlet={outlet} />}
@@ -635,6 +637,90 @@ function Printing({ outlet, onError }: { outlet: Outlet; onError: (m: string) =>
             ))}
           </tbody>
         </table>
+      </section>
+    </>
+  );
+}
+
+/* ───────────────────────── merchants & stores ───────────────────────── */
+
+function Merchants({ onError }: { onError: (m: string) => void }) {
+  const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await api.merchants();
+      setList(data);
+    } catch (err) {
+      onError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const activeCount = list.filter((m) => m.subscriptionStatus === 'ACTIVE').length;
+  const trialCount = list.filter((m) => m.subscriptionStatus === 'TRIAL').length;
+
+  return (
+    <>
+      <h1 className="page__title">Registered Stores & Merchants</h1>
+      <p className="page__sub">Live subscriber directory from PostgreSQL / Supabase</p>
+
+      <div className="cards">
+        <Card label="Total Stores" value={String(list.length)} />
+        <Card label="Active Paid" value={String(activeCount)} />
+        <Card label="Free Trials" value={String(trialCount)} />
+      </div>
+
+      <section className="panel" style={{ marginTop: 20 }}>
+        <header className="panel__head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="panel__title">Merchant List</span>
+          <button className="btn btn--sm" onClick={() => void load()}>Refresh</button>
+        </header>
+        {loading ? (
+          <p className="empty">Loading stores…</p>
+        ) : list.length === 0 ? (
+          <p className="empty">No registered merchants found.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Store / Business</th>
+                <th>Owner Phone</th>
+                <th>Slug</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Valid Until</th>
+                <th>Branches</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((m) => (
+                <tr key={m.id}>
+                  <td><strong>{m.name}</strong></td>
+                  <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>+91 {m.phone}</td>
+                  <td><code>{m.slug}</code></td>
+                  <td><span className="pill">{m.plan}</span></td>
+                  <td>
+                    <span className={`pill ${m.subscriptionStatus === 'ACTIVE' ? 'pill--ok' : m.subscriptionStatus === 'TRIAL' ? 'pill--warn' : 'pill--bad'}`}>
+                      {m.subscriptionStatus}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: 13 }}>
+                    {m.validUntil ? new Date(m.validUntil).toLocaleDateString('en-IN') : '—'}
+                  </td>
+                  <td className="num">{m.outletsCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </>
   );

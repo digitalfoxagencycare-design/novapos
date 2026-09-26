@@ -2,7 +2,7 @@ import { Controller, Get, Injectable } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
-import { outlets } from '../db/schema';
+import { outlets, tenants, staff as staffTable } from '../db/schema';
 import { CurrentUser, RequirePermissions } from '../auth/guards';
 import type { TenantContext } from '../tenancy/tenant-context';
 
@@ -12,10 +12,6 @@ export class OutletsService {
 
   /**
    * Outlets the caller may work at.
-   *
-   * A staff member pinned to one outlet sees only that one, so a device cannot
-   * be bound to a branch its operator has no business at. RLS already confines
-   * this to the caller's tenant; the outlet filter narrows it further.
    */
   async listForUser(user: TenantContext) {
     return this.db.tx(async (db) =>
@@ -33,6 +29,37 @@ export class OutletsService {
         .orderBy(asc(outlets.name)),
     );
   }
+
+  /**
+   * System-wide overview of all registered stores & merchants for Admin dashboard.
+   */
+  async listAllMerchants() {
+    return this.db.system(async (db) => {
+      const allTenants = await db.select().from(tenants);
+      const allStaff = await db.select().from(staffTable);
+      const allOutlets = await db.select().from(outlets);
+
+      return allTenants.map((t) => {
+        const owner = allStaff.find((s) => s.tenantId === t.id && (s.role === 'OWNER' || s.role === 'MANAGER')) ||
+                      allStaff.find((s) => s.tenantId === t.id);
+        const tenantOutlets = allOutlets.filter((o) => o.tenantId === t.id);
+        const sub = (t.settings as any)?.subscription || {};
+        return {
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          phone: owner?.phone || tenantOutlets[0]?.phone || '—',
+          ownerName: owner?.name || 'Store Owner',
+          status: t.status,
+          plan: sub.plan || 'starter_monthly',
+          subscriptionStatus: sub.status || 'TRIAL',
+          validUntil: sub.validUntil,
+          createdAt: t.createdAt,
+          outletsCount: tenantOutlets.length,
+        };
+      });
+    });
+  }
 }
 
 @ApiTags('outlets')
@@ -45,5 +72,12 @@ export class OutletsController {
   @ApiOperation({ summary: 'Outlets the signed-in operator may work at' })
   list(@CurrentUser() user: TenantContext) {
     return this.outlets.listForUser(user);
+  }
+
+  @Get('merchants')
+  @RequirePermissions('settings:read')
+  @ApiOperation({ summary: 'All registered merchants/stores overview for admin' })
+  listMerchants() {
+    return this.outlets.listAllMerchants();
   }
 }

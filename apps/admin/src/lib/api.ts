@@ -60,6 +60,7 @@ export class AdminApi {
 
   me() { return this.get('/auth/me'); }
   outlets() { return this.get('/outlets'); }
+  merchants() { return this.get('/outlets/merchants'); }
 
   /* menu */
   categories() { return this.get('/menu/categories'); }
