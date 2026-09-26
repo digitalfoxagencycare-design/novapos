@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Check,
   Scale,
+  Lock,
 } from 'lucide-react';
 import {
   EZO_34_SETTINGS,
@@ -194,65 +195,64 @@ export const SettingsScreen: React.FC<Props> = ({
     }
   };
 
-  const handleUpgradePayment = () => {
+  const handleUpgradePayment = async () => {
     setIsPaying(true);
     const amount = selectedPlanKey === 'pro_yearly' ? 499900 : 49900; // in paise
-    const planName = selectedPlanKey === 'pro_yearly' ? 'NovaPOS Pro Annual License (365 Days)' : 'NovaPOS Starter Monthly (30 Days)';
+    const planName =
+      selectedPlanKey === 'pro_yearly'
+        ? 'NovaPOS Pro Annual License (365 Days)'
+        : 'NovaPOS Starter Monthly (30 Days)';
+
+    let orderId: string | undefined;
+    try {
+      const res = await fetch('https://api.novasaas.net/api/v1/subscriptions/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planKey: selectedPlanKey,
+          tenantId: phone || 'default_tenant',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.orderId) {
+          orderId = data.orderId;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend order init fallback to direct Razorpay checkout', e);
+    }
 
     // Load Razorpay Standard Checkout SDK
-    const existingScript = document.getElementById('razorpay-checkout-js');
     const launchRazorpay = () => {
       try {
-        const options = {
+        const options: any = {
           key: 'rzp_live_TV6zopDBr7qNPE',
           amount: amount,
           currency: 'INR',
           name: 'NovaPOS Pro',
           description: planName,
-          image: 'https://cdn-icons-png.flaticon.com/512/869/869636.png',
+          image: 'https://novasaas.net/favicon.svg',
+          order_id: orderId,
           handler: function (response: any) {
             console.log('[Razorpay Payment Success]', response);
-            applyPaidSubscription(selectedPlanKey, response.razorpay_payment_id || 'RZP_OK');
+            applyPaidSubscription(
+              selectedPlanKey,
+              response.razorpay_payment_id || response.razorpay_order_id || 'RZP_LIVE_OK'
+            );
             setSubDetails(getSubscriptionDetails());
             setPaymentSuccessMsg(
-              `Payment Successful! Payment ID: ${response.razorpay_payment_id || 'RZP_OK'}. Your ${selectedPlanKey === 'pro_yearly' ? 'Pro Annual (365 Days)' : 'Starter Monthly (30 Days)'} subscription is now active.`
+              `Payment Successful! Ref: ${response.razorpay_payment_id || 'RZP_OK'}. Your ${
+                selectedPlanKey === 'pro_yearly' ? 'Pro Annual (365 Days)' : 'Starter Monthly (30 Days)'
+              } subscription is now active.`
             );
             setIsUpgradeModalOpen(false);
             setIsPaying(false);
             showSavedNotification();
           },
           prefill: {
-            contact: phone ? `+91${phone}` : '',
+            contact: phone ? `+91${phone.replace(/^\+?91/, '')}` : '',
             name: profileName || 'Merchant',
-            method: 'upi',
-          },
-          config: {
-            display: {
-              blocks: {
-                upi: {
-                  name: 'Pay via UPI (GPay, PhonePe, Paytm, QR)',
-                  instruments: [
-                    {
-                      method: 'upi',
-                      flows: ['intent', 'qr', 'collect'],
-                      apps: ['google_pay', 'phonepe', 'paytm', 'bhim', 'cred'],
-                    },
-                  ],
-                },
-                other: {
-                  name: 'Cards, NetBanking & Wallets',
-                  instruments: [
-                    { method: 'card' },
-                    { method: 'netbanking' },
-                    { method: 'wallet' },
-                  ],
-                },
-              },
-              sequence: ['block.upi', 'block.other'],
-              preferences: {
-                show_default_blocks: true,
-              },
-            },
           },
           theme: {
             color: '#5B42F3',
@@ -273,6 +273,7 @@ export const SettingsScreen: React.FC<Props> = ({
       }
     };
 
+    const existingScript = document.getElementById('razorpay-checkout-js');
     if (existingScript && (window as any).Razorpay) {
       launchRazorpay();
     } else {
@@ -289,46 +290,6 @@ export const SettingsScreen: React.FC<Props> = ({
       };
       document.body.appendChild(script);
     }
-  };
-
-  const handleDirectUpiAppLaunch = (appScheme?: string) => {
-    const rawAmount = selectedPlanKey === 'pro_yearly' ? '4999' : '499';
-    const note = encodeURIComponent(`NovaPOS Pro ${selectedPlanKey === 'pro_yearly' ? 'Annual' : 'Monthly'}`);
-    const vpa = 'lokeshchowdary.p@axl';
-    const merchantName = encodeURIComponent('NovaPOS Pro');
-    const genericUpi = `upi://pay?pa=${vpa}&pn=${merchantName}&am=${rawAmount}&cu=INR&tn=${note}`;
-
-    if (appScheme === 'gpay') {
-      window.location.href = `tez://upi/pay?pa=${vpa}&pn=${merchantName}&am=${rawAmount}&cu=INR&tn=${note}`;
-      setTimeout(() => { window.location.href = genericUpi; }, 600);
-    } else if (appScheme === 'phonepe') {
-      window.location.href = `phonepe://pay?pa=${vpa}&pn=${merchantName}&am=${rawAmount}&cu=INR&tn=${note}`;
-      setTimeout(() => { window.location.href = genericUpi; }, 600);
-    } else if (appScheme === 'paytm') {
-      window.location.href = `paytmmp://pay?pa=${vpa}&pn=${merchantName}&am=${rawAmount}&cu=INR&tn=${note}`;
-      setTimeout(() => { window.location.href = genericUpi; }, 600);
-    } else {
-      window.location.href = genericUpi;
-    }
-  };
-
-  const handleVerifyUtr = () => {
-    if (!enteredUtr || enteredUtr.trim().length < 6) {
-      alert('Please enter a valid 12-digit UPI UTR / Transaction Reference Number.');
-      return;
-    }
-    setVerifyingUtr(true);
-    setTimeout(() => {
-      applyPaidSubscription(selectedPlanKey, `UPI_${enteredUtr.trim()}`);
-      setSubDetails(getSubscriptionDetails());
-      setPaymentSuccessMsg(
-        `UPI Payment Verified! Ref: ${enteredUtr.trim()}. Your ${selectedPlanKey === 'pro_yearly' ? 'Pro Annual (365 Days)' : 'Starter Monthly (30 Days)'} subscription is now active.`
-      );
-      setVerifyingUtr(false);
-      setIsUpgradeModalOpen(false);
-      setEnteredUtr('');
-      showSavedNotification();
-    }, 1000);
   };
 
   return (
@@ -750,36 +711,8 @@ export const SettingsScreen: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Modal Tabs */}
-            <div className="flex border-b border-slate-200 bg-slate-50 px-4 pt-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMode('gateway')}
-                className={`pb-2.5 px-3 text-xs font-black border-b-2 transition-all flex items-center gap-1.5 ${
-                  paymentMode === 'gateway'
-                    ? 'border-indigo-600 text-indigo-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>UPI & Razorpay Gateway</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMode('upi_qr')}
-                className={`pb-2.5 px-3 text-xs font-black border-b-2 transition-all flex items-center gap-1.5 ${
-                  paymentMode === 'upi_qr'
-                    ? 'border-indigo-600 text-indigo-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <QrCode className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Direct UPI QR & Apps</span>
-              </button>
-            </div>
-
             {/* Plans Selection */}
-            <div className="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
+            <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
               {/* Pro Yearly Option */}
               <div
                 onClick={() => setSelectedPlanKey('pro_yearly')}
@@ -811,6 +744,9 @@ export const SettingsScreen: React.FC<Props> = ({
                   <span className="text-[10px] font-semibold bg-white border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md flex items-center gap-1">
                     <Check className="w-3 h-3 text-emerald-600" /> GSTR-1 Auto Reports
                   </span>
+                  <span className="text-[10px] font-semibold bg-white border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-600" /> 24/7 Cloud Backup
+                  </span>
                 </div>
               </div>
 
@@ -835,114 +771,50 @@ export const SettingsScreen: React.FC<Props> = ({
                 </div>
               </div>
 
-              {paymentMode === 'gateway' ? (
-                <>
-                  {/* Payment Info */}
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center justify-between text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-indigo-600" />
-                      <span>Supports UPI, GPay, PhonePe, Cards & NetBanking</span>
-                    </div>
-                    <span className="font-bold text-slate-800">Instant</span>
+              {/* Supported Payment Channels */}
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-slate-700 font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-indigo-600" />
+                    <span>Accepted Payment Methods</span>
                   </div>
-
-                  {/* Direct 1-tap UPI launch shortcuts */}
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Quick UPI App 1-Tap Checkout:
-                    </span>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDirectUpiAppLaunch('gpay')}
-                        className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex flex-col items-center gap-1 text-center transition-all active:scale-95"
-                      >
-                        <span className="text-xs font-black text-slate-800">Google Pay</span>
-                        <span className="text-[10px] text-emerald-600 font-bold">Fast UPI</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDirectUpiAppLaunch('phonepe')}
-                        className="p-2 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/50 flex flex-col items-center gap-1 text-center transition-all active:scale-95"
-                      >
-                        <span className="text-xs font-black text-purple-700">PhonePe</span>
-                        <span className="text-[10px] text-purple-600 font-bold">Instant</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDirectUpiAppLaunch('paytm')}
-                        className="p-2 rounded-xl border border-sky-200 bg-sky-50/50 hover:bg-sky-100/50 flex flex-col items-center gap-1 text-center transition-all active:scale-95"
-                      >
-                        <span className="text-xs font-black text-sky-700">Paytm UPI</span>
-                        <span className="text-[10px] text-sky-600 font-bold">Direct</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Pay with Razorpay Button */}
-                  <button
-                    type="button"
-                    onClick={handleUpgradePayment}
-                    disabled={isPaying}
-                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 mt-2"
-                  >
-                    {isPaying ? (
-                      <span>Connecting Razorpay Gateway...</span>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>
-                          Pay {selectedPlanKey === 'pro_yearly' ? '₹4,999' : '₹499'} with Razorpay Checkout
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </>
-              ) : (
-                /* Direct UPI QR Code Mode */
-                <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center">
-                  <p className="text-xs font-bold text-slate-700">
-                    Scan with any UPI App (GPay, PhonePe, Paytm, BHIM)
-                  </p>
-                  <div className="flex justify-center py-1">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                        `upi://pay?pa=lokeshchowdary.p@axl&pn=NovaPOS%20Pro&am=${
-                          selectedPlanKey === 'pro_yearly' ? '4999' : '499'
-                        }&cu=INR&tn=NovaPOS%20Subscription`
-                      )}`}
-                      alt="UPI QR"
-                      className="w-40 h-40 bg-white p-2 rounded-xl border border-slate-300 shadow-sm"
-                    />
-                  </div>
-                  <div className="text-xs text-slate-600 font-mono font-bold bg-white py-1 px-2 rounded-lg border border-slate-200 inline-block">
-                    UPI ID: lokeshchowdary.p@axl
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200 text-left space-y-2">
-                    <label className="text-xs font-bold text-slate-700 block">
-                      Enter UPI Ref / UTR No (after payment):
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={enteredUtr}
-                        onChange={(e) => setEnteredUtr(e.target.value)}
-                        placeholder="e.g. 423589123456"
-                        className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-mono font-bold text-slate-800"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyUtr}
-                        disabled={verifyingUtr}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-black hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-sm"
-                      >
-                        {verifyingUtr ? 'Verifying...' : 'Verify & Activate'}
-                      </button>
-                    </div>
-                  </div>
+                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                    Instant Activation
+                  </span>
                 </div>
-              )}
+                <div className="text-[11px] text-slate-500 flex flex-wrap gap-2 pt-1 border-t border-slate-200">
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Google Pay</span>
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ PhonePe</span>
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Paytm UPI</span>
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Any UPI QR</span>
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">💳 Cards (Visa/Master/RuPay)</span>
+                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">🏦 NetBanking</span>
+                </div>
+              </div>
+
+              {/* Pay with Razorpay Button */}
+              <button
+                type="button"
+                onClick={handleUpgradePayment}
+                disabled={isPaying}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 mt-2"
+              >
+                {isPaying ? (
+                  <span>Opening Razorpay Gateway...</span>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>
+                      Pay {selectedPlanKey === 'pro_yearly' ? '₹4,999' : '₹499'} with Razorpay Checkout
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
+                <Lock className="w-3 h-3" />
+                256-Bit SSL Encrypted & Official Razorpay Secured Checkout
+              </p>
             </div>
           </div>
         </div>
