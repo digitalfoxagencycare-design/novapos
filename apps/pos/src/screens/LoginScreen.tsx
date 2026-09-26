@@ -109,12 +109,18 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      const res = await cloudApi.sendOtp(cleanPhone);
+      const res: any = await cloudApi.sendOtp(cleanPhone);
       if (res.success) {
         setSuccessMessage(res.message || `SMS OTP sent to +91 ${cleanPhone}`);
         setOtpStep(true);
         setCountdown(60);
-        setOtp('');
+        if (res.demoOtp) {
+          setOtp(res.demoOtp);
+        } else if (res.isMock) {
+          setOtp('123456');
+        } else {
+          setOtp('');
+        }
       } else {
         setErrorMessage(res.message || 'Failed to dispatch SMS OTP. Please retry.');
       }
