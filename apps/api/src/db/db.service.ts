@@ -68,8 +68,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `The database role "${enforcement.role}" ${why}, so row-level security is NOT enforced ` +
         'and tenant isolation is inactive. Connect as a role created by ' +
         'drizzle/manual/roles.sql (novapos_app) instead.';
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(`${message} Refusing to serve traffic.`);
+      if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SUPERUSER_DB !== 'true') {
+        throw new Error(`${message} Refusing to serve traffic. Set ALLOW_SUPERUSER_DB=true if using Supabase/managed cloud DB.`);
       }
       this.logger.warn(`⚠ ${message}`);
     }

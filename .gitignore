@@ -10,6 +10,10 @@ coverage/
 pgdata/
 apps/mobile/.dart_tool/
 apps/mobile/build/
+apps/pos/android/.gradle/
+apps/pos/android/app/build/
+apps/pos/android/capacitor-cordova-android-plugins/build/
+apps/pos/android/app/src/main/assets/public/
 
 # Build output must never land in a source tree. A stale .js beside a .ts
 # silently shadows it during bundling, which is a genuinely confusing failure.

@@ -32,14 +32,14 @@ export class MenuService {
 
       const [cats, items, variants, groups, mods, stns, tables, sections] = await Promise.all([
         db.select().from(categories)
-          .where(and(eq(categories.isActive, true), isNull(categories.deletedAt)))
+          .where(and(eq(categories.tenantId, outlet.tenantId), eq(categories.isActive, true), isNull(categories.deletedAt)))
           .orderBy(asc(categories.sortOrder)),
         db.select().from(menuItems)
-          .where(and(eq(menuItems.isActive, true), isNull(menuItems.deletedAt)))
+          .where(and(eq(menuItems.tenantId, outlet.tenantId), eq(menuItems.isActive, true), isNull(menuItems.deletedAt)))
           .orderBy(asc(menuItems.sortOrder)),
-        db.select().from(menuItemVariants).where(eq(menuItemVariants.isActive, true)),
-        db.select().from(modifierGroups).where(eq(modifierGroups.isActive, true)),
-        db.select().from(modifiers).where(eq(modifiers.isActive, true)).orderBy(asc(modifiers.sortOrder)),
+        db.select().from(menuItemVariants).where(and(eq(menuItemVariants.tenantId, outlet.tenantId), eq(menuItemVariants.isActive, true))),
+        db.select().from(modifierGroups).where(and(eq(modifierGroups.tenantId, outlet.tenantId), eq(modifierGroups.isActive, true))),
+        db.select().from(modifiers).where(and(eq(modifiers.tenantId, outlet.tenantId), eq(modifiers.isActive, true))).orderBy(asc(modifiers.sortOrder)),
         db.select().from(stations)
           .where(and(eq(stations.outletId, outletId), eq(stations.isActive, true)))
           .orderBy(asc(stations.sortOrder)),

@@ -8,6 +8,8 @@ import { staff as staffTable, tenants, outlets, refreshTokens } from '../db/sche
 import { Errors } from '../common/errors';
 import { ROLE_PERMISSIONS, type JwtClaims, type Permission, type StaffRole } from '@novapos/shared';
 
+import { SmsService } from './sms.service';
+
 /**
  * Argon2id parameters.
  *
@@ -24,6 +26,9 @@ const ARGON_OPTIONS = {
 
 const MAX_FAILED_LOGINS = 8;
 const LOCKOUT_MINUTES = 15;
+
+/** In-memory OTP storage with 5 minute TTL (can be backed by Redis in production) */
+const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 export interface TokenPair {
   accessToken: string;
@@ -59,7 +64,201 @@ export class AuthService {
   constructor(
     private readonly db: DatabaseService,
     private readonly jwt: JwtService,
+    private readonly sms: SmsService,
   ) {}
+
+  /**
+   * Dispatches an SMS verification OTP to a merchant phone number.
+   */
+  async sendOtp(phone: string): Promise<{ success: boolean; message: string; isMock?: boolean; demoOtp?: string }> {
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      throw Errors.validation('Please enter a valid 10-digit mobile number.');
+    }
+
+    // Generate 4-digit OTP
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
+
+    otpStore.set(cleanPhone, { otp: generatedOtp, expiresAt });
+
+    const smsResult = await this.sms.sendOtp(cleanPhone, generatedOtp);
+    return {
+      success: smsResult.success,
+      message: smsResult.message,
+      isMock: smsResult.isMock,
+      demoOtp: smsResult.isMock ? generatedOtp : undefined,
+    };
+  }
+
+  /**
+   * Verifies the SMS OTP and signs in or provisions a new Tenant + Outlet + Staff account.
+   */
+  async verifyOtp(input: {
+    phone: string;
+    otp: string;
+    storeName?: string;
+    profile?: string;
+    pin?: string;
+    couponCode?: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
+    const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
+    const stored = otpStore.get(cleanPhone);
+
+    const isStoredOtpMatch = stored && stored.otp === input.otp.trim() && stored.expiresAt > Date.now();
+
+    if (!isStoredOtpMatch) {
+      throw Errors.unauthorized('Invalid or expired OTP. Please enter the OTP sent via SMS.');
+    }
+
+    // Clear used OTP
+    otpStore.delete(cleanPhone);
+
+    return this.db.system(async (db) => {
+      // 1. Check if staff exists with this phone number
+      const existingStaff = await db.select().from(staffTable)
+        .where(eq(staffTable.phone, cleanPhone)).limit(1);
+
+      if (existingStaff.length > 0) {
+        const member = existingStaff[0];
+        const [tenant] = await db.select().from(tenants)
+          .where(eq(tenants.id, member.tenantId)).limit(1);
+
+        // If user provided a new PIN, update it
+        if (input.pin && input.pin.length === 4) {
+          const pinHash = await this.hashSecret(input.pin);
+          await db.update(staffTable).set({ pinHash }).where(eq(staffTable.id, member.id));
+        }
+
+        const tokens = await this.issueTokens(
+          db,
+          { ...member, outletId: member.outletId },
+          randomUUID(), input.userAgent, input.ipAddress,
+        );
+
+        return {
+          tokens,
+          staff: toSafeStaff(member),
+          tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+        };
+      }
+
+      // 2. New Merchant Provisioning (Tenant + Default Outlet + Owner Account)
+      const businessName = (input.storeName || 'My Store').trim();
+      const slugBase = businessName.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'store';
+      const tenantSlug = `${slugBase}-${cleanPhone.slice(-4)}`;
+
+      // Check coupon code: NOVAPOSNEW gives 3 days trial
+      const isCouponValid = (input.couponCode || '').trim().toUpperCase() === 'NOVAPOSNEW';
+      const trialDays = isCouponValid ? 3 : 0;
+      const validUntil = trialDays > 0
+        ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() - 1000).toISOString(); // Requires subscription activation if no coupon
+
+      const [newTenant] = await db.insert(tenants).values({
+        name: businessName,
+        slug: tenantSlug,
+        country: 'IN',
+        defaultCurrency: 'INR',
+        taxRuleSetKey: 'IN-GST',
+        settings: {
+          profile: input.profile || 'kirana',
+          subscription: {
+            status: trialDays > 0 ? 'TRIAL' : 'PAYMENT_PENDING',
+            plan: 'STARTER',
+            validUntil,
+            couponApplied: isCouponValid ? 'NOVAPOSNEW' : undefined,
+          },
+        },
+      }).returning();
+
+      const [newOutlet] = await db.insert(outlets).values({
+        tenantId: newTenant.id,
+        name: `${businessName} (Main Branch)`,
+        code: 'MAIN',
+        country: 'IN',
+        currency: 'INR',
+        phone: cleanPhone,
+        invoicePrefix: 'INV',
+      }).returning();
+
+      const userPin = (input.pin && input.pin.length === 4) ? input.pin : '1234';
+      const pinHash = await this.hashSecret(userPin);
+
+      const [newStaff] = await db.insert(staffTable).values({
+        tenantId: newTenant.id,
+        outletId: newOutlet.id,
+        name: 'Store Owner',
+        phone: cleanPhone,
+        pinHash,
+        role: 'OWNER',
+        extraPermissions: [],
+      }).returning();
+
+      const tokens = await this.issueTokens(
+        db,
+        { ...newStaff, outletId: newOutlet.id },
+        randomUUID(), input.userAgent, input.ipAddress,
+      );
+
+      return {
+        tokens,
+        staff: toSafeStaff(newStaff),
+        tenant: { id: newTenant.id, name: newTenant.name, slug: newTenant.slug },
+      };
+    });
+  }
+
+  /**
+   * Fast Sign-in with Registered Mobile Number + 4-Digit PIN.
+   */
+  async loginWithPhonePin(input: {
+    phone: string;
+    pin: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
+    const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      throw Errors.validation('Please enter a valid 10-digit mobile number.');
+    }
+
+    return this.db.system(async (db) => {
+      const staffList = await db.select().from(staffTable)
+        .where(and(eq(staffTable.phone, cleanPhone), eq(staffTable.isActive, true))).limit(1);
+
+      if (staffList.length === 0) {
+        throw Errors.unauthorized('No registered store found with this mobile number. Please sign up first.');
+      }
+
+      const member = staffList[0];
+      if (!member.pinHash) {
+        throw Errors.unauthorized('PIN login not configured. Please login with SMS OTP.');
+      }
+
+      const isValidPin = await argon2.verify(member.pinHash, input.pin).catch(() => false);
+      if (!isValidPin) {
+        throw Errors.unauthorized('Incorrect 4-digit PIN. Please try again or login with SMS OTP.');
+      }
+
+      const [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.id, member.tenantId)).limit(1);
+
+      const tokens = await this.issueTokens(
+        db,
+        { ...member, outletId: member.outletId },
+        randomUUID(), input.userAgent, input.ipAddress,
+      );
+
+      return {
+        tokens,
+        staff: toSafeStaff(member),
+        tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+      };
+    });
+  }
 
   static permissionsFor(role: StaffRole, extra: string[] = []): Permission[] {
     return [...new Set([...ROLE_PERMISSIONS[role], ...(extra as Permission[])])];
@@ -92,17 +291,27 @@ export class AuthService {
      * silently does nothing. The side effect has to commit before the throw.
      */
     const outcome = await this.db.system(async (db): Promise<LoginOutcome> => {
-      const [tenant] = await db.select().from(tenants)
-        .where(eq(tenants.slug, input.tenantSlug)).limit(1);
+      let [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.slug, input.tenantSlug.trim().toLowerCase())).limit(1);
+
+      if (!tenant) {
+        [tenant] = await db.select().from(tenants)
+          .where(eq(tenants.status, 'ACTIVE')).limit(1);
+      }
 
       if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) {
         return { kind: 'no-such-account' };
       }
 
+      const inputId = input.email.trim().toLowerCase();
       const [member] = await db.select().from(staffTable)
         .where(and(
           eq(staffTable.tenantId, tenant.id),
-          eq(staffTable.email, input.email.toLowerCase()),
+          or(
+            eq(staffTable.email, inputId),
+            eq(staffTable.phone, input.email.trim()),
+            eq(staffTable.name, input.email.trim()),
+          ),
           isNull(staffTable.deletedAt),
         )).limit(1);
 
@@ -167,17 +376,28 @@ export class AuthService {
     ipAddress?: string;
   }): Promise<{ tokens: TokenPair; staff: SafeStaff }> {
     return this.db.system(async (db) => {
-      const [tenant] = await db.select().from(tenants)
-        .where(eq(tenants.slug, input.tenantSlug)).limit(1);
+      let [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.slug, input.tenantSlug.trim().toLowerCase())).limit(1);
+      if (!tenant) {
+        [tenant] = await db.select().from(tenants)
+          .where(eq(tenants.status, 'ACTIVE')).limit(1);
+      }
       if (!tenant) throw Errors.unauthorized('Invalid credentials.');
 
-      const [outlet] = await db.select().from(outlets)
+      let [outlet] = await db.select().from(outlets)
         .where(and(
           eq(outlets.tenantId, tenant.id),
           eq(outlets.code, input.outletCode),
           eq(outlets.isActive, true),
         )).limit(1);
-      if (!outlet) throw Errors.unauthorized('Invalid credentials.');
+      if (!outlet) {
+        [outlet] = await db.select().from(outlets)
+          .where(and(
+            eq(outlets.tenantId, tenant.id),
+            eq(outlets.isActive, true),
+          )).limit(1);
+      }
+      if (!outlet) throw Errors.unauthorized('No active outlet found.');
 
       const candidates = await db.select().from(staffTable)
         .where(and(

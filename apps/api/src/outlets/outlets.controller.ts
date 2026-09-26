@@ -25,6 +25,7 @@ export class OutletsService {
         city: outlets.city, region: outlets.region, country: outlets.country,
       }).from(outlets)
         .where(and(
+          eq(outlets.tenantId, user.tenantId),
           eq(outlets.isActive, true),
           isNull(outlets.deletedAt),
           ...(user.outletId ? [eq(outlets.id, user.outletId)] : []),

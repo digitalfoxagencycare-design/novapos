@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882987938160",
+    "project_id": "novapos-f60f2",
+    "storage_bucket": "novapos-f60f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882987938160:android:710c831df304e3b5901fb5",
+        "android_client_info": {
+          "package_name": "com.novapos.terminal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGbRleBCnMQ4DuUy7RX2vLsHxt3BQK2k0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

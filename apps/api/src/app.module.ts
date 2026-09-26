@@ -31,6 +31,8 @@ import { PrintingController } from './printing/printing.controller';
 import { GatewayRegistry } from './payments/gateways/registry';
 import { PaymentsService } from './payments/payments.service';
 import { PaymentsController } from './payments/payments.controller';
+import { SubscriptionService } from './payments/subscription.service';
+import { SubscriptionController } from './payments/subscription.controller';
 
 import { ReportsService } from './reports/reports.service';
 import { ReportsController } from './reports/reports.controller';
@@ -59,6 +61,7 @@ import { OutletsController, OutletsService } from './outlets/outlets.controller'
     OrdersController,
     KotController,
     PaymentsController,
+    SubscriptionController,
     PrintingController,
     ReportsController,
     SyncController,
@@ -81,6 +84,7 @@ import { OutletsController, OutletsService } from './outlets/outlets.controller'
     ReceiptService,
     GatewayRegistry,
     PaymentsService,
+    SubscriptionService,
     ReportsService,
     SyncService,
   ],

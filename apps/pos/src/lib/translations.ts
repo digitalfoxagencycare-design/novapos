@@ -1,0 +1,143 @@
+/**
+ * English UI Dictionary for NovaPOS
+ * 100% Pure English - No secondary languages or foreign strings.
+ */
+
+export type SupportedLanguage = 'en';
+
+export const TRANSLATIONS = {
+  en: {
+    appName: 'NovaPOS',
+    tagline: 'Fast Retail & Restaurant POS Billing',
+    common: {
+      cancel: 'Cancel',
+      save: 'Save',
+      delete: 'Delete',
+      edit: 'Edit',
+      close: 'Close',
+      confirm: 'Confirm',
+    },
+    tabs: {
+      pos: 'Billing',
+      calculator: 'Calculator',
+      tables: 'Tables & KOT',
+      khata: 'Khata',
+      inventory: 'Catalog',
+      reports: 'Reports',
+      settings: 'Settings',
+      profile: 'Profile',
+    },
+    billing: {
+      newBill: 'New Bill',
+      searchPlaceholder: 'Search item name, code or scan barcode...',
+      categoryAll: 'All Items',
+      favorites: 'Favorites ★',
+      previousDue: 'Previous Due',
+      customerDetails: 'Customer Phone / Khata',
+      customerPhonePlaceholder: '10-digit mobile number',
+      customerNamePlaceholder: 'Customer name (optional)',
+      item: 'Item',
+      qty: 'Qty',
+      price: 'Price',
+      amount: 'Amount',
+      subtotal: 'Subtotal',
+      discount: 'Discount',
+      serviceCharge: 'Service Charge',
+      roundOff: 'Round Off',
+      grandTotal: 'Grand Total',
+      cashPay: 'Cash',
+      upiPay: 'UPI / QR',
+      cardPay: 'Card',
+      udharPay: 'Credit (Khata)',
+      holdBill: 'Hold Bill',
+      recallBill: 'Recall Draft',
+      clearCart: 'Clear',
+      printBill: 'Print Receipt',
+      shareWhatsApp: 'WhatsApp Bill',
+      billSuccess: 'Bill Completed Successfully!',
+      tokenNo: 'Token No',
+      outOfStock: 'Out of Stock',
+      stock: 'Stock',
+      itemsCount: 'items',
+    },
+    calculator: {
+      title: 'Fast Calculator Billing',
+      subtitle: 'Type amounts directly without item lookup — 1-tap print receipt',
+      clear: 'C',
+      back: '⌫',
+      add: '+ Add Line',
+      total: 'Total',
+      printCash: 'Print Cash Sale',
+      printUpi: 'Print UPI Sale',
+      notePlaceholder: 'Optional note (e.g. Groceries, Milk)',
+    },
+    tables: {
+      title: 'Restaurant Floor & KOT',
+      acSection: 'AC Dine-In',
+      nonAcSection: 'Non-AC Hall',
+      parcelSection: 'Takeaway / Parcel',
+      vacant: 'Vacant',
+      occupied: 'Occupied',
+      billed: 'Billed',
+      fireKot: 'Fire KOT to Kitchen',
+      reprintKot: 'Reprint KOT',
+      settle: 'Print & Settle Bill',
+      guests: 'Guests',
+      seated: 'Seated',
+      waiter: 'Captain',
+      addItems: 'Add More Items',
+      noActiveOrders: 'No active items on this table',
+    },
+    khata: {
+      title: 'Customer & Vendor Khata Ledger',
+      customers: 'Customers',
+      suppliers: 'Suppliers',
+      searchParty: 'Search by customer name or phone...',
+      addParty: '+ Add Party',
+      netReceivable: 'Total Due from Customers',
+      netPayable: 'Total Payable to Suppliers',
+      balance: 'Balance',
+      due: 'DUE',
+      advance: 'ADVANCE',
+      moneyIn: '+ Money In',
+      moneyOut: '+ Money Out',
+      sendReminder: 'WhatsApp Reminder',
+      statement: 'Ledger Statement',
+      noDues: 'No pending dues',
+    },
+    reports: {
+      title: 'Reports & Day End',
+      todaySales: "Today's Sales",
+      billsCount: 'Total Invoices',
+      cashInDrawer: 'Cash In Drawer',
+      closingBalance: 'Day End Closing',
+      printZReport: 'Print Z-Report Slip',
+    },
+    settings: {
+      title: 'POS Configuration & Settings',
+      searchSettings: 'Search setting name or code...',
+      saveAll: 'Save Settings',
+      resetDefaults: 'Reset to Defaults',
+    },
+    profile: {
+      title: 'Profile',
+      contactEmail: 'Contact Person Email',
+      businessDetails: 'BUSINESS DETAILS',
+      bankDetails: 'BANK DETAILS (ACCEPT ONLINE PAYMENTS)',
+      upi: 'UPI',
+      googleReview: 'GOOGLE REVIEW LINK / URL',
+      customFields: 'CUSTOM FIELDS',
+      signature: 'Signature',
+      luckyImage: 'Lucky Image',
+      save: 'SAVE',
+    },
+  },
+};
+
+export function getStoredLanguage(): SupportedLanguage {
+  return 'en';
+}
+
+export function setStoredLanguage(_lang: SupportedLanguage): void {
+  // Stored strictly as English
+}

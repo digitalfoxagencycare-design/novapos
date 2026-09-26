@@ -63,6 +63,9 @@ export interface TaxSlab {
   hsnSac?: string;
   /** EU: reduced/standard/zero classification for reporting. */
   category?: 'standard' | 'reduced' | 'super-reduced' | 'zero' | 'exempt';
+  /** Effective dating: ISO date string YYYY-MM-DD */
+  validFrom?: string;
+  validTo?: string;
 }
 
 export interface TaxComponentRule {

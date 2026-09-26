@@ -24,7 +24,11 @@ export class AdminApi {
   private tokens: Tokens | null = null;
   private refreshing: Promise<void> | null = null;
 
-  constructor(private readonly baseUrl = '/api/v1') {
+  constructor(
+    private readonly baseUrl = import.meta.env.VITE_API_URL
+      ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
+      : '/api/v1',
+  ) {
     try {
       const raw = localStorage.getItem('novapos:admin:tokens');
       if (raw) this.tokens = JSON.parse(raw);

@@ -1,0 +1,26 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: VM
+    - generic [ref=e7]:
+      - generic [ref=e8]: Velpula Mess
+      - generic [ref=e9]: Authentic Food • Mobile POS
+  - heading "Staff & Till Login" [level=3] [ref=e10]
+  - paragraph [ref=e11]: Tap 1-click login or enter till credentials to start billing.
+  - generic [ref=e12]:
+    - generic [ref=e13]: ⚡ 1-Tap Quick Login
+    - generic [ref=e14]:
+      - button "👑 Owner (Lokesh)" [ref=e15] [cursor=pointer]
+      - button "💼 Cashier Till" [ref=e17] [cursor=pointer]
+    - button "⚡ Fast PIN Sign-In (4321)" [ref=e19] [cursor=pointer]
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]: Restaurant / Outlet
+      - textbox [ref=e24]: nova-kitchen
+    - generic [ref=e25]:
+      - generic [ref=e26]: Username or Phone
+      - textbox [ref=e27]: lokesh
+    - generic [ref=e28]:
+      - generic [ref=e29]: Password
+      - textbox [ref=e30]: "9701463241"
+    - button "Sign In to POS →" [ref=e31] [cursor=pointer]
+  - button "Clear Storage & Reset Session" [ref=e33] [cursor=pointer]

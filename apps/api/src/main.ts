@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -47,6 +48,12 @@ async function bootstrap() {
   });
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  
+  const httpAdapter = app.getHttpAdapter().getInstance();
+  httpAdapter.get('/', (_req: unknown, res: { redirect: (url: string) => void }) => {
+    res.redirect('/api/docs');
+  });
+
   app.setGlobalPrefix('api/v1');
 
   const origins = (process.env.CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);

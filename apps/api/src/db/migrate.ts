@@ -24,7 +24,8 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: url, max: 1 });
+  const needsSsl = url.includes('supabase') || url.includes('sslmode=require') || process.env.NODE_ENV === 'production';
+  const pool = new Pool({ connectionString: url, max: 1, ssl: needsSsl ? { rejectUnauthorized: false } : undefined });
   const db = drizzle(pool);
 
   try {
@@ -32,9 +33,8 @@ async function main() {
     await migrate(db, { migrationsFolder: join(__dirname, '../../drizzle') });
 
     console.log('→ Applying row-level security policies…');
-    for (const statement of rlsStatements()) {
-      await pool.query(statement);
-    }
+    const rlsSql = rlsStatements().join('\n');
+    await pool.query(rlsSql);
 
     // Any extra SQL the schema cannot express — triggers, constraints, the
     // application role — lives here and is re-run idempotently.

@@ -661,8 +661,8 @@ function useMoney(outlet: Outlet) {
 
 function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [tenantSlug, setTenantSlug] = useState('nova-kitchen');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('lokesh');
+  const [password, setPassword] = useState('9701463241');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -688,8 +688,8 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
           <input id="t" value={tenantSlug} onChange={(e) => setTenantSlug(e.target.value)} required />
         </div>
         <div className="field">
-          <label htmlFor="e">Email</label>
-          <input id="e" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          <label htmlFor="e">Username or Email</label>
+          <input id="e" type="text" value={email} onChange={(e) => setEmail(e.target.value)}
                  autoComplete="username" required />
         </div>
         <div className="field">

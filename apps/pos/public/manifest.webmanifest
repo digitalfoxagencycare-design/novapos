@@ -1,11 +1,25 @@
 {
-  "name": "NovaPOS",
-  "short_name": "NovaPOS",
+  "name": "Velpula Mess POS - Mobile & Handheld Billing",
+  "short_name": "Velpula POS",
+  "description": "Authentic Indian Restaurant Point of Sale with 58mm & 80mm ESC/POS Thermal Printing",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "description": "Point of sale — works offline",
-  "icons": []
+  "orientation": "any",
+  "background_color": "#09130e",
+  "theme_color": "#09130e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64 32x32",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["business", "food", "finance"]
 }

@@ -22,7 +22,11 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: { '/api': { target: 'http://localhost:3000', changeOrigin: true } },
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/realtime': { target: 'http://localhost:3001', ws: true, changeOrigin: true },
+      '/socket.io': { target: 'http://localhost:3001', ws: true, changeOrigin: true },
+    },
   },
   test: {
     name: 'pos',

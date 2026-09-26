@@ -34,14 +34,15 @@ let adminPool: Pool | null = null;
 
 export function getPool(): Pool {
   if (!pool) {
+    const connStr = process.env.DATABASE_URL ?? '';
+    const needsSsl = connStr.includes('supabase') || connStr.includes('sslmode=require') || process.env.NODE_ENV === 'production';
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: connStr,
+      ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
       max: Number(process.env.DB_POOL_MAX ?? 10),
       idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
-      // A till waiting on a query is a queue of customers waiting. Fail fast
-      // and let the client retry rather than hanging the terminal.
-      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15_000),
+      connectionTimeoutMillis: 30_000,
+      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 60_000),
     });
     pool.on('error', (err) => {
       // eslint-disable-next-line no-console
@@ -58,10 +59,14 @@ export function getPool(): Pool {
  */
 export function getAdminPool(): Pool {
   if (!adminPool) {
+    const connStr = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL ?? '';
+    const needsSsl = connStr.includes('supabase') || connStr.includes('sslmode=require') || process.env.NODE_ENV === 'production';
     adminPool = new Pool({
-      connectionString: process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL,
+      connectionString: connStr,
+      ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
       max: Number(process.env.DB_ADMIN_POOL_MAX ?? 4),
       idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 15_000,
     });
     adminPool.on('error', () => { /* handled per-query */ });
   }

@@ -1,12 +1,13 @@
 /**
- * Development seed.
+ * Authentic Indian Restaurant Seed for Velpula Mess & NovaPOS.
  *
  *   pnpm --filter @novapos/api seed
  *
- * Creates two tenants deliberately: a single-outlet Indian restaurant and a
- * two-outlet German one. Two tenants because a multi-tenant system that has
- * only ever been run with one tenant has never actually been tested — every
- * isolation bug hides until the second tenant exists.
+ * Configures pure Indian Restaurant & Retail data:
+ * - Currency: INR (₹)
+ * - India GST 5% (CGST 2.5% + SGST 2.5%)
+ * - Authentic Dishes: Tiffins, Biryani, Meals, Curries, Chai & Beverages
+ * - Real 58mm Bluetooth and 80mm USB/Network printer profiles
  */
 import 'dotenv/config';
 import * as argon2 from 'argon2';
@@ -17,14 +18,11 @@ import {
   modifierGroups, modifiers, menuItemModifierGroups, restaurantTables,
   tableSections, printers, taxRuleSets, customers, inventoryItems, stockLevels,
 } from './schema';
-import { IN_GST, DE_VAT } from '@novapos/tax-engine';
+import { IN_GST } from '@novapos/tax-engine';
 
 const ARGON = { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
-// Seed credentials are printed at the end and are obviously non-production.
-// The API refuses to boot with a placeholder JWT secret, so a seeded database
-// cannot accidentally become a live one without a deliberate config change.
-const DEMO_PASSWORD = 'novapos-dev-2026';
+const DEMO_PASSWORD = '9701463241';
 const DEMO_PIN = '4321';
 
 async function main() {
@@ -32,17 +30,16 @@ async function main() {
   const pin = await argon2.hash(DEMO_PIN, ARGON);
 
   await withSystemDb(async (db) => {
-    console.log('→ Clearing existing seed data…');
-    await db.delete(tenants).where(eq(tenants.slug, 'nova-kitchen'));
-    await db.delete(tenants).where(eq(tenants.slug, 'berlin-bites'));
+    console.log('→ Purging ALL existing tenants & obsolete database data…');
+    await db.delete(tenants);
 
-    /* ─────────────── Tenant 1: Nova Kitchen (India, 1 outlet) ─────────────── */
+    /* ─────────────── Velpula Mess / Nova Kitchen (India, Hyderabad) ─────────────── */
 
-    console.log('→ Seeding Nova Kitchen (India)…');
+    console.log('→ Seeding Velpula Mess & Authentic Indian Restaurant…');
     const [nova] = await db.insert(tenants).values({
-      name: 'Nova Kitchen',
-      slug: 'nova-kitchen',
-      taxId: '29ABCDE1234F1Z5',
+      name: 'Velpula Mess',
+      slug: 'nova-kitchen', // Primary slug
+      taxId: '36ABCDE1234F1Z5',
       country: 'IN',
       defaultLocale: 'en-IN',
       defaultCurrency: 'INR',
@@ -54,278 +51,242 @@ async function main() {
     await db.insert(taxRuleSets).values({
       tenantId: nova.id,
       key: 'IN-GST',
-      label: 'India — GST (restaurant)',
+      label: 'India — GST 5% (Restaurant)',
       country: 'IN',
       definition: IN_GST as never,
     });
 
-    const [blr] = await db.insert(outlets).values({
+    const [hyd] = await db.insert(outlets).values({
       tenantId: nova.id,
-      name: 'Nova Kitchen — Indiranagar',
-      code: 'BLR',
-      addressLines: ['12 MG Road, Indiranagar'],
-      city: 'Bengaluru',
-      region: 'KA',
+      name: 'Velpula Mess — Hitech City Branch',
+      code: 'HYD',
+      addressLines: ['Near ORR Junction, Hitech City Main Road'],
+      city: 'Hyderabad',
+      region: 'TG',
       country: 'IN',
-      postalCode: '560038',
-      phone: '+91 80 4123 4567',
-      taxId: '29ABCDE1234F1Z5',
+      postalCode: '500081',
+      phone: '+91 9701463241',
+      taxId: '36ABCDE1234F1Z5',
       extraIds: ['FSSAI: 12345678901234'],
       locale: 'en-IN',
       currency: 'INR',
       timezone: 'Asia/Kolkata',
       receiptTemplateId: 'in-gst',
-      invoicePrefix: 'BLR',
+      invoicePrefix: 'VM',
       serviceChargePercent: '0',
     }).returning();
 
-    const [kitchen, bar] = await db.insert(stations).values([
-      { tenantId: nova.id, outletId: blr.id, name: 'MAIN KITCHEN', code: 'KITCHEN', sortOrder: 0, mode: 'BOTH' },
-      { tenantId: nova.id, outletId: blr.id, name: 'BAR', code: 'BAR', sortOrder: 1, mode: 'BOTH' },
+    const [kitchen, chaiStation] = await db.insert(stations).values([
+      { tenantId: nova.id, outletId: hyd.id, name: 'MAIN KITCHEN', code: 'KITCHEN', sortOrder: 0, mode: 'BOTH' },
+      { tenantId: nova.id, outletId: hyd.id, name: 'TEA & TIFFIN COUNTER', code: 'TIFFIN', sortOrder: 1, mode: 'BOTH' },
     ]).returning();
 
     await db.insert(staff).values([
       {
-        tenantId: nova.id, outletId: null, name: 'Priya Nair',
-        email: 'owner@novakitchen.test', passwordHash: password, pinHash: pin, role: 'OWNER',
+        tenantId: nova.id, outletId: null, name: 'Lokesh',
+        email: 'lokesh', phone: '9701463241', passwordHash: password, pinHash: pin, role: 'OWNER',
       },
       {
-        tenantId: nova.id, outletId: blr.id, name: 'Rahul Menon',
-        email: 'manager@novakitchen.test', passwordHash: password, pinHash: pin, role: 'MANAGER',
+        tenantId: nova.id, outletId: null, name: 'Admin',
+        email: 'admin', phone: '9701463241', passwordHash: password, pinHash: pin, role: 'OWNER',
       },
       {
-        tenantId: nova.id, outletId: blr.id, name: 'Asha Kumari',
-        email: 'cashier@novakitchen.test', passwordHash: password, pinHash: pin, role: 'CASHIER',
+        tenantId: nova.id, outletId: hyd.id, name: 'Billing Cashier',
+        email: 'cashier', phone: '9701463241', passwordHash: password, pinHash: pin, role: 'CASHIER',
       },
       {
-        tenantId: nova.id, outletId: blr.id, name: 'Vikram Shetty',
-        email: 'waiter@novakitchen.test', passwordHash: password, pinHash: pin, role: 'WAITER',
-      },
-      {
-        tenantId: nova.id, outletId: blr.id, name: 'Kitchen Screen',
-        email: 'kitchen@novakitchen.test', passwordHash: password, pinHash: pin, role: 'KITCHEN',
+        tenantId: nova.id, outletId: hyd.id, name: 'Kitchen Screen',
+        email: 'kitchen', phone: '9701463241', passwordHash: password, pinHash: pin, role: 'KITCHEN',
       },
     ]);
 
-    const [mains, breads, drinks, desserts] = await db.insert(categories).values([
-      { tenantId: nova.id, name: 'Main Course', code: 'MAINS', sortOrder: 0, stationId: kitchen.id, colour: '#c2410c' },
-      { tenantId: nova.id, name: 'Breads', code: 'BREADS', sortOrder: 1, stationId: kitchen.id, colour: '#a16207' },
-      { tenantId: nova.id, name: 'Beverages', code: 'DRINKS', sortOrder: 2, stationId: bar.id, colour: '#0369a1' },
-      { tenantId: nova.id, name: 'Desserts', code: 'SWEETS', sortOrder: 3, stationId: kitchen.id, colour: '#a21caf' },
+    // Categories matching Hyderabadi / Velpula Mess exactly
+    const [tiffins, biryani, meals, currys, drinks] = await db.insert(categories).values([
+      { tenantId: nova.id, name: 'Tiffins', code: 'TIFFINS', sortOrder: 0, stationId: chaiStation.id, colour: '#16a34a' },
+      { tenantId: nova.id, name: 'Biryani', code: 'BIRYANI', sortOrder: 1, stationId: kitchen.id, colour: '#ea580c' },
+      { tenantId: nova.id, name: 'Meals', code: 'MEALS', sortOrder: 2, stationId: kitchen.id, colour: '#ca8a04' },
+      { tenantId: nova.id, name: 'Currys', code: 'CURRYS', sortOrder: 3, stationId: kitchen.id, colour: '#dc2626' },
+      { tenantId: nova.id, name: 'Beverages & Snacks', code: 'DRINKS', sortOrder: 4, stationId: chaiStation.id, colour: '#0284c7' },
     ]).returning();
 
+    // Menu Items
     const items = await db.insert(menuItems).values([
-      { tenantId: nova.id, categoryId: mains.id, name: 'Paneer Butter Masala', code: 'PBM',
-        priceMinor: 32000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 15, sortOrder: 0 },
-      { tenantId: nova.id, categoryId: mains.id, name: 'Chicken Biryani', code: 'BIR',
-        priceMinor: 38000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 25, sortOrder: 1,
-        // Delivery aggregators take a cut, so the delivery price is higher.
-        channelPrices: { DELIVERY: 42000 } },
-      { tenantId: nova.id, categoryId: mains.id, name: 'Dal Tadka', code: 'DAL',
-        priceMinor: 24000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 12, sortOrder: 2 },
-      { tenantId: nova.id, categoryId: breads.id, name: 'Butter Naan', code: 'NAAN',
-        priceMinor: 6000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 6, sortOrder: 0 },
-      { tenantId: nova.id, categoryId: breads.id, name: 'Tandoori Roti', code: 'ROTI',
-        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 5, sortOrder: 1 },
-      { tenantId: nova.id, categoryId: drinks.id, name: 'Masala Chai', code: 'CHAI',
-        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 4, sortOrder: 0 },
-      { tenantId: nova.id, categoryId: drinks.id, name: 'Fresh Lime Soda', code: 'LIME',
-        priceMinor: 9000, taxSlabId: 'gst-12', hsnSac: '2202', isVeg: true, prepMinutes: 3, sortOrder: 1 },
-      // A high-slab item, so the seed exercises more than one GST rate.
-      { tenantId: nova.id, categoryId: drinks.id, name: 'Cola (300ml)', code: 'COLA',
-        priceMinor: 6000, taxSlabId: 'gst-28', hsnSac: '2202', isVeg: true, prepMinutes: 1, sortOrder: 2 },
-      { tenantId: nova.id, categoryId: desserts.id, name: 'Gulab Jamun (2 pc)', code: 'GJ',
-        priceMinor: 12000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 3, sortOrder: 0 },
+      // Tiffins
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Idli (4 Pcs)', code: 'IDLI',
+        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 3, sortOrder: 0,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Vada (4 Pcs)', code: 'VADA',
+        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 5, sortOrder: 1,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Plain Dosa', code: 'PDOSA',
+        priceMinor: 3000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 6, sortOrder: 2,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Masala Dosa', code: 'MDOSA',
+        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 8, sortOrder: 3,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Onion Dosa', code: 'ODOSA',
+        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 8, sortOrder: 4,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Poori (4 Pcs)', code: 'POORI',
+        priceMinor: 5000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 6, sortOrder: 5,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Bonda (4 Pcs)', code: 'BONDA',
+        priceMinor: 4000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 5, sortOrder: 6,
+      },
+      {
+        tenantId: nova.id, categoryId: tiffins.id, name: 'Chapathi (1 Pc)', code: 'CHAPATHI',
+        priceMinor: 1500, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 4, sortOrder: 7,
+      },
+
+      // Biryani
+      {
+        tenantId: nova.id, categoryId: biryani.id, name: 'Chicken Dum Biryani', code: 'CHKBIR',
+        priceMinor: 18000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 10, sortOrder: 8,
+      },
+      {
+        tenantId: nova.id, categoryId: biryani.id, name: 'Special Chicken Biryani (Boneless)', code: 'SPLBIR',
+        priceMinor: 22000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 12, sortOrder: 9,
+      },
+      {
+        tenantId: nova.id, categoryId: biryani.id, name: 'Mutton Biryani', code: 'MUTBIR',
+        priceMinor: 26000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 12, sortOrder: 10,
+      },
+      {
+        tenantId: nova.id, categoryId: biryani.id, name: 'Paneer Biryani', code: 'PANBIR',
+        priceMinor: 15000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 10, sortOrder: 11,
+      },
+      {
+        tenantId: nova.id, categoryId: biryani.id, name: 'Veg Biryani', code: 'VEGBIR',
+        priceMinor: 12000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 10, sortOrder: 12,
+      },
+
+      // Meals
+      {
+        tenantId: nova.id, categoryId: meals.id, name: 'Veg Meals (Unlimited)', code: 'VEGMEALS',
+        priceMinor: 8000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 3, sortOrder: 13,
+      },
+      {
+        tenantId: nova.id, categoryId: meals.id, name: 'Non-Veg Meals (with Chicken Curry)', code: 'NONVEGMEALS',
+        priceMinor: 12000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 4, sortOrder: 14,
+      },
+      {
+        tenantId: nova.id, categoryId: meals.id, name: 'Special South Indian Thali', code: 'SPLTHALI',
+        priceMinor: 15000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 5, sortOrder: 15,
+      },
+
+      // Curries
+      {
+        tenantId: nova.id, categoryId: currys.id, name: 'Chicken Curry', code: 'CHKCURRY',
+        priceMinor: 10000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 8, sortOrder: 16,
+      },
+      {
+        tenantId: nova.id, categoryId: currys.id, name: 'Mutton Curry', code: 'MUTCURRY',
+        priceMinor: 18000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 10, sortOrder: 17,
+      },
+      {
+        tenantId: nova.id, categoryId: currys.id, name: 'Paneer Butter Masala', code: 'PBM',
+        priceMinor: 12000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 8, sortOrder: 18,
+      },
+      {
+        tenantId: nova.id, categoryId: currys.id, name: 'Dal Tadka', code: 'DALTADKA',
+        priceMinor: 7000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 6, sortOrder: 19,
+      },
+      {
+        tenantId: nova.id, categoryId: currys.id, name: 'Egg Curry (2 Eggs)', code: 'EGGCURRY',
+        priceMinor: 6000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: false, prepMinutes: 6, sortOrder: 20,
+      },
+
+      // Beverages & Drinks
+      {
+        tenantId: nova.id, categoryId: drinks.id, name: 'Special Irani Chai', code: 'CHAI',
+        priceMinor: 2000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 2, sortOrder: 21,
+      },
+      {
+        tenantId: nova.id, categoryId: drinks.id, name: 'South Indian Filter Coffee', code: 'COFFEE',
+        priceMinor: 2500, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 2, sortOrder: 22,
+      },
+      {
+        tenantId: nova.id, categoryId: drinks.id, name: 'Fresh Lime Soda', code: 'LIME',
+        priceMinor: 3000, taxSlabId: 'gst-5', hsnSac: '2202', isVeg: true, prepMinutes: 2, sortOrder: 23,
+      },
+      {
+        tenantId: nova.id, categoryId: drinks.id, name: 'Masala Butter Milk', code: 'MAJIGA',
+        priceMinor: 2000, taxSlabId: 'gst-5', hsnSac: '996331', isVeg: true, prepMinutes: 1, sortOrder: 24,
+      },
+      {
+        tenantId: nova.id, categoryId: drinks.id, name: 'Mineral Water (1L)', code: 'WATER',
+        priceMinor: 2000, taxSlabId: 'gst-5', hsnSac: '2202', isVeg: true, prepMinutes: 0, sortOrder: 25,
+      },
     ]).returning();
 
-    const biryani = items.find((i) => i.code === 'BIR')!;
-    const chai = items.find((i) => i.code === 'CHAI')!;
-
+    // Biryani Variants
+    const chkBir = items.find((i) => i.code === 'CHKBIR')!;
     await db.insert(menuItemVariants).values([
-      { tenantId: nova.id, itemId: biryani.id, name: 'Half', priceDeltaMinor: -12000, sortOrder: 0 },
-      { tenantId: nova.id, itemId: biryani.id, name: 'Full', priceDeltaMinor: 0, isDefault: true, sortOrder: 1 },
-      { tenantId: nova.id, itemId: chai.id, name: 'Regular', priceDeltaMinor: 0, isDefault: true, sortOrder: 0 },
-      { tenantId: nova.id, itemId: chai.id, name: 'Large', priceDeltaMinor: 2000, sortOrder: 1 },
+      { tenantId: nova.id, itemId: chkBir.id, name: 'Single', priceDeltaMinor: -6000, sortOrder: 0 },
+      { tenantId: nova.id, itemId: chkBir.id, name: 'Full', priceDeltaMinor: 0, isDefault: true, sortOrder: 1 },
+      { tenantId: nova.id, itemId: chkBir.id, name: 'Family Pack', priceDeltaMinor: 27000, sortOrder: 2 },
     ]);
 
-    const [spice, extras] = await db.insert(modifierGroups).values([
-      { tenantId: nova.id, name: 'Spice Level', minSelect: 1, maxSelect: 1 },
-      { tenantId: nova.id, name: 'Extras', minSelect: 0, maxSelect: 3 },
+    // Modifier Groups
+    const [extras] = await db.insert(modifierGroups).values([
+      { tenantId: nova.id, name: 'Add-ons & Extras', minSelect: 0, maxSelect: 3 },
     ]).returning();
 
     await db.insert(modifiers).values([
-      { tenantId: nova.id, groupId: spice.id, name: 'Mild', priceMinor: 0, sortOrder: 0 },
-      { tenantId: nova.id, groupId: spice.id, name: 'Medium', priceMinor: 0, sortOrder: 1 },
-      { tenantId: nova.id, groupId: spice.id, name: 'Extra Spicy', priceMinor: 0, sortOrder: 2 },
-      { tenantId: nova.id, groupId: extras.id, name: 'Extra Gravy', priceMinor: 3000, sortOrder: 0 },
-      { tenantId: nova.id, groupId: extras.id, name: 'Extra Cheese', priceMinor: 4000, sortOrder: 1 },
-      { tenantId: nova.id, groupId: extras.id, name: 'No Onion', priceMinor: 0, sortOrder: 2 },
+      { tenantId: nova.id, groupId: extras.id, name: 'Extra Salan / Gravy', priceMinor: 2000, sortOrder: 0 },
+      { tenantId: nova.id, groupId: extras.id, name: 'Extra Raitha', priceMinor: 1000, sortOrder: 1 },
+      { tenantId: nova.id, groupId: extras.id, name: 'Boiled Egg', priceMinor: 1500, sortOrder: 2 },
+      { tenantId: nova.id, groupId: extras.id, name: 'Extra Butter / Ghee', priceMinor: 1500, sortOrder: 3 },
     ]);
 
-    await db.insert(menuItemModifierGroups).values(
-      items
-        .filter((i) => [mains.id].includes(i.categoryId))
-        .flatMap((i) => [
-          { tenantId: nova.id, itemId: i.id, groupId: spice.id, sortOrder: 0 },
-          { tenantId: nova.id, itemId: i.id, groupId: extras.id, sortOrder: 1 },
-        ]),
-    );
-
-    const [ground, terrace] = await db.insert(tableSections).values([
-      { tenantId: nova.id, outletId: blr.id, name: 'Ground Floor', sortOrder: 0 },
-      { tenantId: nova.id, outletId: blr.id, name: 'Terrace', sortOrder: 1 },
+    // Tables T1 to T12
+    const [hall] = await db.insert(tableSections).values([
+      { tenantId: nova.id, outletId: hyd.id, name: 'Dine-In Hall', sortOrder: 0 },
     ]).returning();
 
-    await db.insert(restaurantTables).values([
-      ...Array.from({ length: 8 }, (_, i) => ({
-        tenantId: nova.id, outletId: blr.id, sectionId: ground.id,
-        label: `T${i + 1}`, seats: i < 4 ? 2 : 4,
+    await db.insert(restaurantTables).values(
+      Array.from({ length: 12 }, (_, i) => ({
+        tenantId: nova.id, outletId: hyd.id, sectionId: hall.id,
+        label: `T${i + 1}`, seats: 4,
         posX: (i % 4) * 2, posY: Math.floor(i / 4) * 2,
       })),
-      ...Array.from({ length: 4 }, (_, i) => ({
-        tenantId: nova.id, outletId: blr.id, sectionId: terrace.id,
-        label: `TR${i + 1}`, seats: 6,
-        posX: i * 2, posY: 5, width: 2, shape: 'round',
-      })),
-    ]);
-
-    await db.insert(printers).values([
-      {
-        tenantId: nova.id, outletId: blr.id, name: 'Counter (80mm)',
-        profileId: 'epson-tm-t82', connection: 'NETWORK',
-        address: '192.168.1.50', port: 9100, role: 'RECEIPT',
-      },
-      {
-        tenantId: nova.id, outletId: blr.id, stationId: kitchen.id, name: 'Kitchen (80mm)',
-        profileId: 'generic-80', connection: 'NETWORK',
-        address: '192.168.1.51', port: 9100, role: 'KOT',
-      },
-      {
-        tenantId: nova.id, outletId: blr.id, stationId: bar.id, name: 'Bar (58mm Bluetooth)',
-        profileId: 'xprinter-58iih', connection: 'BLUETOOTH',
-        address: '66:22:11:AA:BB:CC', role: 'KOT',
-      },
-    ]);
-
-    await db.insert(customers).values([
-      {
-        tenantId: nova.id, name: 'Ravi Kumar', phone: '+919876543210',
-        country: 'IN', region: 'KA',
-        consent: { marketing: false, recordedAt: new Date().toISOString() },
-      },
-      {
-        // A Maharashtra business customer: an interstate delivery to this
-        // customer bills IGST rather than CGST+SGST, which is the single most
-        // important GST behaviour to be able to demo.
-        tenantId: nova.id, name: 'Sunrise Logistics Pvt Ltd', phone: '+919812345678',
-        taxId: '27AABCS1429B1ZX', isBusiness: true,
-        country: 'IN', region: 'MH', city: 'Mumbai',
-        addressLines: ['Unit 4, Andheri East'],
-        consent: { marketing: true, recordedAt: new Date().toISOString() },
-      },
-    ]);
-
-    const stock = await db.insert(inventoryItems).values([
-      { tenantId: nova.id, name: 'Paneer', sku: 'RAW-PANEER', unit: 'kg', reorderLevel: '5', costMinor: 32000 },
-      { tenantId: nova.id, name: 'Basmati Rice', sku: 'RAW-RICE', unit: 'kg', reorderLevel: '20', costMinor: 11000 },
-      { tenantId: nova.id, name: 'Cooking Gas', sku: 'RAW-LPG', unit: 'cylinder', reorderLevel: '2', costMinor: 110000 },
-    ]).returning();
-
-    await db.insert(stockLevels).values(
-      stock.map((s) => ({
-        tenantId: nova.id, outletId: blr.id, inventoryItemId: s.id,
-        // Deliberately below reorder level, so the low-stock alert has
-        // something to show the moment the dashboard opens.
-        quantity: s.sku === 'RAW-PANEER' ? '3' : '40',
-      })),
     );
 
-    /* ────────── Tenant 2: Berlin Bites (Germany, 2 outlets) ────────── */
-
-    console.log('→ Seeding Berlin Bites (Germany)…');
-    const [berlin] = await db.insert(tenants).values({
-      name: 'Berlin Bites',
-      slug: 'berlin-bites',
-      taxId: 'DE123456789',
-      country: 'DE',
-      defaultLocale: 'de-DE',
-      defaultCurrency: 'EUR',
-      timezone: 'Europe/Berlin',
-      taxRuleSetKey: 'EU-VAT-DE',
-      settings: { paymentGateway: 'stripe' },
-    }).returning();
-
-    await db.insert(taxRuleSets).values({
-      tenantId: berlin.id,
-      key: 'EU-VAT-DE',
-      label: 'Germany — VAT',
-      country: 'DE',
-      definition: DE_VAT as never,
-    });
-
-    const berlinOutlets = await db.insert(outlets).values([
+    // Thermal Printer profiles for 80mm and 58mm
+    await db.insert(printers).values([
       {
-        tenantId: berlin.id, name: 'Berlin Bites — Mitte', code: 'MITTE',
-        addressLines: ['Torstraße 140'], city: 'Berlin', region: 'BE', country: 'DE',
-        postalCode: '10119', locale: 'de-DE', currency: 'EUR', timezone: 'Europe/Berlin',
-        receiptTemplateId: 'eu-vat', invoicePrefix: 'MIT', serviceChargePercent: '0',
+        tenantId: nova.id, outletId: hyd.id, stationId: kitchen.id,
+        name: 'Billing Counter (80mm TVS / Epson)',
+        profileId: 'epson-tm-t82', connection: 'NETWORK',
+        address: '192.168.1.100', port: 9100, role: 'RECEIPT',
       },
       {
-        tenantId: berlin.id, name: 'Berlin Bites — Kreuzberg', code: 'KREUZ',
-        addressLines: ['Oranienstraße 20'], city: 'Berlin', region: 'BE', country: 'DE',
-        postalCode: '10999', locale: 'de-DE', currency: 'EUR', timezone: 'Europe/Berlin',
-        receiptTemplateId: 'eu-vat', invoicePrefix: 'KRZ', serviceChargePercent: '0',
+        tenantId: nova.id, outletId: hyd.id, stationId: chaiStation.id,
+        name: 'Handheld Mobile Bluetooth Printer (58mm)',
+        profileId: 'xprinter-58iih', connection: 'BLUETOOTH',
+        address: '00:11:22:33:44:55', role: 'RECEIPT',
       },
-    ]).returning();
-
-    for (const outlet of berlinOutlets) {
-      const [station] = await db.insert(stations).values({
-        tenantId: berlin.id, outletId: outlet.id, name: 'KÜCHE', code: 'KITCHEN', mode: 'BOTH',
-      }).returning();
-
-      await db.insert(restaurantTables).values(
-        Array.from({ length: 6 }, (_, i) => ({
-          tenantId: berlin.id, outletId: outlet.id,
-          label: `${i + 1}`, seats: 4, posX: (i % 3) * 2, posY: Math.floor(i / 3) * 2,
-        })),
-      );
-
-      await db.insert(printers).values({
-        tenantId: berlin.id, outletId: outlet.id, stationId: station.id,
-        name: 'Küche (80mm)', profileId: 'generic-80',
-        connection: 'NETWORK', address: '10.0.0.20', role: 'KOT',
-      });
-    }
-
-    await db.insert(staff).values({
-      tenantId: berlin.id, outletId: null, name: 'Lena Fischer',
-      email: 'owner@berlinbites.test', passwordHash: password, pinHash: pin, role: 'OWNER',
-    });
-
-    const [berlinCat] = await db.insert(categories).values({
-      tenantId: berlin.id, name: 'Hauptgerichte', code: 'MAIN', sortOrder: 0,
-      nameI18n: { 'en-GB': 'Main courses' },
-    }).returning();
-
-    await db.insert(menuItems).values([
-      { tenantId: berlin.id, categoryId: berlinCat.id, name: 'Currywurst mit Pommes', code: 'CW',
-        priceMinor: 890, taxSlabId: 'vat-standard', prepMinutes: 8, sortOrder: 0 },
-      { tenantId: berlin.id, categoryId: berlinCat.id, name: 'Schnitzel', code: 'SCH',
-        priceMinor: 1450, taxSlabId: 'vat-standard', prepMinutes: 18, sortOrder: 1 },
-      // Reduced-rate takeaway food — proves the second VAT slab works.
-      { tenantId: berlin.id, categoryId: berlinCat.id, name: 'Brötchen (zum Mitnehmen)', code: 'BR',
-        priceMinor: 250, taxSlabId: 'vat-reduced', prepMinutes: 2, sortOrder: 2 },
+      {
+        tenantId: nova.id, outletId: hyd.id, stationId: kitchen.id,
+        name: 'Kitchen KOT Printer (80mm)',
+        profileId: 'generic-80', connection: 'NETWORK',
+        address: '192.168.1.101', port: 9100, role: 'KOT',
+      },
     ]);
 
-    console.log('\n✓ Seed complete.\n');
-    console.log('  Tenant "nova-kitchen"  (India, INR, GST)');
-    console.log('    owner@novakitchen.test / manager@ / cashier@ / waiter@ / kitchen@');
-    console.log('    outlet code BLR · 12 tables · 2 stations · 3 printers');
-    console.log('  Tenant "berlin-bites"  (Germany, EUR, VAT)');
-    console.log('    owner@berlinbites.test');
-    console.log('    outlet codes MITTE, KREUZ');
-    console.log(`\n  password: ${DEMO_PASSWORD}     till PIN: ${DEMO_PIN}`);
-    console.log('\n  These are development credentials. Never seed a production database.\n');
+    console.log('\n✓ Clean Indian Restaurant Seed complete!\n');
+    console.log('  Restaurant: "Velpula Mess" (Hyderabad, INR ₹, 5% GST)');
+    console.log('  Tenant Slug: "nova-kitchen"');
+    console.log('  Username: lokesh / Password: ' + DEMO_PASSWORD);
+    console.log('  Till Quick PIN: ' + DEMO_PIN);
+    console.log('  Total Items: ' + items.length + ' Indian Authentic Dishes seeded.');
   });
 }
 

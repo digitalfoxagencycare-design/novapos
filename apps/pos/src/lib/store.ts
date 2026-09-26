@@ -145,8 +145,15 @@ export function usePos(api: ApiClient) {
   const totals = useMemo(() => {
     if (!order || !menu || !ruleSet) return null;
     try {
+      const validSlabIds = new Set(ruleSet.slabs.map((s) => s.id));
+      const defaultSlab = ruleSet.slabs[0]?.id ?? 'gst-5';
+      const sanitizedLines = order.lines.map((l) => ({
+        ...l,
+        taxSlabId: validSlabIds.has(l.taxSlabId) ? l.taxSlabId : defaultSlab,
+      }));
+
       return priceCart({
-        lines: order.lines,
+        lines: sanitizedLines,
         orderDiscount: order.orderDiscount,
         serviceChargePercent: order.serviceChargePercent ?? Number(menu.outlet.serviceChargePercent ?? 0),
         tipMinor: order.tipMinor,

@@ -42,7 +42,15 @@ interface Kot {
   order?: { orderNumber: string; channel: string; notes: string | null };
 }
 
-const api = new ApiClient('/api/v1', (tokens) => {
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
+  : '/api/v1';
+
+const WS_BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+  : '';
+
+const api = new ApiClient(API_BASE, (tokens) => {
   try {
     if (tokens) localStorage.setItem('novapos:kds:tokens', JSON.stringify(tokens));
     else localStorage.removeItem('novapos:kds:tokens');
@@ -89,10 +97,10 @@ export function Kds() {
     if (!signedIn || !stationId || !outletId) return;
 
     const tokens = JSON.parse(localStorage.getItem('novapos:kds:tokens') ?? '{}');
-    const socket = io('/realtime', {
+    const socket = io(`${WS_BASE}/realtime`, {
       auth: { token: tokens.accessToken },
       query: { outletId, stationId },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       // A kitchen's wifi is not good. Reconnect forever, quickly at first.
       reconnection: true,
       reconnectionDelay: 500,
@@ -275,8 +283,8 @@ function chime() {
 
 function KdsSignIn({ onReady }: { onReady: (outletId: string, stationId: string) => void }) {
   const [tenantSlug, setTenantSlug] = useState('nova-kitchen');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('lokesh');
+  const [password, setPassword] = useState('9701463241');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stations, setStations] = useState<{ id: string; name: string; code: string }[]>([]);
@@ -335,8 +343,8 @@ function KdsSignIn({ onReady }: { onReady: (outletId: string, stationId: string)
           <input id="t" value={tenantSlug} onChange={(e) => setTenantSlug(e.target.value)} required />
         </div>
         <div className="field">
-          <label htmlFor="e">Email</label>
-          <input id="e" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <label htmlFor="e">Username or Email</label>
+          <input id="e" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="field">
           <label htmlFor="p">Password</label>

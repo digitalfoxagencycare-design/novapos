@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="110" fill="#09130e"/>
+  <circle cx="256" cy="256" r="210" fill="#0e2318" stroke="#10b981" stroke-width="14"/>
+  <path d="M150 180 Q256 120 362 180" fill="none" stroke="#f59e0b" stroke-width="12" stroke-linecap="round"/>
+  <!-- Food / Cooking Pot & Biryani Handi Motif -->
+  <path d="M170 230 C170 330 342 330 342 230 Z" fill="#15803d" stroke="#22c55e" stroke-width="8"/>
+  <ellipse cx="256" cy="230" rx="86" ry="24" fill="#f97316"/>
+  <ellipse cx="256" cy="226" rx="60" ry="14" fill="#fbbf24"/>
+  <!-- Steam lines -->
+  <path d="M220 190 Q210 160 220 140" fill="none" stroke="#fef08a" stroke-width="6" stroke-linecap="round"/>
+  <path d="M256 195 Q266 165 256 135" fill="none" stroke="#fef08a" stroke-width="7" stroke-linecap="round"/>
+  <path d="M292 190 Q282 160 292 140" fill="none" stroke="#fef08a" stroke-width="6" stroke-linecap="round"/>
+  <!-- Text VM -->
+  <text x="256" y="405" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="70" fill="#ffffff" text-anchor="middle" letter-spacing="4">VELPULA</text>
+  <text x="256" y="445" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="28" fill="#10b981" text-anchor="middle" letter-spacing="8">POS APP</text>
+</svg>

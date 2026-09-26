@@ -22,17 +22,18 @@ import type { TaxRuleSet } from './model';
  */
 export const IN_GST: TaxRuleSet = {
   id: 'IN-GST',
-  label: 'India — GST',
+  label: 'India — GST (Regular Scheme)',
   country: 'IN',
   pricesIncludeTax: true,
   applyAt: 'line',
   rounding: { mode: 'half-up', componentStep: 1, invoiceStep: 100 },
   slabs: [
-    { id: 'gst-0', label: 'GST 0% (exempt)', rate: 0, category: 'exempt', hsnSac: '9963' },
-    { id: 'gst-5', label: 'GST 5%', rate: 0.05, category: 'reduced', hsnSac: '996331' },
-    { id: 'gst-12', label: 'GST 12%', rate: 0.12, category: 'reduced', hsnSac: '996331' },
-    { id: 'gst-18', label: 'GST 18%', rate: 0.18, category: 'standard', hsnSac: '996331' },
-    { id: 'gst-28', label: 'GST 28%', rate: 0.28, category: 'standard', hsnSac: '2202' },
+    { id: 'gst-0', label: 'GST 0% (exempt / unbranded staples)', rate: 0, category: 'exempt', hsnSac: '9963', validFrom: '2017-07-01' },
+    { id: 'gst-5', label: 'GST 5% (restaurants, snacks, namkeen, food preparations)', rate: 0.05, category: 'reduced', hsnSac: '996331', validFrom: '2025-09-22' },
+    { id: 'gst-12', label: 'GST 12% (processed foods, butter, cheese, ghee)', rate: 0.12, category: 'reduced', hsnSac: '996331', validFrom: '2017-07-01' },
+    { id: 'gst-18', label: 'GST 18% (commercial services, catering, software)', rate: 0.18, category: 'standard', hsnSac: '996331', validFrom: '2025-09-22' },
+    { id: 'gst-28', label: 'GST 28% (chocolates, waffles, luxury items)', rate: 0.28, category: 'standard', hsnSac: '2202', validFrom: '2017-07-01' },
+    { id: 'gst-40', label: 'GST 40% (sugary & aerated beverages, luxury)', rate: 0.40, category: 'standard', hsnSac: '2202', validFrom: '2025-09-22' },
   ],
   components: [
     {
@@ -60,6 +61,35 @@ export const IN_GST: TaxRuleSet = {
     showCustomerTaxIdOverMinor: 20000000,
     showHsnSac: true,
     showTaxBreakdownTable: true,
+  },
+};
+
+/**
+ * India — Composition Scheme.
+ *
+ * For small merchants (turnover under threshold). Issues a "Bill of Supply"
+ * rather than a Tax Invoice. Cannot collect tax from customers.
+ */
+export const IN_COMPOSITION: TaxRuleSet = {
+  id: 'IN-COMPOSITION',
+  label: 'India — Composition Scheme (Bill of Supply)',
+  country: 'IN',
+  pricesIncludeTax: false,
+  applyAt: 'line',
+  rounding: { mode: 'half-up', componentStep: 1, invoiceStep: 100 },
+  slabs: [
+    { id: 'comp-0', label: 'Composition 0% (No tax collected)', rate: 0, category: 'exempt', hsnSac: '9963' },
+  ],
+  components: [],
+  receiptRequirements: {
+    sequentialInvoiceNumber: true,
+    showTenantTaxId: true,
+    showHsnSac: false,
+    showTaxBreakdownTable: false,
+    footerNotes: [
+      'BILL OF SUPPLY',
+      'Composition taxable person, not eligible to collect tax on supplies',
+    ],
   },
 };
 

@@ -1,485 +1,484 @@
-import { useCallback, useEffect, useState } from 'react';
-import { formatMoney } from '@novapos/shared';
-import type { PaymentMethod } from '@novapos/shared';
-import { ApiClient, ApiError, OfflineError } from './lib/api';
-import { usePos } from './lib/store';
-import { db, enqueue, getSetting, setSetting, type LocalOrder } from './lib/db';
-import { SyncPill } from './components/SyncPill';
-import { Catalogue } from './components/Catalogue';
-import { Cart } from './components/Cart';
-import { PaymentDialog } from './components/PaymentDialog';
-import { TableFloor } from './components/TableFloor';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { PrintPreview } from './components/PrintPreview';
+import { closeTopPanel } from './lib/navigation';
+import { mergeCatalog } from './lib/catalog';
+import { loadEzoSettings } from './lib/ezoSettings';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { BottomNav, type MainTab } from './components/BottomNav';
+import { SideDrawer } from './components/SideDrawer';
+import { LoginScreen } from './screens/LoginScreen';
+import { DashboardScreen } from './screens/DashboardScreen';
+import { BillingScreen, type CartLine } from './screens/BillingScreen';
+import { CalculatorBillingScreen } from './screens/CalculatorBillingScreen';
+import { TablesScreen } from './screens/TablesScreen';
+import { KhataScreen } from './screens/KhataScreen';
+import { InventoryScreen, type CatalogItem } from './screens/InventoryScreen';
+import { ReportsScreen } from './screens/ReportsScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
 
-type View = 'tables' | 'order' | 'tabs';
+import {
+  type BusinessProfile,
+  PROFILES,
+  presetCatalog,
+} from './lib/business';
+import { setupBarcodeScanner } from './lib/hardwareBridge';
+import { RestaurantTable } from './lib/restaurant';
 
-const api = new ApiClient('/api/v1', (tokens) => {
-  // Tokens live in localStorage so a reload mid-service does not sign the
-  // operator out. The exposure is bounded: access tokens last 15 minutes, and
-  // a refresh token presented twice revokes its whole family server-side.
-  try {
-    if (tokens) localStorage.setItem('novapos:tokens', JSON.stringify(tokens));
-    else localStorage.removeItem('novapos:tokens');
-  } catch { /* private browsing — the session simply will not survive a reload */ }
-});
+const SESSION_KEY = 'novapos:user_session';
+const PROFILE_KEY = 'novapos:business_profile';
+const PROFILE_DETAILS_KEY = 'novapos:profile_details';
+const CUSTOM_ITEMS_KEY = 'novapos:custom_catalog';
+const CART_STORAGE_KEY = 'novapos:current_cart';
 
-export function App() {
-  const [booted, setBooted] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
-  const [view, setView] = useState<View>('tables');
-  const [busy, setBusy] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
-  const [payError, setPayError] = useState<string | null>(null);
-  const [outletId, setOutletId] = useState<string | null>(null);
-
-  const pos = usePos(api);
-
-  /* ── boot: restore session and menu ── */
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const raw = localStorage.getItem('novapos:tokens');
-        if (raw) {
-          api.setTokens(JSON.parse(raw));
-          setSignedIn(true);
-        }
-      } catch { /* ignore */ }
-
-      const savedOutlet = await getSetting<string | null>('outletId', null);
-      if (savedOutlet) {
-        setOutletId(savedOutlet);
-        api.setOutlet(savedOutlet);
-        await pos.loadMenu(savedOutlet);
-      }
-      setBooted(true);
-    })();
-    // Intentionally once, at start-up.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const locale = pos.menu?.outlet.locale ?? 'en-IN';
-  const currency = pos.menu?.outlet.currency ?? 'INR';
-
-  /* ── actions ── */
-
-  const handleSeat = useCallback(async (tableId: string) => {
-    const created = await pos.startOrder('DINE_IN', [tableId]);
-    if (created) setView('order');
-  }, [pos]);
-
-  const handleOpen = useCallback((order: LocalOrder) => {
-    pos.setOrder(order);
-    setView('order');
-  }, [pos]);
-
-  const handleQuickBill = useCallback(async () => {
-    const created = await pos.startOrder('QUICK_BILL');
-    if (created) setView('order');
-  }, [pos]);
-
-  const handleFire = useCallback(async () => {
-    setBusy(true);
-    try {
-      await pos.fireOrder();
-    } finally {
-      setBusy(false);
-    }
-  }, [pos]);
-
-  /**
-   * Bill and pay.
-   *
-   * Billing needs the server, because the invoice number must come from the
-   * gapless sequence — a number generated on a device could collide with
-   * another till's, and a duplicated invoice number is a compliance problem
-   * rather than an inconvenience. So this is the one action that is refused
-   * while offline, and it says so plainly.
-   */
-  const handleBill = useCallback(async () => {
-    if (!pos.order) return;
-    setBusy(true);
-    setPayError(null);
-    try {
-      const saved = await pos.saveOrder();
-      if (!saved) return;
-
-      if (!saved.serverId) {
-        // Push what we have and see whether the server picks it up now.
-        pos.engine.current?.nudge();
-        await new Promise((r) => setTimeout(r, 400));
-      }
-
-      const current = await db.orders.get(saved.clientOrderId);
-      if (!current?.serverId) {
-        setPayError(
-          'This order has not reached the server yet, so it cannot be billed — the invoice number ' +
-          'has to come from the shared sequence to stay gapless. It will bill automatically once ' +
-          'the connection returns; you can keep taking orders in the meantime.',
-        );
-        setPayOpen(true);
-        return;
-      }
-
-      if (!current.invoiceNumber) {
-        const billed = await api.billOrder(current.serverId);
-        await db.orders.update(current.clientOrderId, {
-          invoiceNumber: billed.invoiceNumber,
-          orderNumber: billed.orderNumber,
-          status: 'BILLED',
-          totalMinor: billed.totalMinor,
-          taxMinor: billed.taxMinor,
-          roundingMinor: billed.roundingMinor,
-        });
-        pos.setOrder({ ...current, ...billed, clientOrderId: current.clientOrderId } as LocalOrder);
-      }
-      setPayOpen(true);
-    } catch (err) {
-      setPayError(
-        err instanceof OfflineError
-          ? 'The server cannot be reached, so this order cannot be billed yet. It is saved on this device.'
-          : (err as Error).message,
-      );
-      setPayOpen(true);
-    } finally {
-      setBusy(false);
-      await pos.refreshOpenOrders();
-    }
-  }, [pos]);
-
-  const handlePay = useCallback(async (input: {
-    method: PaymentMethod; amountMinor: number; tenderedMinor: number;
-  }) => {
-    const order = pos.order;
-    if (!order) return;
-    setBusy(true);
-    setPayError(null);
-
-    const clientPaymentId = crypto.randomUUID();
-    const changeMinor = input.method === 'CASH'
-      ? Math.max(0, input.tenderedMinor - input.amountMinor)
-      : 0;
-
-    // Record locally first, so a dropped connection mid-payment does not lose
-    // the fact that money was taken.
-    await db.payments.put({
-      clientPaymentId,
-      clientOrderId: order.clientOrderId,
-      method: input.method,
-      amountMinor: input.amountMinor,
-      tenderedMinor: input.tenderedMinor,
-      changeMinor,
-      takenAt: new Date().toISOString(),
-      synced: false,
-    });
-
-    try {
-      const serverId = (await db.orders.get(order.clientOrderId))?.serverId;
-      if (!serverId) throw new OfflineError('This order has not reached the server yet.');
-
-      const result = await api.takePayment(serverId, {
-        clientPaymentId,
-        method: input.method,
-        amountMinor: input.amountMinor,
-        tenderedMinor: input.tenderedMinor,
-      });
-
-      await db.payments.update(clientPaymentId, { synced: true });
-      await db.orders.update(order.clientOrderId, {
-        status: result.order?.status ?? 'PAID',
-      });
-
-      if (result.outstandingMinor > 0) {
-        setPayError(`${formatMoney(result.outstandingMinor, currency, locale)} still outstanding.`);
-      } else {
-        setPayOpen(false);
-        pos.setOrder(null);
-        setView('tables');
-      }
-    } catch (err) {
-      // Queue it. The money is in the drawer whether or not the server knows.
-      await enqueue({
-        opId: crypto.randomUUID(),
-        type: 'payment.create',
-        occurredAt: new Date().toISOString(),
-        payload: {
-          clientOrderId: order.clientOrderId,
-          clientPaymentId,
-          method: input.method,
-          amountMinor: input.amountMinor,
-          tenderedMinor: input.tenderedMinor,
-        },
-        attempts: 0,
-      } as never);
-
-      setPayError(
-        err instanceof OfflineError || err instanceof ApiError && err.retryable
-          ? 'Recorded on this device and queued — it will reach the server when the connection returns.'
-          : (err as Error).message,
-      );
-      pos.engine.current?.nudge();
-    } finally {
-      setBusy(false);
-      await pos.refreshOpenOrders();
-    }
-  }, [pos, currency, locale]);
-
-  const handleVoid = useCallback(async () => {
-    const order = pos.order;
-    if (!order) return;
-    const reason = window.prompt('Why is this order being voided? (recorded for audit)');
-    if (!reason?.trim()) return;
-
-    setBusy(true);
-    try {
-      await pos.persist({ ...order, status: 'VOIDED' });
-      await enqueue({
-        opId: crypto.randomUUID(),
-        type: 'order.void',
-        occurredAt: new Date().toISOString(),
-        payload: { clientOrderId: order.clientOrderId, reason },
-        attempts: 0,
-      } as never);
-      pos.engine.current?.nudge();
-      pos.setOrder(null);
-      setView('tables');
-    } finally {
-      setBusy(false);
-    }
-  }, [pos]);
-
-  /* ── render ── */
-
-  if (!booted) {
-    return <div className="login"><p style={{ color: 'var(--text-dim)' }}>Starting…</p></div>;
-  }
-
-  if (!signedIn) {
-    return <SignIn onSignedIn={async (chosenOutletId) => {
-      setSignedIn(true);
-      setOutletId(chosenOutletId);
-      api.setOutlet(chosenOutletId);
-      await setSetting('outletId', chosenOutletId);
-      await pos.loadMenu(chosenOutletId);
-    }} />;
-  }
-
-  if (!pos.menu) {
-    return (
-      <div className="login">
-        <div className="login__card">
-          <h1 style={{ marginTop: 0 }}>No menu on this device</h1>
-          <p style={{ color: 'var(--text-dim)' }}>
-            {pos.error ?? 'Loading the menu…'}
-          </p>
-          {outletId && (
-            <button className="btn btn--primary btn--wide" onClick={() => pos.loadMenu(outletId)}>
-              Try again
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const outstanding = pos.order
-    ? Math.max(0, (pos.totals?.totalMinor ?? pos.order.totalMinor))
-    : 0;
-
-  return (
-    <div className="app">
-      <header className="topbar">
-        <span className="topbar__brand">NovaPOS</span>
-        <span className="cart__meta">{pos.menu.outlet.name}</span>
-
-        <nav className="tabs" style={{ marginLeft: 16 }}>
-          <button
-            className={`tab ${view === 'tables' ? 'tab--active' : ''}`}
-            onClick={() => setView('tables')}
-          >
-            Tables
-          </button>
-          <button
-            className={`tab ${view === 'order' ? 'tab--active' : ''}`}
-            onClick={() => setView('order')}
-            disabled={!pos.order}
-          >
-            Order
-          </button>
-          <button
-            className={`tab ${view === 'tabs' ? 'tab--active' : ''}`}
-            onClick={() => setView('tabs')}
-          >
-            Open tabs{pos.openOrders.length ? ` (${pos.openOrders.length})` : ''}
-          </button>
-        </nav>
-
-        <span className="topbar__spacer" />
-        <button className="btn" style={{ padding: '8px 14px' }} onClick={handleQuickBill}>
-          Quick bill
-        </button>
-        <SyncPill status={pos.sync} onClick={() => pos.engine.current?.nudge()} />
-      </header>
-
-      {pos.error && (
-        <div className="error-banner" style={{ margin: '10px 14px 0' }}>
-          {pos.error}
-          <button
-            className="btn"
-            style={{ marginLeft: 10, minHeight: 0, padding: '2px 8px' }}
-            onClick={() => pos.setError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {view === 'tables' && (
-        <TableFloor
-          menu={pos.menu}
-          orders={pos.openOrders}
-          onOpen={handleOpen}
-          onSeat={handleSeat}
-        />
-      )}
-
-      {view === 'tabs' && (
-        <div className="floor">
-          {pos.openOrders.length === 0 && (
-            <p style={{ color: 'var(--text-faint)' }}>No open tabs.</p>
-          )}
-          <div className="section__tables">
-            {pos.openOrders.map((o) => (
-              <button key={o.clientOrderId} className="table-tile" onClick={() => handleOpen(o)}>
-                <span>{o.orderNumber ?? 'New'}</span>
-                <span className="table-tile__meta">
-                  {formatMoney(o.totalMinor, o.currency, locale)}
-                </span>
-                <span className="table-tile__meta">{o.status.toLowerCase()}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'order' && (
-        <div className="workspace">
-          <Catalogue menu={pos.menu} onPick={(item) => void pos.addItem(item)} />
-          <Cart
-            order={pos.order}
-            totals={pos.totals}
-            locale={locale}
-            busy={busy}
-            onQuantity={(id, q) => void pos.changeQuantity(id, q)}
-            onRemove={(id) => void pos.removeLine(id)}
-            onFire={handleFire}
-            onBill={handleBill}
-            onVoid={handleVoid}
-          />
-        </div>
-      )}
-
-      {payOpen && pos.order && (
-        <PaymentDialog
-          totalMinor={pos.totals?.totalMinor ?? pos.order.totalMinor}
-          outstandingMinor={outstanding}
-          currency={currency}
-          locale={locale}
-          busy={busy}
-          error={payError}
-          onClose={() => { setPayOpen(false); setPayError(null); }}
-          onPay={handlePay}
-        />
-      )}
-    </div>
-  );
+export interface ProfileDetails {
+  profileName: string;
+  phone: string;
+  address: string;
+  gstin: string;
+  fssai: string;
+  upiVpa: string;
 }
 
-/* ───────────────────────── sign-in ───────────────────────── */
+interface UserSession {
+  phone: string;
+  storeName: string;
+  profile: BusinessProfile;
+  loggedInAt: string;
+}
 
-function SignIn({ onSignedIn }: { onSignedIn: (outletId: string) => void }) {
-  const [tenantSlug, setTenantSlug] = useState('nova-kitchen');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
+export function App() {
+  // 0. User Login / Opening Session (Clear legacy test demo session)
+  const [session, setSession] = useState<UserSession | null>(() => {
     try {
-      const staff = await api.login(tenantSlug.trim(), email.trim(), password);
-      // A staff member pinned to one outlet goes straight there; an owner with
-      // access to several has to choose which till they are standing at.
-      if (staff.outletId) {
-        onSignedIn(staff.outletId);
-      } else {
-        const me = await api.outlets();
-        if (me.length === 1) onSignedIn(me[0].id);
-        else setOutlets(me);
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // If it's the old hardcoded demo account, force fresh login
+      if (parsed.phone === '9381563241' && parsed.storeName?.includes('Sri Balaji Kirana')) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
       }
-    } catch (err) {
-      setError(
-        err instanceof OfflineError
-          ? 'Cannot reach the server. Signing in for the first time needs a connection.'
-          : (err as Error).message,
-      );
-    } finally {
-      setBusy(false);
+      return parsed;
+    } catch {
+      return null;
+    }
+  });
+
+  // 1. Active Tab (default Dashboard)
+  const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
+
+  // 2. Side Drawer State
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // 3. Business Profile & Details
+  const [profile, setProfile] = useState<BusinessProfile>(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_KEY);
+      return saved && saved in PROFILES ? (saved as BusinessProfile) : session?.profile || 'kirana';
+    } catch {
+      return 'kirana';
+    }
+  });
+
+  const [profileDetails, setProfileDetails] = useState<ProfileDetails>(() => {
+    const defaultDetails: ProfileDetails = {
+      profileName: session?.storeName || 'My Store',
+      phone: session?.phone || '',
+      address: '',
+      gstin: '',
+      fssai: '',
+      upiVpa: session?.phone ? `${session.phone}@upi` : '',
+    };
+    try {
+      const raw = localStorage.getItem(PROFILE_DETAILS_KEY);
+      return raw ? { ...defaultDetails, ...JSON.parse(raw) } : defaultDetails;
+    } catch {
+      return defaultDetails;
+    }
+  });
+
+  // 4. Custom Items Catalog
+  const [customItems, setCustomItems] = useState<CatalogItem[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_ITEMS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // 5. Shared Cart State
+  const [cart, setCart] = useState<CartLine[]>(() => {
+    try {
+      const raw = localStorage.getItem(CART_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Table context for active restaurant table billing
+  const [activeTableContext, setActiveTableContext] = useState<{
+    tableNo: string;
+    orderType: string;
+  } | null>(null);
+
+  // Network State
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const screenRef = useRef(activeTab);
+  const drawerRef = useRef(isDrawerOpen);
+  screenRef.current = activeTab;
+  drawerRef.current = isDrawerOpen;
+
+  const handleNavigate = useCallback((tab: MainTab) => {
+    screenRef.current = tab;
+    setActiveTab(tab);
+    setIsDrawerOpen(false);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    // 1. Close any open modal or bottom sheet first
+    if (closeTopPanel()) return;
+    // 2. Close side drawer if open
+    if (drawerRef.current) {
+      setIsDrawerOpen(false);
+      return;
+    }
+    // 3. Immediately return to Dashboard
+    if (screenRef.current !== 'dashboard') {
+      screenRef.current = 'dashboard';
+      setActiveTab('dashboard');
+    }
+  }, []);
+
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') handleBack();
+    };
+    window.addEventListener('keydown', escape);
+
+    let disposed = false;
+    let subscription: { remove: () => Promise<void> } | undefined;
+
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener('backButton', () => {
+        // Priority 1: Top-most modal / sheet
+        if (closeTopPanel()) return;
+        // Priority 2: Side menu drawer
+        if (drawerRef.current) {
+          setIsDrawerOpen(false);
+          return;
+        }
+        // Priority 3: Return to Dashboard from any subscreen
+        if (screenRef.current !== 'dashboard') {
+          screenRef.current = 'dashboard';
+          setActiveTab('dashboard');
+          return;
+        }
+        // Priority 4: If already on Dashboard, exit the Android app
+        void CapApp.exitApp();
+      }).then((listener) => {
+        if (disposed) void listener.remove();
+        else subscription = listener;
+      }).catch(console.error);
+    }
+
+    return () => {
+      disposed = true;
+      void subscription?.remove();
+      window.removeEventListener('keydown', escape);
+    };
+  }, [handleBack]);
+
+  // Login handler
+  const handleLoginSuccess = (details: {
+    phone: string;
+    storeName: string;
+    profile: BusinessProfile;
+  }) => {
+    const newSession: UserSession = {
+      phone: details.phone,
+      storeName: details.storeName,
+      profile: details.profile,
+      loggedInAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+    } catch {
+      // ignore
+    }
+    setSession(newSession);
+    setProfile(details.profile);
+    localStorage.setItem(PROFILE_KEY, details.profile);
+    handleUpdateProfile({
+      profileName: details.storeName,
+      phone: details.phone,
+    });
+    handleNavigate('dashboard');
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    setSession(null);
+    setIsDrawerOpen(false);
+  };
+
+  // Save Cart Changes
+  const handleUpdateCart = (lines: CartLine[]) => {
+    setCart(lines);
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines));
+    } catch {
+      // ignore
     }
   };
 
-  if (outlets.length > 0) {
-    return (
-      <div className="login">
-        <div className="login__card">
-          <h1 style={{ marginTop: 0 }}>Which till is this?</h1>
-          <p style={{ color: 'var(--text-dim)' }}>
-            This device will be bound to the outlet you pick.
-          </p>
-          {outlets.map((o) => (
-            <button
-              key={o.id}
-              className="btn btn--primary btn--wide"
-              style={{ marginTop: 8 }}
-              onClick={() => onSignedIn(o.id)}
-            >
-              {o.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+  const handleClearCart = () => {
+    setCart([]);
+    setActiveTableContext(null);
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Switch Business Profile
+  const handleProfileChange = (newProfile: BusinessProfile) => {
+    if (cart.length && !window.confirm('Changing business type will clear the current unfinished bill. Continue?')) return;
+    handleClearCart();
+    setProfile(newProfile);
+    if (session) {
+      const updated = { ...session, profile: newProfile };
+      setSession(updated); localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+    }
+    try {
+      localStorage.setItem(PROFILE_KEY, newProfile);
+    } catch {
+      // ignore
+    }
+
+    if (newProfile === 'restaurant' && profileDetails.profileName.includes('Kirana')) {
+      handleUpdateProfile({ profileName: 'Hyderabad Biryani & Cafe' });
+    } else if (newProfile === 'bakery' && profileDetails.profileName.includes('Kirana')) {
+      handleUpdateProfile({ profileName: 'Karachi Bakery & Sweets' });
+    } else if (newProfile === 'retail' && profileDetails.profileName.includes('Kirana')) {
+      handleUpdateProfile({ profileName: 'Sri Laxmi Garments & Textiles' });
+    }
+  };
+
+  // Update Profile Details
+  const handleUpdateProfile = (updates: Partial<ProfileDetails>) => {
+    setProfileDetails((prev) => {
+      const next = { ...prev, ...updates };
+      try {
+        localStorage.setItem(PROFILE_DETAILS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  // Update Custom Items
+  const handleUpdateItems = (items: CatalogItem[]) => {
+    setCustomItems(items);
+    try {
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(items));
+    } catch {
+      // ignore
+    }
+  };
+
+  // Merge preset items with custom items
+  const presets = presetCatalog(profile);
+  const allCatalogItems = mergeCatalog<CatalogItem>(presets.items, customItems, profile);
+
+  // Handler for settling a restaurant table
+  const handleTableSelectedForBilling = (table: RestaurantTable) => {
+    if (!table.activeOrder) return;
+    const tableLines: CartLine[] = table.activeOrder.lines.map((tl) => ({
+      id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      itemId: tl.itemId,
+      name: tl.name,
+      category: tl.category,
+      price: tl.price,
+      quantity: tl.quantity,
+      uom: (tl.uom as any) || 'pcs',
+      isVeg: tl.isVeg,
+      notes: tl.notes,
+    }));
+
+    handleUpdateCart(tableLines);
+    setActiveTableContext({
+      tableNo: table.name,
+      orderType: table.section === 'Parcel' ? 'Takeaway' : 'Dine-In',
+    });
+    handleNavigate('billing');
+  };
+
+  // If user is not logged in, show the Mobile Login / Opening flow first!
+  if (!session) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
-    <div className="login">
-      <form className="login__card" onSubmit={submit}>
-        <h1 style={{ marginTop: 0 }}>NovaPOS</h1>
-        <p style={{ color: 'var(--text-dim)', marginTop: 0 }}>Sign in to this till.</p>
+    <div className="pos-app-wrapper">
+      {/* Side Slide-Over Navigation Drawer */}
+      <SideDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeScreen={activeTab}
+        onNavigate={(screen) => handleNavigate(screen as MainTab)}
+        profile={profile}
+        profileName={profileDetails.profileName}
+        phone={profileDetails.phone}
+        onOpenPrinterModal={() => handleNavigate('settings')}
+        onLogout={handleLogout}
+      />
 
-        {error && <div className="error-banner">{error}</div>}
+      {/* Main Viewport */}
+      <main className={`pos-main-content ${['billing', 'calculator', 'tables'].includes(activeTab) ? 'full-screen-flow' : 'has-bottom-nav'}`}>
+        {activeTab === 'dashboard' && (
+          <DashboardScreen
+            profile={profile}
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            onOpenMenu={() => setIsDrawerOpen(true)}
+            onNavigate={(screen) => handleNavigate(screen as MainTab)}
+            onOpenPrinterModal={() => handleNavigate('settings')}
+          />
+        )}
 
-        <div className="field">
-          <label htmlFor="tenant">Business</label>
-          <input id="tenant" value={tenantSlug} onChange={(e) => setTenantSlug(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                 autoComplete="username" required />
-        </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                 autoComplete="current-password" required />
-        </div>
+        {activeTab === 'billing' && (
+          <BillingScreen
+            language="en"
+            profile={profile}
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            address={profileDetails.address}
+            gstin={profileDetails.gstin}
+            fssai={profileDetails.fssai}
+            upiVpa={profileDetails.upiVpa}
+            items={allCatalogItems}
+            cart={cart}
+            onUpdateCart={handleUpdateCart}
+            onClearCart={handleClearCart}
+            tableContext={activeTableContext}
+            onBack={handleBack}
+          />
+        )}
 
-        <button className="btn btn--primary btn--wide" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+        {activeTab === 'calculator' && (
+          <CalculatorBillingScreen
+            language="en"
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            address={profileDetails.address}
+            upiVpa={profileDetails.upiVpa}
+            onSaleCompleted={() => {
+              // sale completed
+            }}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'tables' && (
+          <TablesScreen
+            language="en"
+            profileName={profileDetails.profileName}
+            onTableSelectedForBilling={handleTableSelectedForBilling}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'party' && (
+          <KhataScreen
+            language="en"
+            merchantName={profileDetails.profileName}
+            upiVpa={profileDetails.upiVpa}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'inventory' && (
+          <InventoryScreen
+            language="en"
+            profile={profile}
+            onProfileChange={handleProfileChange}
+            customItems={customItems}
+            onUpdateItems={handleUpdateItems}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <ReportsScreen
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            items={allCatalogItems}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileScreen
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            address={profileDetails.address}
+            gstin={profileDetails.gstin}
+            fssai={profileDetails.fssai}
+            upiVpa={profileDetails.upiVpa}
+            onUpdateProfile={handleUpdateProfile}
+            onBack={handleBack}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsScreen
+            profileName={profileDetails.profileName}
+            phone={profileDetails.phone}
+            address={profileDetails.address}
+            gstin={profileDetails.gstin}
+            fssai={profileDetails.fssai}
+            upiVpa={profileDetails.upiVpa}
+            onUpdateProfile={handleUpdateProfile}
+            onBack={handleBack}
+          />
+        )}
+      </main>
+
+      <PrintPreview />
+
+      {/* Mobile Bottom Navigation Bar (4 Core Tabs) - Only on primary navigation screens */}
+      {['dashboard', 'party', 'inventory', 'settings', 'reports', 'profile'].includes(activeTab) && (
+        <BottomNav
+          activeTab={activeTab}
+          onSelectTab={handleNavigate}
+          cartCount={cart.length}
+        />
+      )}
     </div>
   );
 }
+
+export default App;

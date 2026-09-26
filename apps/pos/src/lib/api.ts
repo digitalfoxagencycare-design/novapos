@@ -62,6 +62,16 @@ export class ApiClient {
     return Boolean(this.tokens?.accessToken);
   }
 
+  /** Routing hints only. Authorization is always enforced by the API. */
+  get sessionScope(): { tenantId: string; outletId?: string } | null {
+    try {
+      const payload = this.tokens?.accessToken.split('.')[1];
+      if (!payload) return null;
+      const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof claims.tenantId === 'string' ? { tenantId: claims.tenantId, outletId: claims.outletId || undefined } : null;
+    } catch { return null; }
+  }
+
   async login(tenantSlug: string, email: string, password: string) {
     const res = await this.raw('POST', '/auth/login', { tenantSlug, email, password });
     this.setTokens(res.tokens);
