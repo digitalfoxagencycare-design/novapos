@@ -1,3 +1,4 @@
+import { useBackHandler } from '../lib/navigation';
 import { useMemo, useState } from 'react';
 import { formatMoney, parseMoney } from '@novapos/shared';
 import type { PaymentMethod } from '@novapos/shared';
@@ -35,6 +36,7 @@ export function PaymentDialog({
   busy?: boolean;
   error?: string | null;
 }) {
+  useBackHandler(true, () => { if (!busy) onClose(); });
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [entry, setEntry] = useState('');
 

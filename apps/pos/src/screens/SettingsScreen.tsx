@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Sliders,
@@ -32,11 +32,11 @@ import {
   connectBluetoothPrinter,
   isBluetoothSupported,
 } from '../lib/thermalPrinter';
-import {
-  getSubscriptionDetails,
-  applyPaidSubscription,
-  type SubscriptionPlan,
-} from '../lib/subscription';
+import { refreshSubscription, useSubscriptionDetails } from '../lib/subscription';
+import { cloudApi } from '../lib/cloudSession';
+import { openSubscriptionCheckout } from '../lib/razorpayCheckout';
+import { useBackHandler } from '../lib/navigation';
+import { useDialogFocus } from '../lib/useDialogFocus';
 import { ComplianceModal } from '../components/ComplianceModal';
 
 interface Props {
@@ -81,12 +81,18 @@ export const SettingsScreen: React.FC<Props> = ({
   const [editUpiVpa, setEditUpiVpa] = useState(upiVpa);
 
   // Subscription / SaaS Licensing States
-  const [subDetails, setSubDetails] = useState(getSubscriptionDetails());
+  const subDetails = useSubscriptionDetails();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [selectedPlanKey, setSelectedPlanKey] = useState<'starter_monthly' | 'pro_yearly'>('pro_yearly');
   const [isPaying, setIsPaying] = useState(false);
   const [paymentSuccessMsg, setPaymentSuccessMsg] = useState<string | null>(null);
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const paymentLock = useRef(false);
+  const dialogRef = useDialogFocus(isUpgradeModalOpen);
+  useBackHandler(isUpgradeModalOpen, () => { if (!paymentLock.current) setIsUpgradeModalOpen(false); });
+  useEffect(() => { void refreshSubscription().catch(() => undefined); }, []);
+
 
   // Printer States
   const [paperWidth, setPaperWidth] = useState<PaperWidth>('58mm');
@@ -182,9 +188,6 @@ export const SettingsScreen: React.FC<Props> = ({
     }
   };
 
-  const [paymentMode, setPaymentMode] = useState<'gateway' | 'upi_qr'>('gateway');
-  const [enteredUtr, setEnteredUtr] = useState('');
-  const [verifyingUtr, setVerifyingUtr] = useState(false);
 
   const handleTestPrint = () => {
     try {
@@ -196,99 +199,29 @@ export const SettingsScreen: React.FC<Props> = ({
   };
 
   const handleUpgradePayment = async () => {
+    if (paymentLock.current) return;
+    paymentLock.current = true;
     setIsPaying(true);
-    const amount = selectedPlanKey === 'pro_yearly' ? 499900 : 49900; // in paise
-    const planName =
-      selectedPlanKey === 'pro_yearly'
-        ? 'NovaPOS Pro Annual License (365 Days)'
-        : 'NovaPOS Starter Monthly (30 Days)';
-
-    let orderId: string | undefined;
+    setPaymentError(null);
+    const planKey = selectedPlanKey;
+    let confirmationReceived = false;
     try {
-      const res = await fetch('https://api.novasaas.net/api/v1/subscriptions/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planKey: selectedPlanKey,
-          tenantId: phone || 'default_tenant',
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.orderId) {
-          orderId = data.orderId;
-        }
-      }
-    } catch (e) {
-      console.warn('Backend order init fallback to direct Razorpay checkout', e);
-    }
-
-    // Load Razorpay Standard Checkout SDK
-    const launchRazorpay = () => {
-      try {
-        const options: any = {
-          key: 'rzp_live_TV6zopDBr7qNPE',
-          amount: amount,
-          currency: 'INR',
-          name: 'NovaPOS Pro',
-          description: planName,
-          image: 'https://novasaas.net/favicon.svg',
-          order_id: orderId,
-          handler: function (response: any) {
-            console.log('[Razorpay Payment Success]', response);
-            applyPaidSubscription(
-              selectedPlanKey,
-              response.razorpay_payment_id || response.razorpay_order_id || 'RZP_LIVE_OK'
-            );
-            setSubDetails(getSubscriptionDetails());
-            setPaymentSuccessMsg(
-              `Payment Successful! Ref: ${response.razorpay_payment_id || 'RZP_OK'}. Your ${
-                selectedPlanKey === 'pro_yearly' ? 'Pro Annual (365 Days)' : 'Starter Monthly (30 Days)'
-              } subscription is now active.`
-            );
-            setIsUpgradeModalOpen(false);
-            setIsPaying(false);
-            showSavedNotification();
-          },
-          prefill: {
-            contact: phone ? `+91${phone.replace(/^\+?91/, '')}` : '',
-            name: profileName || 'Merchant',
-          },
-          theme: {
-            color: '#5B42F3',
-          },
-          modal: {
-            ondismiss: function () {
-              setIsPaying(false);
-            },
-          },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
-      } catch (err: any) {
-        console.error('Razorpay open error', err);
-        alert('Could not open Razorpay checkout. Please check internet connection.');
-        setIsPaying(false);
-      }
-    };
-
-    const existingScript = document.getElementById('razorpay-checkout-js');
-    if (existingScript && (window as any).Razorpay) {
-      launchRazorpay();
-    } else {
-      const script = document.createElement('script');
-      script.id = 'razorpay-checkout-js';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => {
-        launchRazorpay();
-      };
-      script.onerror = () => {
-        alert('Failed to connect to Razorpay payment gateway. Please check internet connection.');
-        setIsPaying(false);
-      };
-      document.body.appendChild(script);
+      if (!cloudApi.isAuthenticated) throw new Error('Sign out and sign in online to connect your merchant account before upgrading.');
+      const order = await cloudApi.createSubscriptionOrder(planKey);
+      const response = await openSubscriptionCheckout(order, profileName, phone);
+      confirmationReceived = true;
+      if (response.razorpay_order_id !== order.orderId) throw new Error('Payment order mismatch. Contact support.');
+      await cloudApi.verifySubscription({ planKey, orderId: order.orderId, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature });
+      await refreshSubscription();
+      setPaymentSuccessMsg(`Payment verified. Your license is active. Reference: ${response.razorpay_payment_id}`);
+      setIsUpgradeModalOpen(false);
+    } catch (err) {
+      setPaymentError(confirmationReceived
+        ? 'Payment received; license confirmation is pending. Use Refresh license before paying again. Your payment will also be reconciled by the server.'
+        : (err as Error).message || 'Payment could not be started. Please retry.');
+    } finally {
+      paymentLock.current = false;
+      setIsPaying(false);
     }
   };
 
@@ -431,7 +364,7 @@ export const SettingsScreen: React.FC<Props> = ({
                 <p className="text-xs text-indigo-100 font-medium pl-11">
                   {!subDetails.isExpired ? (
                     <>
-                      Live Cloud Sync Active ·{' '}
+                      License verified ·{' '}
                       <b className="text-emerald-300 font-bold">
                         {subDetails.daysRemaining} {subDetails.daysRemaining === 1 ? 'day' : 'days'} remaining
                       </b>{' '}
@@ -439,7 +372,7 @@ export const SettingsScreen: React.FC<Props> = ({
                     </>
                   ) : (
                     <span className="text-rose-300 font-bold">
-                      Trial Expired · Upgrade to continue billing & cloud sync
+                      License expired or unverified · Connect to refresh or upgrade
                     </span>
                   )}
                 </p>
@@ -683,8 +616,8 @@ export const SettingsScreen: React.FC<Props> = ({
 
       {/* SaaS Plan Upgrade Modal */}
       {isUpgradeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150">
+        <div className="license-overlay">
+          <div ref={dialogRef} className="license-dialog" role="dialog" aria-modal="true" aria-labelledby="license-title">
             {/* Modal Header */}
             <div
               style={{
@@ -698,12 +631,14 @@ export const SettingsScreen: React.FC<Props> = ({
                   <Sparkles className="w-4 h-4 text-amber-300" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black tracking-wide text-white">Upgrade NovaPOS SaaS License</h3>
+                  <h3 id="license-title" className="text-sm font-black tracking-wide text-white">Upgrade NovaPOS SaaS License</h3>
                   <p className="text-[11px] text-indigo-200">Official Razorpay Secured Gateway</p>
                 </div>
               </div>
               <button
                 type="button"
+                disabled={isPaying}
+                aria-label="Close upgrade dialog"
                 onClick={() => setIsUpgradeModalOpen(false)}
                 className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
               >
@@ -712,11 +647,11 @@ export const SettingsScreen: React.FC<Props> = ({
             </div>
 
             {/* Plans Selection */}
-            <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+            <div className="license-dialog-body p-4 space-y-3.5">
               {/* Pro Yearly Option */}
-              <div
-                onClick={() => setSelectedPlanKey('pro_yearly')}
-                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer relative ${
+              <button type="button" aria-pressed={selectedPlanKey === 'pro_yearly'} disabled={isPaying}
+                onClick={() => { if (!isPaying) setSelectedPlanKey('pro_yearly'); }}
+                className={`license-plan p-3.5 rounded-xl border-2 transition-all cursor-pointer relative ${
                   selectedPlanKey === 'pro_yearly'
                     ? 'border-indigo-600 bg-indigo-50/60 shadow-sm'
                     : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -748,12 +683,12 @@ export const SettingsScreen: React.FC<Props> = ({
                     <Check className="w-3 h-3 text-emerald-600" /> 24/7 Cloud Backup
                   </span>
                 </div>
-              </div>
+              </button>
 
               {/* Starter Monthly Option */}
-              <div
-                onClick={() => setSelectedPlanKey('starter_monthly')}
-                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
+              <button type="button" aria-pressed={selectedPlanKey === 'starter_monthly'} disabled={isPaying}
+                onClick={() => { if (!isPaying) setSelectedPlanKey('starter_monthly'); }}
+                className={`license-plan p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
                   selectedPlanKey === 'starter_monthly'
                     ? 'border-indigo-600 bg-indigo-50/60 shadow-sm'
                     : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -769,8 +704,13 @@ export const SettingsScreen: React.FC<Props> = ({
                     <span className="text-[10px] text-slate-500 block">/ month</span>
                   </div>
                 </div>
-              </div>
+              </button>
 
+              {paymentError && <p role="alert" className="license-error">{paymentError}</p>}
+              <button type="button" disabled={isPaying} className="license-refresh" onClick={async () => {
+                try { await refreshSubscription(); setPaymentError(null); }
+                catch (err) { setPaymentError((err as Error).message); }
+              }}>Refresh license status</button>
               {/* Pay with Razorpay Button */}
               <button
                 type="button"
@@ -797,7 +737,7 @@ export const SettingsScreen: React.FC<Props> = ({
 
               <p className="text-[11px] text-center text-slate-500 font-medium flex items-center justify-center gap-1.5 pt-1">
                 <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Supports UPI (GPay, PhonePe, Paytm), Cards & NetBanking</span>
+                <span>Available UPI apps, Cards & NetBanking</span>
               </p>
             </div>
           </div>

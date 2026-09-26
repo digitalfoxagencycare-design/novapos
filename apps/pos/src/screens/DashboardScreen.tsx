@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { loadDayBookEntries, filterEntriesByPeriod, type DayBookEntry } from '../lib/dayBook';
-import { getSubscriptionDetails } from '../lib/subscription';
+import { useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
 
 interface Props {
@@ -50,20 +50,19 @@ export const DashboardScreen: React.FC<Props> = ({
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState(false);
-  const [subDetails, setSubDetails] = useState(getSubscriptionDetails());
+  const subDetails = useSubscriptionDetails();
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
 
   useBackHandler(emailModalOpen || supportModalOpen || complianceModalOpen, () => {
-    setEmailModalOpen(false);
-    setSupportModalOpen(false);
-    setComplianceModalOpen(false);
+    if (complianceModalOpen) setComplianceModalOpen(false);
+    else if (supportModalOpen) setSupportModalOpen(false);
+    else setEmailModalOpen(false);
   });
 
   // Live clock: DD/MM/YY HH:MM:SS AM/PM
   const [currentTime, setCurrentTime] = useState<string>(() => formatDateTime(new Date()));
 
   useEffect(() => {
-    setSubDetails(getSubscriptionDetails());
     const timer = setInterval(() => {
       setCurrentTime(formatDateTime(new Date()));
     }, 1000);

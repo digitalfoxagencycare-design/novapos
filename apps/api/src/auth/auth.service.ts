@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { randomBytes, createHash, randomUUID } from 'node:crypto';
+import { randomBytes, createHash, randomUUID, randomInt } from 'node:crypto';
 import { and, eq, isNull, or } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
 import { staff as staffTable, tenants, outlets, refreshTokens } from '../db/schema';
@@ -28,7 +28,7 @@ const MAX_FAILED_LOGINS = 8;
 const LOCKOUT_MINUTES = 15;
 
 /** In-memory OTP storage with 5 minute TTL (can be backed by Redis in production) */
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number; sentAt: number }>();
 
 export interface TokenPair {
   accessToken: string;
@@ -76,13 +76,15 @@ export class AuthService {
       throw Errors.validation('Please enter a valid 10-digit mobile number.');
     }
 
-    // Generate 4-digit OTP
-    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    const previous = otpStore.get(cleanPhone);
+    if (previous && Date.now() - previous.sentAt < 60000) throw Errors.validation('Wait one minute before requesting another code.');
+    const generatedOtp = randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
 
-    otpStore.set(cleanPhone, { otp: generatedOtp, expiresAt });
+    otpStore.set(cleanPhone, { otp: generatedOtp, expiresAt, attempts: 0, sentAt: Date.now() });
 
     const smsResult = await this.sms.sendOtp(cleanPhone, generatedOtp);
+    if (!smsResult.success) otpStore.delete(cleanPhone);
     return {
       success: smsResult.success,
       message: smsResult.message,
@@ -107,6 +109,7 @@ export class AuthService {
     const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
     const stored = otpStore.get(cleanPhone);
 
+    if (stored && ++stored.attempts > 5) { otpStore.delete(cleanPhone); throw Errors.unauthorized('Too many attempts. Request a new code.'); }
     const isStoredOtpMatch = stored && stored.otp === input.otp.trim() && stored.expiresAt > Date.now();
 
     if (!isStoredOtpMatch) {
@@ -152,7 +155,7 @@ export class AuthService {
 
       // Check coupon code: NOVAPOSNEW gives 3 days trial
       const isCouponValid = (input.couponCode || '').trim().toUpperCase() === 'NOVAPOSNEW';
-      const trialDays = isCouponValid ? 3 : 0;
+      const trialDays = 3; // One 72-hour trial per new tenant, independent of client storage.
       const validUntil = trialDays > 0
         ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
         : new Date(Date.now() - 1000).toISOString(); // Requires subscription activation if no coupon
@@ -167,7 +170,7 @@ export class AuthService {
           profile: input.profile || 'kirana',
           subscription: {
             status: trialDays > 0 ? 'TRIAL' : 'PAYMENT_PENDING',
-            plan: 'STARTER',
+            plan: 'starter_monthly',
             validUntil,
             couponApplied: isCouponValid ? 'NOVAPOSNEW' : undefined,
           },

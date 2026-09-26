@@ -1,3 +1,4 @@
+import { subscriptionStatus } from '../payments/subscription.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { and, asc, eq, gte, inArray, isNull, ne, not, sql } from 'drizzle-orm';
@@ -52,6 +53,15 @@ export class OrdersService {
     private readonly kot: KotService,
   ) {}
 
+  private async assertLicense(db: Db) {
+    const { tenantId } = requireTenantContext();
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    if (!tenant || subscriptionStatus(tenant).isExpired) {
+      // Retryable: retain queued offline operations until renewal, never discard sales.
+      throw Errors.paymentFailed('Your license has expired. Renew to create or bill orders.');
+    }
+  }
+
   /**
    * Create or update an order from a POS device.
    *
@@ -69,6 +79,7 @@ export class OrdersService {
       const ctx = requireTenantContext();
 
       const saved = await this.db.tx(async (db) => {
+        await this.assertLicense(db);
         const existing = await this.loadOrderRow(db, { clientOrderId: input.clientOrderId });
 
         if (existing && ['PAID', 'VOIDED'].includes(existing.status)) {
@@ -156,6 +167,7 @@ export class OrdersService {
    */
   async fire(orderId: string) {
     const prepared = await this.db.tx(async (db) => {
+      await this.assertLicense(db);
       const order = await this.requireOrder(db, orderId);
       this.assertTransition(order.status, 'OPEN');
 
@@ -198,6 +210,7 @@ export class OrdersService {
     const ctx = requireTenantContext();
 
     const billed = await this.db.tx(async (db) => {
+      await this.assertLicense(db);
       const order = await this.requireOrder(db, orderId);
       if (order.invoiceNumber) return order; // already billed — idempotent
       this.assertTransition(order.status, 'BILLED');

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Headers } from '@nestjs/common';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
-import { CurrentUser } from '../auth/guards';
+import { CurrentUser, Public } from '../auth/guards';
 import type { TenantContext } from '../tenancy/tenant-context';
 
 class CreateSubscriptionOrderDto {
@@ -33,6 +33,13 @@ class VerifySubscriptionDto {
 @Controller('subscriptions')
 export class SubscriptionController {
   constructor(private readonly subscriptions: SubscriptionService) {}
+
+  @Public()
+  @Post('webhook')
+  @HttpCode(200)
+  webhook(@Req() req: { rawBody?: Buffer }, @Headers('x-razorpay-signature') signature: string) {
+    return this.subscriptions.handleWebhook(req.rawBody?.toString('utf8') ?? '', signature ?? '');
+  }
 
   @Get('plans')
   @ApiOperation({ summary: 'Get list of available SaaS subscription tiers' })

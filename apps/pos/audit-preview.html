@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" /></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {SettingsScreen} from '/src/screens/SettingsScreen.tsx';
+import {closeTopPanel} from '/src/lib/navigation.ts';
+import {installViewportGuards} from '/src/lib/viewport.ts';
+import '/src/styles/app.css';
+installViewportGuards();
+window.addEventListener('keydown',e=>{if(e.key==='Escape') closeTopPanel()});
+createRoot(document.getElementById('root')).render(React.createElement('div',{className:'pos-app-wrapper'}, React.createElement(SettingsScreen,{profileName:'Preview Store',phone:'',address:'',gstin:'',fssai:'',upiVpa:'',onUpdateProfile:()=>{},onBack:()=>{}})));
+</script></body></html>

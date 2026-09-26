@@ -62,6 +62,26 @@ export class ApiClient {
     return Boolean(this.tokens?.accessToken);
   }
 
+  async loginPhonePin(phone: string, pin: string) {
+    const result = await this.raw('POST', '/auth/login/phone-pin', { phone, pin });
+    this.setTokens(result.tokens);
+    return result;
+  }
+
+  sendOtp(phone: string) { return this.raw('POST', '/auth/otp/send', { phone }); }
+
+  async verifyOtp(input: { phone: string; otp: string; storeName?: string; profile?: string; pin?: string; couponCode?: string }) {
+    const result = await this.raw('POST', '/auth/otp/verify', input);
+    this.setTokens(result.tokens);
+    return result;
+  }
+
+  subscriptionStatus() { return this.request('GET', '/subscriptions/status'); }
+  createSubscriptionOrder(planKey: string) { return this.request('POST', '/subscriptions/create-order', { planKey }); }
+  verifySubscription(input: { planKey: string; orderId: string; paymentId: string; signature: string }) {
+    return this.request('POST', '/subscriptions/verify', input);
+  }
+
   /** Routing hints only. Authorization is always enforced by the API. */
   get sessionScope(): { tenantId: string; outletId?: string } | null {
     try {
@@ -235,6 +255,7 @@ export class ApiClient {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
       });
     } catch (err) {
       // fetch only rejects on a network-level failure, which is precisely the

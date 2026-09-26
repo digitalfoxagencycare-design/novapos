@@ -1,3 +1,4 @@
+import { useBackHandler } from '../lib/navigation';
 import React, { useState, useEffect } from 'react';
 import {
   Calculator,
@@ -67,6 +68,9 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
   const [showQuickAddParty, setShowQuickAddParty] = useState(false);
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyPhone, setNewPartyPhone] = useState('');
+  useBackHandler(showLinesTray, () => setShowLinesTray(false));
+  useBackHandler(khataModalOpen, () => setKhataModalOpen(false));
+  useBackHandler(showQuickAddParty, () => setShowQuickAddParty(false));
 
   useEffect(() => {
     if (khataModalOpen) {

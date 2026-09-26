@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PrintPreview } from './components/PrintPreview';
+import { cloudApi } from './lib/cloudSession';
+import { refreshSubscription, restoreSubscriptionCache, useSubscriptionDetails } from './lib/subscription';
 import { closeTopPanel } from './lib/navigation';
 import { mergeCatalog } from './lib/catalog';
 import { loadEzoSettings } from './lib/ezoSettings';
@@ -49,6 +51,7 @@ interface UserSession {
 }
 
 export function App() {
+  const entitlement = useSubscriptionDetails();
   // 0. User Login / Opening Session (Clear legacy test demo session)
   const [session, setSession] = useState<UserSession | null>(() => {
     try {
@@ -65,6 +68,25 @@ export function App() {
       return null;
     }
   });
+
+  useEffect(() => {
+    if (!session) return;
+    const refresh = () => { void refreshSubscription().catch(() => undefined); };
+    void restoreSubscriptionCache().finally(refresh);
+    window.addEventListener('online', refresh);
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = window.setInterval(refresh, 60000);
+    let disposed = false;
+    let listener: { remove(): Promise<void> } | undefined;
+    if (Capacitor.isNativePlatform()) void CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) refresh(); })
+      .then(handle => { if (disposed) void handle.remove(); else listener = handle; });
+    return () => {
+      disposed = true;
+      void listener?.remove();
+      clearInterval(timer); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [session]);
 
   // 1. Active Tab (default Dashboard)
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
@@ -238,6 +260,8 @@ export function App() {
     } catch {
       // ignore
     }
+    void cloudApi.logout();
+    cloudApi.setTokens(null);
     setSession(null);
     setIsDrawerOpen(false);
   };
@@ -356,6 +380,10 @@ export function App() {
         onLogout={handleLogout}
       />
 
+      {(entitlement.isTrial || entitlement.isExpired) && <div className="license-banner" role="status">
+        <span>{entitlement.isExpired ? 'License verification or renewal required' : `Free trial · ${entitlement.countdown} remaining`}</span>
+        <button onClick={() => handleNavigate('settings')}>Manage license</button>
+      </div>}
       {/* Main Viewport */}
       <main className={`pos-main-content ${['billing', 'calculator', 'tables'].includes(activeTab) ? 'full-screen-flow' : 'has-bottom-nav'}`}>
         {activeTab === 'dashboard' && (
@@ -369,6 +397,10 @@ export function App() {
           />
         )}
 
+        {entitlement.isExpired && ['billing', 'calculator', 'tables'].includes(activeTab) && (
+          <section className="license-gate"><h1>Activate your license to continue billing</h1><p>Your saved cart and records are retained. Connect to verify your trial or upgrade in Settings.</p><button onClick={() => handleNavigate('settings')}>Open license settings</button><button onClick={handleBack}>Back to dashboard</button></section>
+        )}
+        <div className="pos-transaction-content" hidden={entitlement.isExpired || !['billing', 'calculator', 'tables'].includes(activeTab)}>
         {activeTab === 'billing' && (
           <BillingScreen
             language="en"
@@ -411,6 +443,7 @@ export function App() {
           />
         )}
 
+        </div>
         {activeTab === 'party' && (
           <KhataScreen
             language="en"

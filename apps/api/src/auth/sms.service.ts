@@ -12,10 +12,7 @@ export class SmsService {
   private readonly logger = new Logger(SmsService.name);
 
   private getApiKey(): string {
-    return (
-      process.env.FAST2SMS_API_KEY ||
-      'f7oiltuQVDCxG4zkKsYTWdqySejArL8c06p1On3hwm5NFXvIgaoIMzvGguTHn2NwhAfOtXKcb39Vi0m6'
-    ).trim();
+    return (process.env.FAST2SMS_API_KEY || '').trim();
   }
 
   /**
@@ -30,12 +27,7 @@ export class SmsService {
 
     const key = this.getApiKey();
     if (!key || key === 'CHANGE_ME_FAST2SMS_KEY') {
-      this.logger.warn(`[DEV MODE] Simulated OTP for +91${cleanPhone}: ${otp}`);
-      return {
-        success: true,
-        message: 'OTP sent in development mode.',
-        isMock: true,
-      };
+      return { success: false, message: 'SMS service is not configured. Contact support.' };
     }
 
     try {

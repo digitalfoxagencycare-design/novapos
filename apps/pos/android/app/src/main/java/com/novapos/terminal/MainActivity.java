@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NovaPrintPlugin.class);
+        registerPlugin(NovaCheckoutPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
