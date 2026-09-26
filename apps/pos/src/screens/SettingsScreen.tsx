@@ -771,49 +771,33 @@ export const SettingsScreen: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Supported Payment Channels */}
-              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-slate-700 font-bold">
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-indigo-600" />
-                    <span>Accepted Payment Methods</span>
-                  </div>
-                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                    Instant Activation
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-500 flex flex-wrap gap-2 pt-1 border-t border-slate-200">
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Google Pay</span>
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ PhonePe</span>
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Paytm UPI</span>
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">⚡ Any UPI QR</span>
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">💳 Cards (Visa/Master/RuPay)</span>
-                  <span className="bg-white px-2 py-1 rounded border border-slate-200 font-medium">🏦 NetBanking</span>
-                </div>
-              </div>
-
               {/* Pay with Razorpay Button */}
               <button
                 type="button"
                 onClick={handleUpgradePayment}
                 disabled={isPaying}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 mt-2"
+                style={{
+                  background: '#5B42F3',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 14px rgba(91, 66, 243, 0.4)',
+                }}
+                className="w-full py-4 rounded-xl text-white font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-2 mt-4 cursor-pointer"
               >
                 {isPaying ? (
-                  <span>Opening Razorpay Gateway...</span>
+                  <span className="text-white font-bold">Connecting Razorpay Gateway...</span>
                 ) : (
                   <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>
-                      Pay {selectedPlanKey === 'pro_yearly' ? '₹4,999' : '₹499'} with Razorpay Checkout
+                    <ShieldCheck className="w-5 h-5 text-white" />
+                    <span className="text-white font-black tracking-wide text-base">
+                      Pay {selectedPlanKey === 'pro_yearly' ? '₹4,999' : '₹499'} with Razorpay
                     </span>
                   </>
                 )}
               </button>
 
-              <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
-                <Lock className="w-3 h-3" />
-                256-Bit SSL Encrypted & Official Razorpay Secured Checkout
+              <p className="text-[11px] text-center text-slate-500 font-medium flex items-center justify-center gap-1.5 pt-1">
+                <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Supports UPI (GPay, PhonePe, Paytm), Cards & NetBanking</span>
               </p>
             </div>
           </div>
