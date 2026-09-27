@@ -5,6 +5,7 @@ import {
   Package,
   Search,
   Plus,
+  Minus,
   Edit2,
   Trash2,
   AlertTriangle,
@@ -14,6 +15,11 @@ import {
   X,
   ChefHat,
   ArrowLeft,
+  Boxes,
+  ArrowUpDown,
+  History,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import {
   PROFILES,
@@ -68,7 +74,17 @@ export const InventoryScreen: React.FC<Props> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
 
-  useBackHandler(modalOpen, () => setModalOpen(false));
+  // Stock Adjustment Modal States
+  const [adjustStockModalOpen, setAdjustStockModalOpen] = useState(false);
+  const [adjustStockItem, setAdjustStockItem] = useState<CatalogItem | null>(null);
+  const [adjustStockMode, setAdjustStockMode] = useState<'add' | 'reduce'>('add');
+  const [adjustStockQty, setAdjustStockQty] = useState('');
+  const [adjustStockReason, setAdjustStockReason] = useState('New Purchase / Stock Received');
+
+  useBackHandler(modalOpen || adjustStockModalOpen, () => {
+    if (adjustStockModalOpen) setAdjustStockModalOpen(false);
+    else if (modalOpen) setModalOpen(false);
+  });
 
   // Form states
   const [formName, setFormName] = useState('');
@@ -78,6 +94,7 @@ export const InventoryScreen: React.FC<Props> = ({
   const [formCode, setFormCode] = useState('');
   const [formBarcode, setFormBarcode] = useState('');
   const [formStock, setFormStock] = useState('100');
+  const [formImageUrl, setFormImageUrl] = useState('');
   const [formIsVeg, setFormIsVeg] = useState(true);
   const [formGstApplicable, setFormGstApplicable] = useState(true);
   const [formGstRate, setFormGstRate] = useState<number>(5);
@@ -89,7 +106,7 @@ export const InventoryScreen: React.FC<Props> = ({
   useEffect(() => { setSelectedCategory('all'); setSearchQuery(''); }, [profile]);
 
   const categories = [
-    { id: 'all', name: t.billing.categoryAll },
+    { id: 'all', name: 'All Categories' },
     ...Array.from(new Set(allItems.map((i) => i.categoryName))).map((c) => ({
       id: c,
       name: c,
@@ -117,6 +134,7 @@ export const InventoryScreen: React.FC<Props> = ({
     setFormCode(`ITEM-${Date.now().toString().slice(-4)}`);
     setFormBarcode('');
     setFormStock('100');
+    setFormImageUrl('');
     setFormIsVeg(true);
     setFormGstApplicable(true);
     setFormGstRate(5);
@@ -133,12 +151,45 @@ export const InventoryScreen: React.FC<Props> = ({
     setFormCode(item.code);
     setFormBarcode(item.barcode || '');
     setFormStock(String(item.stockQty ?? 100));
+    setFormImageUrl(item.imageUrl || '');
     setFormIsVeg(item.isVeg);
     const hasGst = (item.gstRate ?? 0) > 0 || item.isGstApplicable === true;
     setFormGstApplicable(hasGst);
     setFormGstRate(item.gstRate ?? (hasGst ? 5 : 0));
     setFormHsnSac(item.hsnSac || '');
     setModalOpen(true);
+  };
+
+  const handleOpenAdjustStock = (item: CatalogItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setAdjustStockItem(item);
+    setAdjustStockMode('add');
+    setAdjustStockQty('');
+    setAdjustStockReason('New Purchase / Stock Received');
+    setAdjustStockModalOpen(true);
+  };
+
+  const handleSaveStockAdjustment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustStockItem) return;
+    const adjustment = parseFloat(adjustStockQty) || 0;
+    if (adjustment <= 0) return;
+
+    const currentStock = adjustStockItem.stockQty ?? 100;
+    const newStock = adjustStockMode === 'add' ? currentStock + adjustment : Math.max(0, currentStock - adjustment);
+
+    const updatedItem: CatalogItem = {
+      ...adjustStockItem,
+      stockQty: newStock,
+    };
+
+    onUpdateItems([
+      ...customItems.filter((i) => i.id !== adjustStockItem.id),
+      updatedItem,
+    ]);
+
+    setAdjustStockModalOpen(false);
+    setAdjustStockItem(null);
   };
 
   const handleSaveItem = (e: React.FormEvent) => {
@@ -152,28 +203,24 @@ export const InventoryScreen: React.FC<Props> = ({
     const effectiveGstRate = formGstApplicable ? Number(formGstRate) : 0;
 
     if (editingItem) {
-      const updated = [editingItem].map((item) => {
-        if (item.id === editingItem.id) {
-          return {
-            ...item,
-            name: formName.trim(),
-            categoryName: formCategory.trim() || 'General',
-            categoryId: `cat-${formCategory.toLowerCase()}`,
-            priceMinor: Math.round(price * 100),
-            uom: formUom,
-            isWeighed: isWeight(formUom),
-            code: formCode || item.code,
-            barcode: formBarcode,
-            stockQty: stock,
-            isVeg: formIsVeg,
-            gstRate: effectiveGstRate,
-            isGstApplicable: formGstApplicable,
-            hsnSac: formHsnSac.trim() || undefined,
-          };
-        }
-        return item;
-      });
-      onUpdateItems([...customItems.filter(item => item.id !== editingItem.id), ...updated]);
+      const updated: CatalogItem = {
+        ...editingItem,
+        name: formName.trim(),
+        categoryName: formCategory.trim() || 'General',
+        categoryId: `cat-${formCategory.toLowerCase()}`,
+        priceMinor: Math.round(price * 100),
+        uom: formUom,
+        isWeighed: isWeight(formUom),
+        code: formCode || editingItem.code,
+        barcode: formBarcode,
+        imageUrl: formImageUrl.trim() || editingItem.imageUrl,
+        stockQty: stock,
+        isVeg: formIsVeg,
+        gstRate: effectiveGstRate,
+        isGstApplicable: formGstApplicable,
+        hsnSac: formHsnSac.trim() || undefined,
+      };
+      onUpdateItems([...customItems.filter(item => item.id !== editingItem.id), updated]);
     } else {
       const newItem: CatalogItem = {
         id: `custom-${Date.now()}`,
@@ -186,6 +233,7 @@ export const InventoryScreen: React.FC<Props> = ({
         isWeighed: isWeight(formUom),
         code: formCode || `ITM-${Date.now().toString().slice(-4)}`,
         barcode: formBarcode,
+        imageUrl: formImageUrl.trim() || undefined,
         stockQty: stock,
         isVeg: formIsVeg,
         gstRate: effectiveGstRate,
@@ -216,13 +264,15 @@ export const InventoryScreen: React.FC<Props> = ({
               title="Back to Dashboard"
               aria-label="Back to Dashboard"
             >
-              <ArrowLeft className="w-6 h-6 text-white stroke-[2.5]" /><span>Back</span></button>
+              <ArrowLeft className="w-6 h-6 text-white stroke-[2.5]" />
+              <span>Back</span>
+            </button>
           )}
           <Package className="w-6 h-6 text-emerald-400" />
           <div>
-            <h2>{t.tabs.inventory}</h2>
+            <h2>Items & Products</h2>
             <p className="inventory-sub">
-              {allItems.length} catalog items
+              {allItems.length} active products & stock items
             </p>
           </div>
         </div>
@@ -281,7 +331,7 @@ export const InventoryScreen: React.FC<Props> = ({
           {filteredItems.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               <Package className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-              <p>No inventory items match search</p>
+              <p>No items match search</p>
             </div>
           ) : (
             filteredItems.map((item) => (
@@ -312,17 +362,27 @@ export const InventoryScreen: React.FC<Props> = ({
                 </div>
 
                 <div className="inv-card-footer">
-                  <span
-                    className={`stock-badge ${
-                      (item.stockQty ?? 100) <= 0
-                        ? 'out'
-                        : (item.stockQty ?? 100) < 10
-                        ? 'low'
-                        : 'ok'
-                    }`}
-                  >
-                    Stock: {item.stockQty ?? 100} {item.uom}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`stock-badge ${
+                        (item.stockQty ?? 100) <= 0
+                          ? 'out'
+                          : (item.stockQty ?? 100) < 10
+                          ? 'low'
+                          : 'ok'
+                      }`}
+                    >
+                      Stock: {item.stockQty ?? 100} {item.uom}
+                    </span>
+                    <button
+                      onClick={(e) => handleOpenAdjustStock(item, e)}
+                      className="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-300 rounded text-xs font-bold flex items-center hover:bg-amber-100"
+                      title="Adjust Stock Quantity (+ / -)"
+                    >
+                      <ArrowUpDown className="w-3 h-3 mr-1" />
+                      Adjust Stock
+                    </button>
+                  </div>
 
                   <div className="row-actions">
                     <button
@@ -357,7 +417,7 @@ export const InventoryScreen: React.FC<Props> = ({
               <th>Code / Barcode</th>
               <th>Unit</th>
               <th>{t.billing.price}</th>
-              <th>{t.billing.stock}</th>
+              <th>Stock Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -391,17 +451,27 @@ export const InventoryScreen: React.FC<Props> = ({
                   <span className="text-xs text-slate-400">/{item.uom}</span>
                 </td>
                 <td>
-                  <span
-                    className={`stock-badge ${
-                      (item.stockQty ?? 100) <= 0
-                        ? 'out'
-                        : (item.stockQty ?? 100) < 10
-                        ? 'low'
-                        : 'ok'
-                    }`}
-                  >
-                    {item.stockQty ?? 100} {item.uom}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`stock-badge ${
+                        (item.stockQty ?? 100) <= 0
+                          ? 'out'
+                          : (item.stockQty ?? 100) < 10
+                          ? 'low'
+                          : 'ok'
+                      }`}
+                    >
+                      {item.stockQty ?? 100} {item.uom}
+                    </span>
+                    <button
+                      onClick={(e) => handleOpenAdjustStock(item, e)}
+                      className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-300 rounded text-xs font-bold hover:bg-amber-100 flex items-center"
+                      title="Adjust Stock"
+                    >
+                      <ArrowUpDown className="w-3 h-3 mr-0.5" />
+                      Adjust
+                    </button>
+                  </div>
                 </td>
                 <td>
                   <div className="row-actions">
@@ -427,7 +497,152 @@ export const InventoryScreen: React.FC<Props> = ({
         </table>
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* ────────────────── 1. Stock Adjustment Modal (+ / -) ────────────────── */}
+      {adjustStockModalOpen && adjustStockItem && (
+        <div className="table-modal-overlay">
+          <form onSubmit={handleSaveStockAdjustment} className="table-modal adjust-stock-modal">
+            <div className="modal-header">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <ArrowUpDown className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Adjust Stock Quantity</h3>
+                  <p className="text-xs text-slate-500">{adjustStockItem.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdjustStockModalOpen(false)}
+                className="btn-close-modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="modal-body p-4 flex flex-col gap-3">
+              {/* Current Stock Banner */}
+              <div className="p-3 bg-slate-100 rounded-lg flex items-center justify-between border border-slate-200">
+                <span className="text-xs font-bold text-slate-600">Current In-Stock:</span>
+                <span className="text-base font-black text-slate-900 font-mono">
+                  {adjustStockItem.stockQty ?? 100} {adjustStockItem.uom}
+                </span>
+              </div>
+
+              {/* Mode Toggle: Add Stock vs Reduce Stock */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">Adjustment Action</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustStockMode('add')}
+                    className={`py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                      adjustStockMode === 'add'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span>🟢 Add Stock (+)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdjustStockMode('reduce')}
+                    className={`py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                      adjustStockMode === 'reduce'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    }`}
+                  >
+                    <TrendingDown className="w-4 h-4" />
+                    <span>🔴 Reduce Stock (−)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Adjustment Quantity Input */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {adjustStockMode === 'add' ? 'Quantity to Add' : 'Quantity to Reduce'} ({adjustStockItem.uom}) *
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.01"
+                  required
+                  autoFocus
+                  placeholder="e.g. 50"
+                  value={adjustStockQty}
+                  onChange={(e) => setAdjustStockQty(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-indigo-600"
+                />
+              </div>
+
+              {/* Quick Presets */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[5, 10, 50, 100].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setAdjustStockQty(String(val))}
+                    className="py-1.5 px-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold border border-slate-200"
+                  >
+                    {adjustStockMode === 'add' ? `+${val}` : `-${val}`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Reason for Adjustment */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Reason / Notes</label>
+                <select
+                  value={adjustStockReason}
+                  onChange={(e) => setAdjustStockReason(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-800"
+                >
+                  <option value="New Purchase / Stock Received">New Purchase / Stock Received</option>
+                  <option value="Physical Stock Audit Correction">Physical Stock Audit Correction</option>
+                  <option value="Damaged / Expired / Wastage">Damaged / Expired / Wastage</option>
+                  <option value="Customer Return">Customer Return</option>
+                  <option value="Internal Store Consumption">Internal Store Consumption</option>
+                </select>
+              </div>
+
+              {/* Preview Result */}
+              {adjustStockQty && (
+                <div className="p-3 bg-emerald-50 rounded-lg flex items-center justify-between border border-emerald-200">
+                  <span className="text-xs font-bold text-emerald-900">New Resulting Stock:</span>
+                  <span className="text-base font-black text-emerald-700 font-mono">
+                    {adjustStockMode === 'add'
+                      ? (adjustStockItem.stockQty ?? 100) + (parseFloat(adjustStockQty) || 0)
+                      : Math.max(0, (adjustStockItem.stockQty ?? 100) - (parseFloat(adjustStockQty) || 0))} {adjustStockItem.uom}
+                  </span>
+                </div>
+              )}
+
+              <div className="modal-actions-bar mt-2">
+                <button
+                  type="button"
+                  onClick={() => setAdjustStockModalOpen(false)}
+                  className="btn-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!adjustStockQty || parseFloat(adjustStockQty) <= 0}
+                  className="btn-submit"
+                >
+                  Update Stock Now
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ────────────────── 2. Add / Edit Product Modal ────────────────── */}
       {modalOpen && (
         <div className="table-modal-overlay">
           <div className="table-modal inv-modern-modal">
@@ -453,233 +668,123 @@ export const InventoryScreen: React.FC<Props> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveItem} className="modal-body inv-modal-body overflow-y-auto max-h-[75vh]">
-              {/* Item Name */}
-              <div className="form-group">
-                <label className="text-xs font-bold text-slate-700">Product / Item Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Sona Masoori Rice, Milk, Biscuit"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="inv-modal-input font-medium"
-                  autoFocus
-                />
-              </div>
-
-              {/* Category with Quick Suggestion Chips */}
-              <div className="form-group">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700">Category *</label>
-                  <span className="text-[11px] text-slate-400">Quick Select:</span>
+            <form onSubmit={handleSaveItem} className="p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="form-group">
+                  <label className="text-xs font-bold text-slate-700">Item Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="e.g. Sona Masoori Rice (1kg)"
+                    className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
+                  />
                 </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Grocery, Dairy, Snacks"
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="inv-modal-input"
-                />
-                <div className="flex gap-1.5 overflow-x-auto pt-1 scrollbar-none">
-                  {['General', 'Grocery', 'Dairy', 'Snacks', 'Beverages', 'Flour & Atta', 'Spices & Masala', 'Personal & Home Care'].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setFormCategory(cat)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-colors whitespace-nowrap ${
-                        formCategory.toLowerCase() === cat.toLowerCase()
-                          ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+
+                <div className="form-group">
+                  <label className="text-xs font-bold text-slate-700">Category Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    placeholder="e.g. Rice & Staples"
+                    className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
+                  />
                 </div>
               </div>
 
-              {/* Price & Stock Row */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="form-group">
                   <label className="text-xs font-bold text-slate-700">Price (₹) *</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-sm font-bold text-slate-400">₹</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="0.00"
-                      value={formPrice}
-                      onChange={(e) => setFormPrice(e.target.value)}
-                      className="inv-modal-input pl-7 font-bold text-indigo-700 font-mono"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    required
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full text-sm font-bold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
+                  />
                 </div>
 
                 <div className="form-group">
-                  <label className="text-xs font-bold text-slate-700">Stock Quantity</label>
+                  <label className="text-xs font-bold text-slate-700">Unit (UOM) *</label>
+                  <select
+                    value={formUom}
+                    onChange={(e) => setFormUom(e.target.value as Uom)}
+                    className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg bg-white focus:border-indigo-600 outline-none"
+                  >
+                    {UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="text-xs font-bold text-slate-700">Initial Stock</label>
                   <input
                     type="number"
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
-                    className="inv-modal-input font-bold text-slate-800"
+                    placeholder="100"
+                    className="w-full text-sm font-bold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
                   />
                 </div>
               </div>
 
-              {/* GST Configuration (GST Applicable, Slab Rates, HSN Code) */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <span>GST Tax Configuration</span>
-                  </label>
-                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormGstApplicable(true);
-                        if (formGstRate === 0) setFormGstRate(5);
-                      }}
-                      className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${
-                        formGstApplicable ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'
-                      }`}
-                    >
-                      Taxable
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormGstApplicable(false);
-                        setFormGstRate(0);
-                      }}
-                      className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${
-                        !formGstApplicable ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600'
-                      }`}
-                    >
-                      Exempt (0%)
-                    </button>
-                  </div>
-                </div>
-
-                {formGstApplicable && (
-                  <>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[11px] font-bold text-slate-600">Select GST Slab Rate (%):</span>
-                        <span className="text-[11px] font-bold text-indigo-600">Active: {formGstRate}% GST</span>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {[0, 5, 12, 18, 28].map((rate) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => setFormGstRate(rate)}
-                            className={`py-1.5 rounded-lg text-xs font-black border transition-all ${
-                              formGstRate === rate
-                                ? 'bg-indigo-600 border-indigo-700 text-white shadow-xs scale-[1.02]'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            {rate}%
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-1">
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                        HSN / SAC Code (Optional for GST Invoice)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 1006 (Rice), 0401 (Milk), 1905 (Bakery), 9963 (Food)"
-                        value={formHsnSac}
-                        onChange={(e) => setFormHsnSac(e.target.value)}
-                        className="inv-modal-input bg-white text-xs font-mono"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Unit of Measure (UOM) Touch Pills */}
-              <div className="form-group">
-                <label className="text-xs font-bold text-slate-700">Unit of Measure (UOM) *</label>
-                <div className="grid grid-cols-6 gap-1.5 pt-0.5">
-                  {(['pcs', 'kg', 'gm', 'ltr', 'ml', 'box'] as Uom[]).map((u) => {
-                    const isSelected = formUom === u;
-                    return (
-                      <button
-                        key={u}
-                        type="button"
-                        onClick={() => setFormUom(u)}
-                        className={`py-1.5 rounded-lg text-xs font-bold text-center border uppercase transition-all ${
-                          isSelected
-                            ? 'bg-indigo-600 border-indigo-700 text-white shadow-xs'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        {u}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Short Code & Barcode */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-group">
-                  <label className="text-xs font-bold text-slate-700">Short Code</label>
+                  <label className="text-xs font-bold text-slate-700">Item Code</label>
                   <input
                     type="text"
-                    placeholder="e.g. ITEM-1234"
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
-                    className="inv-modal-input text-xs font-mono"
+                    placeholder="e.g. 1086"
+                    className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
                   />
                 </div>
+
                 <div className="form-group">
-                  <label className="text-xs font-bold text-slate-700">Barcode (EAN/UPC)</label>
+                  <label className="text-xs font-bold text-slate-700">Barcode / EAN</label>
                   <input
                     type="text"
-                    placeholder="Barcode..."
                     value={formBarcode}
                     onChange={(e) => setFormBarcode(e.target.value)}
-                    className="inv-modal-input text-xs font-mono"
+                    placeholder="Scan or enter barcode"
+                    className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
                   />
                 </div>
               </div>
 
-              {profile === 'restaurant' && (
-                <div className="form-group pt-1">
-                  <label className="checkbox-label flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formIsVeg}
-                      onChange={(e) => setFormIsVeg(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600 rounded border-slate-300"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">Vegetarian Item</span>
-                  </label>
-                </div>
-              )}
+              <div className="form-group">
+                <label className="text-xs font-bold text-slate-700">Product Image URL (Optional)</label>
+                <input
+                  type="url"
+                  value={formImageUrl}
+                  onChange={(e) => setFormImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
+                />
+              </div>
 
-              <div className="modal-actions-bar pt-2 sticky bottom-0 bg-white pb-1">
+              <div className="modal-actions-bar pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="btn-cancel px-4 py-2 text-xs font-bold"
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
-                  {t.common.cancel}
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-submit px-5 py-2 text-xs font-bold shadow-sm flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{editingItem ? 'Save Changes' : 'Save Product'}</span>
+                  {editingItem ? 'Save Changes' : 'Create Product'}
                 </button>
               </div>
             </form>

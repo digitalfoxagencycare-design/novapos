@@ -86,8 +86,8 @@ export const SideDrawer: React.FC<Props> = ({
     },
     {
       id: 'inventory',
-      label: 'Item Catalog & Stock',
-      subtitle: 'Products, prices, UOM & barcodes',
+      label: 'Items & Products',
+      subtitle: 'Products, prices, stock & barcodes',
       icon: <Package className="w-5 h-5 text-purple-600" />,
       forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
     },

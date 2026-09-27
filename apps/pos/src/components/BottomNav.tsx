@@ -1,9 +1,10 @@
 import React from 'react';
 import {
   Home,
-  User,
+  BookOpen,
   Package,
-  Sparkles,
+  Plus,
+  BarChart3,
   Sliders,
 } from 'lucide-react';
 
@@ -28,53 +29,64 @@ export const BottomNav: React.FC<Props> = ({
   activeTab,
   onSelectTab,
 }) => {
-  // 4 Core POS Tabs: Dashboard, Party, Inventory, Settings
-  const navTabs: { id: MainTab; label: string; icon: React.ReactNode }[] = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: <Home className="w-5 h-5" />,
-    },
-    {
-      id: 'party',
-      label: 'Party',
-      icon: <User className="w-5 h-5" />,
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      icon: <Package className="w-5 h-5" />,
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: <Sliders className="w-5 h-5" />,
-    },
-  ];
-
   return (
     <nav className="ezo-bottom-nav">
-      {navTabs.map((tab) => {
-        // If subscreen is active, map appropriately or keep clean
-        const isActive =
-          activeTab === tab.id ||
-          (tab.id === 'party' && activeTab === 'party') ||
-          (tab.id === 'inventory' && activeTab === 'inventory') ||
-          (tab.id === 'settings' && (activeTab === 'settings' || activeTab === 'profile'));
+      {/* 1. Dashboard */}
+      <button
+        onClick={() => onSelectTab('dashboard')}
+        className={`ezo-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+      >
+        <div className="ezo-nav-icon-wrap">
+          <Home className="w-5 h-5" />
+        </div>
+        <span className="ezo-nav-label">Dashboard</span>
+      </button>
 
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onSelectTab(tab.id)}
-            className={`ezo-nav-item ${isActive ? 'active' : ''}`}
-          >
-            <div className="ezo-nav-icon-wrap">
-              {tab.icon}
-            </div>
-            <span className="ezo-nav-label">{tab.label}</span>
-          </button>
-        );
-      })}
+      {/* 2. Khata / Party */}
+      <button
+        onClick={() => onSelectTab('party')}
+        className={`ezo-nav-item ${activeTab === 'party' ? 'active' : ''}`}
+      >
+        <div className="ezo-nav-icon-wrap">
+          <BookOpen className="w-5 h-5" />
+        </div>
+        <span className="ezo-nav-label">Khata</span>
+      </button>
+
+      {/* 3. Center Vibrant New Bill (+) Action */}
+      <button
+        onClick={() => onSelectTab('billing')}
+        className={`ezo-nav-item ezo-nav-center-bill ${activeTab === 'billing' ? 'active' : ''}`}
+        title="Create New Bill"
+        aria-label="New Bill"
+      >
+        <div className="ezo-center-bill-bubble">
+          <Plus className="w-6 h-6 text-white stroke-[3]" />
+        </div>
+        <span className="ezo-nav-label font-bold text-indigo-600">New Bill</span>
+      </button>
+
+      {/* 4. Items (formerly Inventory) */}
+      <button
+        onClick={() => onSelectTab('inventory')}
+        className={`ezo-nav-item ${activeTab === 'inventory' ? 'active' : ''}`}
+      >
+        <div className="ezo-nav-icon-wrap">
+          <Package className="w-5 h-5" />
+        </div>
+        <span className="ezo-nav-label">Items</span>
+      </button>
+
+      {/* 5. Reports & Analytics */}
+      <button
+        onClick={() => onSelectTab('reports')}
+        className={`ezo-nav-item ${activeTab === 'reports' ? 'active' : ''}`}
+      >
+        <div className="ezo-nav-icon-wrap">
+          <BarChart3 className="w-5 h-5" />
+        </div>
+        <span className="ezo-nav-label">Reports</span>
+      </button>
     </nav>
   );
 };

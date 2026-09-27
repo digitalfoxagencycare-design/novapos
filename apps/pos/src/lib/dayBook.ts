@@ -197,7 +197,37 @@ export function addDayBookEntry(entry: Omit<DayBookEntry, 'id' | 'timestamp'>): 
   return created;
 }
 
-export function filterEntriesByPeriod<T extends { timestamp: string }>(entries: T[], period: 'today' | 'week' | 'month' | 'all', now = new Date()): T[] {
+export function filterEntriesByPeriod<T extends { timestamp: string }>(
+  entries: T[],
+  period: 'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom',
+  customRangeOrNow?: { start?: string; end?: string } | Date,
+  nowArg = new Date()
+): T[] {
+  let now = nowArg;
+  let customRange: { start?: string; end?: string } | undefined;
+
+  if (customRangeOrNow instanceof Date) {
+    now = customRangeOrNow;
+  } else if (customRangeOrNow && typeof customRangeOrNow === 'object') {
+    customRange = customRangeOrNow;
+  }
+
+  if (period === 'custom' && customRange) {
+    const startTime = customRange.start ? new Date(customRange.start).setHours(0, 0, 0, 0) : 0;
+    const endTime = customRange.end ? new Date(customRange.end).setHours(23, 59, 59, 999) : Infinity;
+    return entries.filter(entry => {
+      const time = new Date(entry.timestamp).getTime();
+      return time >= startTime && time <= endTime;
+    });
+  }
+  if (period === 'yesterday') {
+    const yStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+    const yEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+    return entries.filter(entry => {
+      const time = new Date(entry.timestamp).getTime();
+      return time >= yStart.getTime() && time <= yEnd.getTime();
+    });
+  }
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'week') start.setDate(start.getDate() - 6);
   if (period === 'month') start.setDate(1);
