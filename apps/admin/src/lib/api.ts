@@ -142,7 +142,7 @@ export class AdminApi {
     const res = await fetch(this.baseUrl + path, {
       method, headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     }).catch((err) => {
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
         throw new ApiError(0, 'TIMEOUT', 'The server took too long to respond. Please retry.');
