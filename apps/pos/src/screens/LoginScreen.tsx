@@ -103,6 +103,21 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
         setErrorMessage('Please set a 4-digit security PIN for cashier login.');
         return;
       }
+
+      // Check if phone number is already registered
+      try {
+        setIsLoading(true);
+        const check = await cloudApi.checkPhone(cleanPhone);
+        if (check.exists) {
+          setIsLoading(false);
+          setErrorMessage(`This mobile number is already registered with '${check.storeName || 'NovaPOS'}'. Please Sign In using your 4-digit PIN or SMS OTP.`);
+          setAuthMode('signin');
+          setSignInMethod('pin');
+          return;
+        }
+      } catch {
+        // Continue if offline / fallback
+      }
     }
 
     setIsLoading(true);

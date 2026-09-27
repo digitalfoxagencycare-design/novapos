@@ -68,6 +68,10 @@ export class ApiClient {
     return result;
   }
 
+  checkPhone(phone: string): Promise<{ exists: boolean; storeName?: string; phone: string }> {
+    return this.raw('POST', '/auth/check-phone', { phone });
+  }
+
   sendOtp(phone: string) { return this.raw('POST', '/auth/otp/send', { phone }); }
 
   async verifyOtp(input: { phone: string; otp: string; isFirebaseVerified?: boolean; storeName?: string; profile?: string; pin?: string; couponCode?: string }) {

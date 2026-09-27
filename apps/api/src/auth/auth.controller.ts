@@ -50,6 +50,14 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Post('check-phone')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check if phone number is already registered' })
+  checkPhone(@Body() dto: SendOtpDto) {
+    return this.auth.checkPhone(dto.phone);
+  }
+
+  @Public()
   @Post('otp/send')
   @HttpCode(200)
   @ApiOperation({ summary: 'Send SMS OTP to mobile number via Fast2SMS' })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Sliders,
@@ -10,14 +10,10 @@ import {
   Search,
   Wifi,
   Save,
-  Crown,
   Sparkles,
-  CreditCard,
-  X,
   ShieldCheck,
   Check,
   Scale,
-  Lock,
 } from 'lucide-react';
 import {
   EZO_34_SETTINGS,
@@ -33,10 +29,6 @@ import {
   isBluetoothSupported,
 } from '../lib/thermalPrinter';
 import { refreshSubscription, useSubscriptionDetails } from '../lib/subscription';
-import { cloudApi } from '../lib/cloudSession';
-import { openSubscriptionCheckout } from '../lib/razorpayCheckout';
-import { useBackHandler } from '../lib/navigation';
-import { useDialogFocus } from '../lib/useDialogFocus';
 import { ComplianceModal } from '../components/ComplianceModal';
 
 interface Props {
@@ -80,17 +72,9 @@ export const SettingsScreen: React.FC<Props> = ({
   const [editFssai, setEditFssai] = useState(fssai);
   const [editUpiVpa, setEditUpiVpa] = useState(upiVpa);
 
-  // Subscription / SaaS Licensing States
+  // Subscription / Licensing States
   const subDetails = useSubscriptionDetails();
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [selectedPlanKey, setSelectedPlanKey] = useState<'starter_monthly' | 'pro_yearly'>('pro_yearly');
-  const [isPaying, setIsPaying] = useState(false);
-  const [paymentSuccessMsg, setPaymentSuccessMsg] = useState<string | null>(null);
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const paymentLock = useRef(false);
-  const dialogRef = useDialogFocus(isUpgradeModalOpen);
-  useBackHandler(isUpgradeModalOpen, () => { if (!paymentLock.current) setIsUpgradeModalOpen(false); });
   useEffect(() => { void refreshSubscription().catch(() => undefined); }, []);
 
 
@@ -198,33 +182,6 @@ export const SettingsScreen: React.FC<Props> = ({
     }
   };
 
-  const handleUpgradePayment = async () => {
-    if (paymentLock.current) return;
-    paymentLock.current = true;
-    setIsPaying(true);
-    setPaymentError(null);
-    const planKey = selectedPlanKey;
-    let confirmationReceived = false;
-    try {
-      if (!cloudApi.isAuthenticated) throw new Error('Sign out and sign in online to connect your merchant account before upgrading.');
-      const order = await cloudApi.createSubscriptionOrder(planKey);
-      const response = await openSubscriptionCheckout(order, profileName, phone);
-      confirmationReceived = true;
-      if (response.razorpay_order_id !== order.orderId) throw new Error('Payment order mismatch. Contact support.');
-      await cloudApi.verifySubscription({ planKey, orderId: order.orderId, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature });
-      await refreshSubscription();
-      setPaymentSuccessMsg(`Payment verified. Your license is active. Reference: ${response.razorpay_payment_id}`);
-      setIsUpgradeModalOpen(false);
-    } catch (err) {
-      setPaymentError(confirmationReceived
-        ? 'Payment received; license confirmation is pending. Use Refresh license before paying again. Your payment will also be reconciled by the server.'
-        : (err as Error).message || 'Payment could not be started. Please retry.');
-    } finally {
-      paymentLock.current = false;
-      setIsPaying(false);
-    }
-  };
-
   return (
     <div className="ezo-screen-container">
       {/* Top Purple App Bar */}
@@ -315,7 +272,7 @@ export const SettingsScreen: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* SaaS Subscription & License Card (High Contrast & Modern Branding) */}
+          {/* Merchant License Active & Support Card */}
           <div
             style={{
               background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)',
@@ -333,29 +290,16 @@ export const SettingsScreen: React.FC<Props> = ({
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <b className="text-base font-black tracking-wide text-white">
-                        NovaPOS Cloud SaaS
+                        Merchant License Active
                       </b>
                       <span
                         style={{
-                          backgroundColor:
-                            subDetails.plan === 'PRO'
-                              ? '#10B981'
-                              : subDetails.plan === 'STARTER'
-                              ? '#6366F1'
-                              : subDetails.isExpired
-                              ? '#EF4444'
-                              : '#F59E0B',
+                          backgroundColor: subDetails.isExpired ? '#EF4444' : '#10B981',
                           color: '#FFFFFF',
                         }}
                         className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider shadow-xs"
                       >
-                        {subDetails.plan === 'PRO'
-                          ? 'Pro Annual'
-                          : subDetails.plan === 'STARTER'
-                          ? 'Starter Monthly'
-                          : subDetails.isExpired
-                          ? 'Trial Expired'
-                          : '3-Days Free Trial'}
+                        {subDetails.isExpired ? 'Expired' : 'Active'}
                       </span>
                     </div>
                   </div>
@@ -364,42 +308,30 @@ export const SettingsScreen: React.FC<Props> = ({
                 <p className="text-xs text-indigo-100 font-medium pl-11">
                   {!subDetails.isExpired ? (
                     <>
-                      License verified ·{' '}
-                      <b className="text-emerald-300 font-bold">
-                        {subDetails.daysRemaining} {subDetails.daysRemaining === 1 ? 'day' : 'days'} remaining
-                      </b>{' '}
-                      (Expires {subDetails.formattedExpiresAt})
+                      Valid until <b className="text-emerald-300 font-bold">{subDetails.formattedExpiresAt}</b>
                     </>
                   ) : (
                     <span className="text-rose-300 font-bold">
-                      License expired or unverified · Connect to refresh or upgrade
+                      License expired · Contact for Premium activation
                     </span>
                   )}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsUpgradeModalOpen(true)}
+              <a
+                href="https://wa.me/919381563241?text=Hello%20NovaPOS,%20I%20want%20to%20activate/renew%20my%20Premium%20License"
+                target="_blank"
+                rel="noreferrer"
                 style={{
-                  background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                  color: '#0F172A',
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  color: '#FFFFFF',
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 flex-shrink-0"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 no-underline"
               >
-                <ShieldCheck className="w-4 h-4 text-slate-900" />
-                <span>
-                  {subDetails.plan === 'PRO' ? 'Extend Subscription' : 'Upgrade Plan (Razorpay)'}
-                </span>
-              </button>
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span>Contact for Premium</span>
+              </a>
             </div>
-
-            {paymentSuccessMsg && (
-              <div className="mt-3 bg-emerald-500/25 border border-emerald-400/50 p-2.5 rounded-xl text-xs text-emerald-100 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                <span>{paymentSuccessMsg}</span>
-              </div>
-            )}
           </div>
 
           {/* Dedicated GST Tax Configuration & Ruleset Card */}
@@ -613,136 +545,6 @@ export const SettingsScreen: React.FC<Props> = ({
           </div>
         </div>
       </div>
-
-      {/* SaaS Plan Upgrade Modal */}
-      {isUpgradeModalOpen && (
-        <div className="license-overlay">
-          <div ref={dialogRef} className="license-dialog" role="dialog" aria-modal="true" aria-labelledby="license-title">
-            {/* Modal Header */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)',
-                color: '#FFFFFF',
-              }}
-              className="p-4 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-400/20 border border-amber-400/40 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                </div>
-                <div>
-                  <h3 id="license-title" className="text-sm font-black tracking-wide text-white">Upgrade NovaPOS SaaS License</h3>
-                  <p className="text-[11px] text-indigo-200">Official Razorpay Secured Gateway</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={isPaying}
-                aria-label="Close upgrade dialog"
-                onClick={() => setIsUpgradeModalOpen(false)}
-                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Plans Selection */}
-            <div className="license-dialog-body p-4 space-y-3.5">
-              {/* Pro Yearly Option */}
-              <button type="button" aria-pressed={selectedPlanKey === 'pro_yearly'} disabled={isPaying}
-                onClick={() => { if (!isPaying) setSelectedPlanKey('pro_yearly'); }}
-                className={`license-plan p-3.5 rounded-xl border-2 transition-all cursor-pointer relative ${
-                  selectedPlanKey === 'pro_yearly'
-                    ? 'border-indigo-600 bg-indigo-50/60 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <span className="absolute -top-2.5 right-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                  Save 17% · Best Value
-                </span>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <b className="text-sm text-slate-900">Pro Annual License</b>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">365 Days · Multi-Terminal + Auto GST + Cloud</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-base font-black text-indigo-700">₹4,999</span>
-                    <span className="text-[10px] text-slate-500 block">/ year</span>
-                  </div>
-                </div>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  <span className="text-[10px] font-semibold bg-white border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-600" /> Multi-Counter Sync
-                  </span>
-                  <span className="text-[10px] font-semibold bg-white border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-600" /> GSTR-1 Auto Reports
-                  </span>
-                  <span className="text-[10px] font-semibold bg-white border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-600" /> 24/7 Cloud Backup
-                  </span>
-                </div>
-              </button>
-
-              {/* Starter Monthly Option */}
-              <button type="button" aria-pressed={selectedPlanKey === 'starter_monthly'} disabled={isPaying}
-                onClick={() => { if (!isPaying) setSelectedPlanKey('starter_monthly'); }}
-                className={`license-plan p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
-                  selectedPlanKey === 'starter_monthly'
-                    ? 'border-indigo-600 bg-indigo-50/60 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <b className="text-sm text-slate-900">Starter Monthly</b>
-                    <p className="text-xs text-slate-500 mt-0.5">30 Days · 1 POS Terminal + Offline Billing</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-base font-black text-slate-800">₹499</span>
-                    <span className="text-[10px] text-slate-500 block">/ month</span>
-                  </div>
-                </div>
-              </button>
-
-              {paymentError && <p role="alert" className="license-error">{paymentError}</p>}
-              <button type="button" disabled={isPaying} className="license-refresh" onClick={async () => {
-                try { await refreshSubscription(); setPaymentError(null); }
-                catch (err) { setPaymentError((err as Error).message); }
-              }}>Refresh license status</button>
-              {/* Pay with Razorpay Button */}
-              <button
-                type="button"
-                onClick={handleUpgradePayment}
-                disabled={isPaying}
-                style={{
-                  background: '#5B42F3',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 14px rgba(91, 66, 243, 0.4)',
-                }}
-                className="w-full py-4 rounded-xl text-white font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-2 mt-4 cursor-pointer"
-              >
-                {isPaying ? (
-                  <span className="text-white font-bold">Connecting Razorpay Gateway...</span>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-5 h-5 text-white" />
-                    <span className="text-white font-black tracking-wide text-base">
-                      Pay {selectedPlanKey === 'pro_yearly' ? '₹4,999' : '₹499'} with Razorpay
-                    </span>
-                  </>
-                )}
-              </button>
-
-              <p className="text-[11px] text-center text-slate-500 font-medium flex items-center justify-center gap-1.5 pt-1">
-                <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Available UPI apps, Cards & NetBanking</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Compliance / Privacy Policy Modal */}
       <ComplianceModal

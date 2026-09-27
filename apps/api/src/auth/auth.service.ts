@@ -94,6 +94,33 @@ export class AuthService {
   }
 
   /**
+   * Checks whether a mobile number is already registered to prevent duplicate signup.
+   */
+  async checkPhone(phone: string): Promise<{ exists: boolean; storeName?: string; phone: string }> {
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      return { exists: false, phone: cleanPhone };
+    }
+    return this.db.system(async (db) => {
+      const staffList = await db.select().from(staffTable)
+        .where(and(eq(staffTable.phone, cleanPhone), eq(staffTable.isActive, true))).limit(1);
+
+      if (staffList.length === 0) {
+        return { exists: false, phone: cleanPhone };
+      }
+
+      const [tenant] = await db.select().from(tenants)
+        .where(eq(tenants.id, staffList[0].tenantId)).limit(1);
+
+      return {
+        exists: true,
+        phone: cleanPhone,
+        storeName: tenant?.name || 'Registered Store',
+      };
+    });
+  }
+
+  /**
    * Verifies the SMS OTP and signs in or provisions a new Tenant + Outlet + Staff account.
    */
   async verifyOtp(input: {
@@ -153,12 +180,10 @@ export class AuthService {
       const slugBase = businessName.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'store';
       const tenantSlug = `${slugBase}-${cleanPhone.slice(-4)}`;
 
-      // Check coupon code: NOVAPOSNEW gives 3 days trial
+      // Every new merchant gets a 7-day free trial on signup
       const isCouponValid = (input.couponCode || '').trim().toUpperCase() === 'NOVAPOSNEW';
-      const trialDays = 3; // One 72-hour trial per new tenant, independent of client storage.
-      const validUntil = trialDays > 0
-        ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
-        : new Date(Date.now() - 1000).toISOString(); // Requires subscription activation if no coupon
+      const trialDays = 7; // 7-days free trial on new store registration
+      const validUntil = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
       const [newTenant] = await db.insert(tenants).values({
         name: businessName,

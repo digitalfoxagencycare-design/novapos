@@ -228,26 +228,19 @@ export const DashboardScreen: React.FC<Props> = ({
                     <b className="text-indigo-600 font-bold">Valid until {subDetails.formattedExpiresAt}</b>
                   </>
                 ) : (
-                  <span className="text-rose-600 font-bold">Account inactive · Contact Admin or upgrade</span>
+                  <span className="text-rose-600 font-bold">License expired · Contact for Premium</span>
                 )}
               </div>
             </div>
           </div>
           <span
             style={{
-              backgroundColor:
-                subDetails.plan === 'PRO'
-                  ? '#10B981'
-                  : subDetails.plan === 'STARTER'
-                  ? '#6366F1'
-                  : subDetails.isExpired
-                  ? '#EF4444'
-                  : '#4F46E5',
+              backgroundColor: subDetails.isExpired ? '#EF4444' : '#10B981',
               color: '#FFFFFF',
             }}
             className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex-shrink-0"
           >
-            {subDetails.isExpired ? 'Upgrade' : 'Active'}
+            {subDetails.isExpired ? 'Expired' : 'Active'}
           </span>
         </div>
 

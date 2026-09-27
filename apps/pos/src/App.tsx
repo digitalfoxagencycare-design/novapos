@@ -380,10 +380,6 @@ export function App() {
         onLogout={handleLogout}
       />
 
-      {(entitlement.isTrial || entitlement.isExpired) && <div className="license-banner" role="status">
-        <span>{entitlement.isExpired ? 'License verification or renewal required' : `Free trial · ${entitlement.countdown} remaining`}</span>
-        <button onClick={() => handleNavigate('settings')}>Manage license</button>
-      </div>}
       {/* Main Viewport */}
       <main className={`pos-main-content ${['billing', 'calculator', 'tables'].includes(activeTab) ? 'full-screen-flow' : 'has-bottom-nav'}`}>
         {activeTab === 'dashboard' && (

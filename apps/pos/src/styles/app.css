@@ -972,11 +972,11 @@ input:focus, select:focus, textarea:focus {
   background: #FFFFFF;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 10px;
+  padding: 10px 10px 8px 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 90px;
+  min-height: 104px;
   cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -997,7 +997,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .product-code {
@@ -1021,12 +1021,15 @@ input:focus, select:focus, textarea:focus {
   font-size: 13px;
   font-weight: 700;
   color: #0F172A;
-  line-height: 1.3;
-  margin-bottom: 6px;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  min-height: 36px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
 }
 
 .product-card-bottom {
