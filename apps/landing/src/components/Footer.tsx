@@ -1,5 +1,5 @@
 import React from 'react';
-import { Store, ShieldCheck, Heart, Scale, Lock, FileText, ArrowUp } from 'lucide-react';
+import { Store, ShieldCheck, Phone, Mail, Heart, Scale, Lock, FileText, Building2 } from 'lucide-react';
 
 interface Props {
   onOpenPrivacy: () => void;
@@ -8,94 +8,91 @@ interface Props {
 }
 
 export const Footer: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms, onOpenAbout }) => {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   return (
-    <footer className="bg-black/90 border-t border-white/10 text-slate-400 text-xs relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-          {/* Brand Col */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg">
+    <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 text-xs">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+          {/* Brand Info */}
+          <div className="space-y-3 md:col-span-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
                 <Store className="w-5 h-5" />
               </div>
               <span className="text-xl font-black text-white">NovaPOS</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              India's leading provider of Android Touch POS billing machines, thermal receipt printers, and cloud SaaS retail billing software.
+            <p className="text-slate-400 text-xs leading-relaxed">
+              India's leading smart touch billing machines, Bluetooth thermal printers, and 100% offline-first POS cloud software.
             </p>
-            <div className="text-[11px] text-slate-500 font-mono">
-              Domain: novasaas.net / novapos.in
+            <div className="pt-2 text-[11px] text-slate-400">
+              <span>Helpline: </span>
+              <a href="tel:9381563241" className="text-white font-bold hover:text-indigo-400">
+                +91 9381563241
+              </a>
             </div>
           </div>
 
-          {/* POS Hardware */}
-          <div className="space-y-3">
-            <b className="text-sm font-bold text-white uppercase tracking-wider block">POS Hardware</b>
-            <ul className="space-y-2 text-xs">
-              <li><a href="#hardware" className="hover:text-white transition-colors">Handheld Smart POS Terminal</a></li>
-              <li><a href="#hardware" className="hover:text-white transition-colors">15.6" Dual-Screen Desktop POS</a></li>
-              <li><a href="#hardware" className="hover:text-white transition-colors">58mm & 80mm Thermal Receipt Printers</a></li>
-              <li><a href="#hardware" className="hover:text-white transition-colors">Wireless 2D QR / Barcode Scanners</a></li>
-              <li><a href="#hardware" className="hover:text-white transition-colors">Electronic Cash Drawers (RJ11)</a></li>
+          {/* Products & Combos */}
+          <div className="space-y-2.5">
+            <b className="text-white text-xs uppercase tracking-wider block font-black">All Products</b>
+            <ul className="space-y-1.5 text-slate-400">
+              <li><a href="#products" className="hover:text-white">Bada Machine + 1-Yr Software (₹6,499)</a></li>
+              <li><a href="#products" className="hover:text-white">Touch POS Hardware Standalone (₹2,999)</a></li>
+              <li><a href="#products" className="hover:text-white">1-Year Software SaaS License (₹2,999)</a></li>
+              <li><a href="#products" className="hover:text-white">Bluetooth Thermal Printers (₹1,999)</a></li>
+              <li><a href="#download" className="hover:text-white">Android Mobile POS App</a></li>
             </ul>
           </div>
 
-          {/* Software & Industries */}
-          <div className="space-y-3">
-            <b className="text-sm font-bold text-white uppercase tracking-wider block">Software & Industries</b>
-            <ul className="space-y-2 text-xs">
-              <li><a href="#software" className="hover:text-white transition-colors">Kirana & Supermarket GST Billing</a></li>
-              <li><a href="#software" className="hover:text-white transition-colors">Restaurant Dine-In, Tables & KOT</a></li>
-              <li><a href="#software" className="hover:text-white transition-colors">Bakery, Sweets & Confectionery</a></li>
-              <li><a href="#software" className="hover:text-white transition-colors">Apparel, Garments & Footwear</a></li>
-              <li><a href="#software" className="hover:text-white transition-colors">Customer Khata & Udhar Ledger</a></li>
+          {/* Software Features */}
+          <div className="space-y-2.5">
+            <b className="text-white text-xs uppercase tracking-wider block font-black">Solutions</b>
+            <ul className="space-y-1.5 text-slate-400">
+              <li><a href="#software" className="hover:text-white">Kirana & Supermarket POS</a></li>
+              <li><a href="#software" className="hover:text-white">Restaurant Tables & Kitchen KOT</a></li>
+              <li><a href="#software" className="hover:text-white">1-Tap Dynamic UPI QR</a></li>
+              <li><a href="#software" className="hover:text-white">Customer Khata / Udhaar Ledger</a></li>
+              <li><a href="#software" className="hover:text-white">18 Automated Tax Reports</a></li>
             </ul>
           </div>
 
-          {/* Legal & Regulatory Compliance */}
-          <div className="space-y-3">
-            <b className="text-sm font-bold text-white uppercase tracking-wider block">Legal & Compliance</b>
-            <ul className="space-y-2 text-xs">
+          {/* Legal & Compliance */}
+          <div className="space-y-2.5">
+            <b className="text-white text-xs uppercase tracking-wider block font-black">Legal & Compliance</b>
+            <ul className="space-y-1.5 text-slate-400">
               <li>
-                <button type="button" onClick={onOpenPrivacy} className="hover:text-indigo-400 flex items-center gap-1.5 transition-colors">
-                  <Lock className="w-3.5 h-3.5" /> <span>Google Play Privacy Policy</span>
+                <button onClick={onOpenPrivacy} className="hover:text-white text-left flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-indigo-400" />
+                  <span>Privacy Policy (Play Store Compliant)</span>
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onOpenTerms} className="hover:text-indigo-400 flex items-center gap-1.5 transition-colors">
-                  <FileText className="w-3.5 h-3.5" /> <span>Terms of Service & Licensing</span>
+                <button onClick={onOpenTerms} className="hover:text-white text-left flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-indigo-400" />
+                  <span>Terms of Service & Warranty</span>
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onOpenAbout} className="hover:text-indigo-400 flex items-center gap-1.5 transition-colors">
-                  <Scale className="w-3.5 h-3.5" /> <span>Publisher Details & Grievance</span>
+                <button onClick={onOpenAbout} className="hover:text-white text-left flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-indigo-400" />
+                  <span>Publisher & Contact Details</span>
                 </button>
               </li>
               <li>
-                <a href="#download" className="hover:text-indigo-400 flex items-center gap-1.5 transition-colors">
-                  <ShieldCheck className="w-3.5 h-3.5" /> <span>Target SDK 35 (Android 15) Ready</span>
-                </a>
+                <a href="#contact" className="hover:text-white">Grievance Officer: care@digitalfox.in</a>
               </li>
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-          <p>
-            © 2026 NovaPOS Technologies & Digital Fox Agency. All rights reserved. Compliant with Consumer Protection (E-Commerce) Rules, 2020.
-          </p>
-          <button
-            onClick={scrollToTop}
-            className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
-          >
-            <span>Back to top</span>
-            <ArrowUp className="w-3.5 h-3.5" />
-          </button>
+        <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+          <div>
+            © {new Date().getFullYear()} NovaPOS Technologies & Digital Fox Agency India. All rights reserved.
+          </div>
+          <div className="flex items-center gap-4">
+            <span>Built with precision for Indian Retailers</span>
+            <span>Target SDK 35 (Android 15) Ready</span>
+          </div>
         </div>
       </div>
     </footer>

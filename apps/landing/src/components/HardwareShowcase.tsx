@@ -1,192 +1,323 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Smartphone,
   Printer,
-  Scan,
-  Monitor,
   Check,
   ShieldCheck,
-  Cpu,
-  Wifi,
-  BatteryCharging,
+  Star,
   Zap,
   Phone,
+  Sparkles,
+  ShoppingBag,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 
 export const HardwareShowcase: React.FC = () => {
-  const hardwareProducts = [
+  const [activeTab, setActiveTab] = useState<'all' | 'combos' | 'machines' | 'software'>('all');
+
+  const products = [
     {
-      id: 'handheld-pos',
-      name: 'NovaPOS Pro Handheld Smart POS',
-      tag: 'MOST POPULAR FOR RETAIL & RESTAURANTS',
-      price: '₹11,999',
-      originalPrice: '₹14,999',
-      badge: 'Best Seller',
-      desc: 'All-in-one Android touch handheld terminal with in-built 58mm high-speed thermal receipt printer, 4G SIM + WiFi, and 5000mAh battery.',
+      id: 'bada-machine-software',
+      category: 'combos',
+      name: 'NovaPOS Bada Billing Machine with 1-Year Software',
+      badge: 'SALE',
+      offerTag: 'BEST VALUE COMBO · SAVE 35%',
+      price: '₹6,499.00',
+      originalPrice: '₹9,999.00',
+      discount: '35% OFF',
+      rating: '5.0',
+      reviewsCount: 148,
+      desc: 'Complete all-in-one smart touchscreen billing terminal with in-built 58mm high-speed thermal receipt printer + 1-Year full Pro Cloud SaaS software license.',
+      icon: (
+        <div className="w-full h-44 bg-gradient-to-tr from-indigo-50 via-slate-50 to-purple-50 rounded-xl flex items-center justify-center relative p-4 border border-indigo-100/60">
+          <div className="flex items-center gap-3">
+            {/* Terminal Mockup */}
+            <div className="w-20 h-32 bg-slate-900 rounded-xl border-2 border-indigo-500 shadow-md flex flex-col p-1.5 justify-between">
+              <div className="w-full h-2 bg-indigo-500/40 rounded-sm"></div>
+              <div className="bg-slate-800 rounded p-1 text-[8px] text-center text-emerald-400 font-mono font-bold">
+                NovaPOS
+              </div>
+              <div className="w-full h-4 bg-slate-700 rounded-sm flex items-center justify-center">
+                <span className="w-2 h-0.5 bg-emerald-400 rounded-full"></span>
+              </div>
+            </div>
+            {/* Receipt Strip */}
+            <div className="w-16 h-28 bg-white border border-slate-300 rounded-lg shadow-sm p-1.5 flex flex-col justify-between text-[6.5px] text-slate-700">
+              <div className="font-bold border-b border-slate-200 pb-0.5 text-center text-[7px] text-indigo-700">BILL RECEIPT</div>
+              <div className="space-y-0.5">
+                <div>Rice 1kg · ₹62</div>
+                <div>Dal 1kg · ₹140</div>
+              </div>
+              <div className="border-t border-slate-200 pt-0.5 font-bold text-slate-900">Total: ₹202</div>
+            </div>
+          </div>
+          <span className="absolute top-2 left-2 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+            Combo Sale
+          </span>
+        </div>
+      ),
       specs: [
-        '5.5" IPS Capacitive High-Res HD Touchscreen',
-        'In-Built 58mm ESC/POS Thermal Printer (70mm/s)',
-        '4G LTE SIM Slot + Dual-Band 5GHz/2.4GHz WiFi',
-        '5000 mAh All-Day Heavy Duty Battery (14+ Hrs)',
-        'Integrated 5MP Auto-Focus Barcode Camera Scanner',
-        'Pre-Loaded NovaPOS Pro Software (Offline & Cloud)',
+        'Android Smart Touchscreen POS Terminal',
+        'In-built 58mm High-Speed Thermal Receipt Printer',
+        '1-Year Full Pro SaaS Software License Included',
+        '4G LTE SIM Slot + Dual-Band WiFi Connectivity',
+        '5000 mAh Heavy Duty All-Day Battery (14+ Hours)',
+        '1-Year Replacement Warranty & Pan-India Free Delivery',
       ],
-      idealFor: 'Kirana Stores, Bakeries, Food Trucks, Delivery, Restaurants & Cafes',
+      idealFor: 'Supermarkets, Kirana, Restaurants, Bakeries & Retail Stores',
     },
     {
-      id: 'desktop-pos',
-      name: 'NovaPOS Dual-Screen Desktop Terminal',
-      tag: 'SUPERMARKETS & HIGH-VOLUME OUTLETS',
-      price: '₹18,999',
-      originalPrice: '₹24,999',
-      badge: 'Flagship Performance',
-      desc: 'Heavy-duty 15.6" Full HD operator touchscreen with 10.1" customer-facing dynamic UPI QR display and external auto-cut thermal printer.',
+      id: 'smart-pos-machine',
+      category: 'machines',
+      name: 'NovaPOS Smart Touch POS Hardware Machine (Standalone)',
+      badge: 'SALE',
+      offerTag: 'COMMERCIAL GRADE HARDWARE',
+      price: '₹2,999.00',
+      originalPrice: '₹3,999.00',
+      discount: '25% OFF',
+      rating: '4.9',
+      reviewsCount: 95,
+      desc: 'Heavy-duty handheld Android touch billing machine with integrated 58mm thermal receipt printer. Works with NovaPOS or any Android billing app.',
+      icon: (
+        <div className="w-full h-44 bg-gradient-to-tr from-slate-50 via-indigo-50/40 to-slate-100 rounded-xl flex items-center justify-center relative p-4 border border-slate-200">
+          <div className="w-24 h-36 bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-md flex flex-col p-2 justify-between">
+            <div className="w-full h-3 bg-indigo-600 rounded-sm flex items-center justify-center">
+              <span className="text-[7px] text-white font-bold font-mono">58mm PRINTER</span>
+            </div>
+            <div className="bg-slate-800 rounded-lg p-2 text-center text-[9px] text-white font-bold">
+              Touch Terminal
+            </div>
+            <div className="w-full h-3 bg-slate-800 rounded-full flex items-center justify-center">
+              <span className="w-3 h-1 bg-emerald-400 rounded-full"></span>
+            </div>
+          </div>
+          <span className="absolute top-2 left-2 bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+            Hardware Only
+          </span>
+        </div>
+      ),
       specs: [
-        '15.6" Full HD Main Display + 10.1" Customer Screen',
-        'Octa-Core High-Speed Processor with 4GB RAM / 64GB ROM',
-        '80mm USB / Ethernet High-Speed Thermal Auto-Cutter',
-        'Supports Heavy-Duty Electronic Cash Drawer (RJ11)',
-        'Multiple USB 3.0 & RS232 Ports for Weighing Scales',
-        'Lifetime Multi-Terminal Cloud Synchronization',
+        '5.5" IPS High-Sensitivity Capacitive Touchscreen',
+        'In-built 58mm ESC/POS Thermal Printer (70mm/s)',
+        'Heavy Duty 5000 mAh Rechargeable Lithium Battery',
+        'Rear Barcode Scanner Camera with Auto-Focus LED',
+        'Bluetooth 4.2 + High Speed USB Support',
+        '1-Year Hardware Replacement Warranty',
       ],
-      idealFor: 'Supermarkets, Hypermarkets, Garments, Sweet Shops, Pharmacy & Bars',
+      idealFor: 'Food Delivery, Cash Counters, Mobile Van Billing, Express Outlets',
     },
     {
-      id: 'thermal-printers',
-      name: 'NovaPOS Bluetooth Thermal Receipt Printers',
-      tag: '58MM (2-INCH) & 80MM (3-INCH)',
-      price: '₹2,499',
-      originalPrice: '₹3,499',
-      badge: 'Universal Hardware',
-      desc: 'Wireless Bluetooth + USB direct ESC/POS printers. Prints clean GST bills, barcodes, and receipts directly from any Android phone or PC.',
+      id: 'software-1year-sub',
+      category: 'software',
+      name: 'NovaPOS 1-Year Cloud SaaS Software Subscription (Recharge)',
+      badge: 'SALE',
+      offerTag: 'SPECIAL 45% OFF DISCOUNT',
+      price: '₹2,999.00',
+      originalPrice: '₹5,499.00',
+      discount: '45% OFF',
+      rating: '5.0',
+      reviewsCount: 210,
+      desc: 'Complete 365-day license for your Android mobile, tablet, or PC. Unlimited billing, thermal printing, multi-counter sync, and automated GSTR-1 reports.',
+      icon: (
+        <div className="w-full h-44 bg-gradient-to-tr from-purple-50 via-indigo-50 to-emerald-50 rounded-xl flex items-center justify-center relative p-4 border border-purple-100">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Sparkles className="w-7 h-7 text-amber-300" />
+            </div>
+            <span className="text-xs font-black text-indigo-900 bg-white px-3 py-1 rounded-full border border-indigo-100 shadow-xs">
+              365 Days Pro License
+            </span>
+          </div>
+          <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+            45% OFF
+          </span>
+        </div>
+      ),
       specs: [
-        '58mm (2") and 80mm (3") Models with Auto-Cut options',
-        'Bluetooth 4.2 BLE + High-Speed USB Interface',
-        'Supports Standard 58mm Paper Rolls (Available Everywhere)',
-        'Built-in 2000mAh Rechargeable Lithium Battery',
-        '1-Tap Direct Printing from Calculator & Sales Invoices',
-        'Compatible with Android, iOS, Windows, Mac & Linux',
+        '365 Days Uninterrupted Billing & Live Sync',
+        '100% Offline-First SQLite Database Engine',
+        'Multi-Terminal Real-Time Sync (up to 5 counters)',
+        '18 Comprehensive Reports & Automated GSTR-1',
+        'Dynamic UPI QR Payment Verification',
+        'Customer Khata / Udhaar & Supplier Ledger',
       ],
-      idealFor: 'Mobile Retail Billing, Khata Receipts, Express Counters',
+      idealFor: 'All Android Phones, Tablets, Touch POS Terminals & Web Desktops',
     },
     {
-      id: 'barcode-scanners',
-      name: 'NovaPOS 2D Laser Barcode & QR Scanners',
-      tag: 'HANDHELD & OMNIDIRECTIONAL DESKTOP',
-      price: '₹1,499',
-      originalPrice: '₹2,299',
-      badge: 'High Speed',
-      desc: 'Instant 0.05s scanning for all 1D retail barcodes and 2D QR codes (even damaged or printed on mobile screens). Plug & Play USB.',
+      id: 'bluetooth-printer',
+      category: 'machines',
+      name: 'NovaPOS 58mm / 80mm Wireless Bluetooth Thermal Printer',
+      badge: 'SALE',
+      offerTag: 'DIRECT PRINTING ACCESSORY',
+      price: '₹1,999.00',
+      originalPrice: '₹2,999.00',
+      discount: '33% OFF',
+      rating: '4.8',
+      reviewsCount: 82,
+      desc: 'Wireless Bluetooth & USB thermal receipt printer. 1-Tap instant printing from NovaPOS mobile app or computer without ink or ribbon.',
+      icon: (
+        <div className="w-full h-44 bg-gradient-to-tr from-amber-50 via-slate-50 to-indigo-50 rounded-xl flex items-center justify-center relative p-4 border border-amber-100">
+          <div className="w-28 h-24 bg-slate-900 rounded-xl border-2 border-slate-700 shadow-md p-2 flex flex-col justify-between">
+            <div className="w-full h-4 bg-slate-800 rounded border-b border-slate-600 flex items-center justify-center">
+              <div className="w-12 h-1 bg-white/40 rounded-full"></div>
+            </div>
+            <div className="text-center text-[8px] text-emerald-400 font-mono font-bold">
+              ESC/POS BT 58MM
+            </div>
+            <div className="flex justify-between items-center px-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span className="text-[7px] text-slate-400">FEED</span>
+            </div>
+          </div>
+          <span className="absolute top-2 left-2 bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+            Universal
+          </span>
+        </div>
+      ),
       specs: [
-        'Reads EAN-13, UPC, Code-128, QR Code, DataMatrix',
-        'Wireless 2.4GHz + USB Wired Dual-Mode Connection',
-        'Scan rate: 300 scans/sec with shockproof rubber casing',
-        'Automatic continuous scan mode & trigger mode',
-        'Plug & Play — No driver installation required',
-        'Supports 50-meter wireless transmission distance',
+        'High-Speed Thermal ESC/POS Print (90mm/s)',
+        'Bluetooth 4.2 + USB Direct Connectivity',
+        '2000 mAh Rechargeable Lithium Battery',
+        'Compatible with Android Phones, Tablets & Windows PC',
+        'Uses standard 58mm paper rolls (No ink/cartridge needed)',
+        '1-Year Warranty & Free 2 Paper Rolls Included',
       ],
-      idealFor: 'Fast Grocery Scanning, Stock Inventory Audits, Wholesale',
+      idealFor: 'Kirana Shops, Small Cafes, Khata Receipts, Express Mobile Billing',
     },
   ];
 
+  const filteredProducts = products.filter((p) => {
+    if (activeTab === 'all') return true;
+    return p.category === activeTab;
+  });
+
   return (
-    <section id="hardware" className="py-20 md:py-32 relative bg-slate-950/60 border-t border-white/5">
+    <section id="products" className="py-16 md:py-24 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs font-bold text-indigo-400 uppercase tracking-wider">
-            <span>Hardware Billing Machines</span>
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
-            Commercial-Grade POS Hardware & <span className="text-gradient-purple">Billing Terminals</span>
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            All Products & POS Machines
           </h2>
-          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-            Engineered for non-stop, 365-day heavy billing in Indian retail stores. Backed by a 1-year replacement warranty, free pan-India shipping, and remote installation.
+          <p className="text-sm sm:text-base text-slate-600">
+            Explore commercial-grade billing machines, software subscriptions, and hardware combos with transparent pricing.
           </p>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+            {[
+              { id: 'all', label: 'All Products' },
+              { id: 'combos', label: 'Machine + Software Combos' },
+              { id: 'machines', label: 'Hardware Machines & Printers' },
+              { id: 'software', label: 'Software Subscriptions (45% OFF)' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Hardware Product Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {hardwareProducts.map((p) => (
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((p) => (
             <div
               key={p.id}
-              className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/10 hover:border-indigo-500/40 transition-all group"
+              className="product-store-card p-5 bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-xl transition-all"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    {p.badge}
+                {/* Visual Graphic */}
+                {p.icon}
+
+                {/* Offer Tag */}
+                <div className="mt-4 mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md inline-block">
+                    {p.offerTag}
                   </span>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-500 line-through mr-2">{p.originalPrice}</span>
-                    <span className="text-2xl font-black text-emerald-400">{p.price}</span>
-                  </div>
                 </div>
 
-                <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">
+                {/* Title */}
+                <h3 className="text-base font-bold text-slate-900 leading-snug min-h-[44px]">
                   {p.name}
                 </h3>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mt-0.5">
-                  {p.tag}
-                </span>
 
-                <p className="text-xs text-slate-300 mt-3 leading-relaxed">
-                  {p.desc}
-                </p>
+                {/* Star Rating */}
+                <div className="flex items-center gap-1.5 my-2">
+                  <div className="flex text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">({p.reviewsCount})</span>
+                </div>
+
+                {/* Pricing Block */}
+                <div className="flex items-baseline gap-2 my-3">
+                  <span className="text-2xl font-black text-slate-900">{p.price}</span>
+                  <span className="text-xs text-slate-400 line-through font-medium">{p.originalPrice}</span>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    {p.discount}
+                  </span>
+                </div>
 
                 {/* Specs List */}
-                <div className="mt-5 pt-4 border-t border-white/10 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                    Key Specifications:
-                  </span>
-                  {p.specs.map((spec, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span>{spec}</span>
+                <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3 my-3">
+                  {p.specs.slice(0, 4).map((spec, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">{spec}</span>
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-[11px] text-slate-400">
-                  <b className="text-indigo-300">Ideal For:</b> {p.idealFor}
-                </div>
               </div>
 
-              {/* Action Button */}
-              <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center gap-3">
+              {/* Order Button */}
+              <div className="mt-4 pt-3 border-t border-slate-100">
                 <a
                   href={`https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20order%20the%20${encodeURIComponent(
                     p.name
-                  )}%20(${p.price})`}
+                  )}%20for%20${encodeURIComponent(p.price)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 font-bold text-xs text-white text-center flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
+                  className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-center flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>Order on WhatsApp / Book Demo</span>
+                  <span>Order on WhatsApp</span>
                 </a>
               </div>
             </div>
           ))}
         </div>
 
-        {/* 1 Year Warranty Banner */}
-        <div className="mt-12 glass-panel p-6 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* 1 Year Pan-India Warranty Banner */}
+        <div className="mt-12 p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-7 h-7 text-emerald-400" />
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
-              <b className="text-sm font-bold text-white block">100% Pan-India Hardware Warranty & Onsite Setup</b>
-              <p className="text-xs text-slate-400">
-                1-Year replacement warranty on all Touch POS machines and thermal printers with instant video call tech support.
+              <b className="text-sm font-bold text-slate-900 block">1-Year Pan-India Replacement Warranty & Free Remote Setup</b>
+              <p className="text-xs text-slate-600">
+                100% Genuine commercial hardware with doorstep delivery and dedicated WhatsApp video technical support.
               </p>
             </div>
           </div>
           <a
-            href="tel:9701463241"
-            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/10 transition-colors flex items-center gap-2 flex-shrink-0"
+            href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20inquire%20about%20hardware%20warranty%20and%20orders"
+            target="_blank"
+            rel="noreferrer"
+            className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 border border-slate-300 transition-colors flex items-center gap-2 flex-shrink-0 shadow-xs"
           >
-            <span>Hardware Helpline: +91 9701463241</span>
+            <span>WhatsApp Orders: +91 9381563241</span>
           </a>
         </div>
       </div>

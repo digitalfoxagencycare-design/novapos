@@ -266,7 +266,7 @@ export const SettingsScreen: React.FC<Props> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 flex items-start gap-2">
               <span className="font-bold text-indigo-600 flex-shrink-0">Tip:</span>
               <span>
-                For mobile Bluetooth 58mm printers (Ezo, Everycom, TVS), pair once in Android phone Bluetooth Settings.
+                For mobile Bluetooth 58mm printers (NovaPOS, Everycom, TVS, NGX), pair once in Android phone Bluetooth Settings.
                 Bills print with 1-tap from Calculator and Sales Invoice.
               </span>
             </div>

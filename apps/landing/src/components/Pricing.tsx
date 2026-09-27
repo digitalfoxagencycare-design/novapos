@@ -8,244 +8,187 @@ import {
   Zap,
   Printer,
   CreditCard,
+  Star,
 } from 'lucide-react';
 
 export const Pricing: React.FC = () => {
-  const [billingCycle, setBillingCycle] = useState<'software' | 'hardware'>('software');
+  const [pricingTab, setPricingTab] = useState<'all' | 'software' | 'combos'>('all');
 
   return (
-    <section id="pricing" className="py-20 md:py-32 relative bg-slate-950/80 border-t border-white/5">
+    <section id="pricing" className="py-16 md:py-24 bg-slate-50 border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+        <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-xs font-bold text-indigo-700 uppercase tracking-wider">
             <span>Transparent Pricing & Plans</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight">
-            Simple, Affordable Plans for <span className="text-gradient-purple">Every Business Stage</span>
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            Affordable Plans for <span className="text-gradient-purple">Every Retail Outlet</span>
           </h2>
-          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-            Start with our 3-Day Free Trial on your own Android phone, or upgrade to a complete Touch POS Hardware Machine with lifetime software.
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            Get started with a 7-Day Free Trial on your own mobile, or choose our complete POS billing machine bundle with lifetime hardware ownership.
           </p>
 
-          {/* Tab Switcher */}
-          <div className="inline-flex p-1.5 rounded-2xl bg-white/5 border border-white/10 mt-6">
+          {/* Switcher Buttons */}
+          <div className="inline-flex p-1 rounded-xl bg-white border border-slate-200 mt-4 shadow-xs">
             <button
-              onClick={() => setBillingCycle('software')}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
-                billingCycle === 'software'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setPricingTab('all')}
+              className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+                pricingTab === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Software SaaS Plans (Mobile App & Web)
+              All Packages
             </button>
             <button
-              onClick={() => setBillingCycle('hardware')}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
-                billingCycle === 'hardware'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setPricingTab('software')}
+              className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+                pricingTab === 'software'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Hardware POS + Software Combos
+              Software Plans (45% OFF)
+            </button>
+            <button
+              onClick={() => setPricingTab('combos')}
+              className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+                pricingTab === 'combos'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Machine + Software Combos
             </button>
           </div>
         </div>
 
-        {/* Software Plans View */}
-        {billingCycle === 'software' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {/* Plan 1: 3-Day Free Trial */}
-            <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/10">
+        {/* Pricing Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
+          {/* Plan 1: 7-Day Free Trial */}
+          {(pricingTab === 'all' || pricingTab === 'software') && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-slate-200 shadow-sm hover:shadow-md transition-all">
               <div>
-                <span className="text-xs font-black uppercase tracking-wider text-slate-400">Trial Edition</span>
-                <h3 className="text-2xl font-black text-white mt-1">3-Day Free Trial</h3>
-                <p className="text-xs text-slate-400 mt-2">
-                  Full Pro Edition access on any Android mobile phone. No credit card required.
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Free Trial</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">7-Day Free Trial</h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Full Pro access on your Android phone, tablet, or web browser. No payment required.
                 </p>
 
                 <div className="mt-6 mb-6">
-                  <span className="text-4xl font-black text-white">₹0</span>
-                  <span className="text-xs text-slate-400 ml-2 font-medium">for 3 Days</span>
+                  <span className="text-4xl font-black text-slate-900">₹0</span>
+                  <span className="text-xs text-slate-500 ml-2 font-semibold">for 7 Days</span>
                 </div>
 
-                <div className="space-y-3 text-xs text-slate-300">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>10 Pre-loaded Merchant Test Stores</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Unlimited Sales Invoices & Thermal Print</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Barcode Scanning with Mobile Camera</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>DayBook & GST Calculation Tools</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Instant SMS OTP Authentication</span></div>
+                <div className="space-y-3 text-xs text-slate-700">
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>10 Pre-loaded Merchant Test Accounts</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Unlimited Sales Invoices & Thermal Slip Print</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>1-Tap Dynamic UPI QR Generation</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Barcode Scanning via Mobile Camera</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Instant SMS OTP Sign In</span></div>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="mt-8 pt-6 border-t border-slate-100">
                 <a
                   href="#download"
-                  className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-white text-center block transition-all"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-xs text-slate-800 text-center block transition-all"
                 >
                   Download App & Start Trial
                 </a>
               </div>
             </div>
+          )}
 
-            {/* Plan 2: Pro Annual License (Most Popular) */}
-            <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-indigo-500 shadow-2xl relative bg-indigo-950/40">
-              <span className="absolute -top-3.5 right-6 bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
-                Best Value · Save 17%
+          {/* Plan 2: 1-Year Pro Software SaaS License (Featured) */}
+          {(pricingTab === 'all' || pricingTab === 'software') && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-indigo-600 shadow-xl relative">
+              <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                45% OFF · POPULAR CHOICE
               </span>
 
               <div>
-                <span className="text-xs font-black uppercase tracking-wider text-indigo-400">Full Cloud License</span>
-                <h3 className="text-2xl font-black text-white mt-1">Pro Annual License</h3>
-                <p className="text-xs text-slate-300 mt-2">
-                  Complete 365-day license for high volume stores with multi-counter cloud sync.
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Full Cloud Software</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">1-Year Pro Software</h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Complete 365-day license for high volume stores with live multi-counter sync.
                 </p>
 
                 <div className="mt-6 mb-6">
-                  <span className="text-4xl font-black text-indigo-300">₹4,999</span>
-                  <span className="text-xs text-slate-400 ml-2 font-medium">/ year (₹416/mo)</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-indigo-600">₹2,999</span>
+                    <span className="text-xs text-slate-400 line-through">₹5,499</span>
+                    <span className="text-xs text-slate-500 font-semibold">/ year</span>
+                  </div>
+                  <span className="text-[11px] text-emerald-700 font-bold block mt-1">Special Discount: Flat 45% OFF</span>
                 </div>
 
-                <div className="space-y-3 text-xs text-slate-200">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span><b>365 Days Uninterrupted Live Billing</b></span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span><b>Multi-Terminal Real-Time Sync (5 Counters)</b></span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Automatic Daily Cloud Database Backup</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Complete GSTR-1 Automated Reports</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>WhatsApp Bill Receipts with UPI Pay Link</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Priority 24/7 Telephone & WhatsApp Support</span></div>
+                <div className="space-y-3 text-xs text-slate-700">
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span><b>365 Days Uninterrupted Billing</b></span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span><b>Multi-Terminal Real-Time Sync (5 Counters)</b></span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Automatic Daily Cloud Database Backup</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Complete GSTR-1 Automated Export</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>WhatsApp Bill Receipts with UPI Pay Link</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Priority 24/7 Telephone & WhatsApp Support</span></div>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="mt-8 pt-6 border-t border-slate-100">
                 <a
-                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%20Pro%20Annual%20Plan%20(%E2%82%B94999)"
+                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%201-Year%20Software%20Plan%20(%E2%82%B92999)"
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:brightness-110 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all"
+                  className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition-all active:scale-95"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Upgrade to Pro Annual (₹4,999)</span>
+                  <span>Activate 1-Year License (₹2,999)</span>
                 </a>
               </div>
             </div>
+          )}
 
-            {/* Plan 3: Starter Monthly */}
-            <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/10">
+          {/* Plan 3: Bada Billing Machine + 1-Year Software Combo */}
+          {(pricingTab === 'all' || pricingTab === 'combos') && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-slate-200 shadow-sm hover:shadow-md transition-all">
               <div>
-                <span className="text-xs font-black uppercase tracking-wider text-slate-400">Monthly Plan</span>
-                <h3 className="text-2xl font-black text-white mt-1">Starter Monthly</h3>
-                <p className="text-xs text-slate-400 mt-2">
-                  Flexible month-to-month subscription for single counter retail & cafes.
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hardware + Software Combo</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">Bada Machine + 1-Year Software</h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Touch POS Machine with in-built 58mm Thermal Printer + 1-Year Pro Software License.
                 </p>
 
                 <div className="mt-6 mb-6">
-                  <span className="text-4xl font-black text-white">₹499</span>
-                  <span className="text-xs text-slate-400 ml-2 font-medium">/ month</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-slate-900">₹6,499</span>
+                    <span className="text-xs text-slate-400 line-through">₹9,999</span>
+                  </div>
+                  <span className="text-xs text-slate-500 block mt-1">Complete Bundle · 0 Monthly Rental</span>
                 </div>
 
-                <div className="space-y-3 text-xs text-slate-300">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>30 Days Full Access</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>1 POS Terminal Billing</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Unlimited Invoices & Thermal Printing</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>GST & Tax Calculations</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Customer Khata & Ledger Management</span></div>
+                <div className="space-y-3 text-xs text-slate-700">
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Android Smart Touch POS Billing Terminal</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>In-Built High Speed 58mm Thermal Printer</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>1-Year Full Pro SaaS Software License</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>5000 mAh Rechargeable Battery (14+ hours)</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>1-Year Machine Replacement Warranty</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Free Thermal Rolls + Free Pan-India Courier</span></div>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="mt-8 pt-6 border-t border-slate-100">
                 <a
-                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%20Starter%20Monthly%20Plan%20(%E2%82%B9499)"
+                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20order%20the%20Bada%20Machine%20+%20Software%20Combo%20(%E2%82%B96499)"
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-white text-center block transition-all"
-                >
-                  Get Starter Monthly (₹499)
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Hardware Combo Packs View */}
-        {billingCycle === 'hardware' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch max-w-4xl mx-auto">
-            {/* Combo 1: Handheld Smart POS Combo */}
-            <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-indigo-500 bg-indigo-950/30">
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">Complete Hardware + Software Combo</span>
-                <h3 className="text-2xl font-black text-white mt-1">Handheld Smart POS Bundle</h3>
-                <p className="text-xs text-slate-300 mt-2">
-                  Android Touch POS Machine with In-Built Thermal Printer + Lifetime Software.
-                </p>
-
-                <div className="mt-6 mb-6">
-                  <span className="text-4xl font-black text-emerald-400">₹11,999</span>
-                  <span className="text-xs text-slate-400 line-through ml-2">₹14,999</span>
-                  <span className="text-xs text-slate-400 block mt-1">One-Time Payment · 0 Monthly Rental</span>
-                </div>
-
-                <div className="space-y-3 text-xs text-slate-200">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>5.5" Touchscreen Handheld Smart POS Device</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>In-Built High Speed 58mm Thermal Printer</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>5000 mAh Rechargeable Battery (14+ hours)</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>4G SIM Slot + WiFi Connectivity</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>1-Year Machine Replacement Warranty</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Free 5 Thermal Paper Rolls + Pan-India Courier</span></div>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <a
-                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20order%20the%20Handheld%20POS%20Bundle%20(%E2%82%B911999)"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-lg"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Order Handheld Bundle on WhatsApp</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Combo 2: Supermarket Desktop Dual-Screen Combo */}
-            <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/10">
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-cyan-400">Flagship Counter Setup</span>
-                <h3 className="text-2xl font-black text-white mt-1">Desktop Dual-Screen Supermarket Bundle</h3>
-                <p className="text-xs text-slate-400 mt-2">
-                  15.6" Touch Terminal + 10.1" Customer Display + 80mm Auto-Cut Printer + 2D Scanner.
-                </p>
-
-                <div className="mt-6 mb-6">
-                  <span className="text-4xl font-black text-emerald-400">₹18,999</span>
-                  <span className="text-xs text-slate-400 line-through ml-2">₹24,999</span>
-                  <span className="text-xs text-slate-400 block mt-1">Complete Counter Setup · 0 Monthly Rental</span>
-                </div>
-
-                <div className="space-y-3 text-xs text-slate-300">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>15.6" Full HD Operator Touch Terminal (4GB RAM)</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>10.1" Customer-Facing Dynamic UPI QR Screen</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>80mm High-Speed USB/LAN Thermal Auto-Cutter</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Hands-Free Desktop 2D Barcode & QR Scanner</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>Heavy Duty Cash Drawer Connection Port (RJ11)</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-400 flex-shrink-0" /><span>1-Year Warranty with Onsite Remote Setup</span></div>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <a
-                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20order%20the%20Desktop%20Dual-Screen%20Bundle%20(%E2%82%B918999)"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-white text-center flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 font-bold text-xs text-white text-center flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
                   <Phone className="w-4 h-4 text-emerald-400" />
-                  <span>Order Desktop Terminal on WhatsApp</span>
+                  <span>Order Combo on WhatsApp (₹6,499)</span>
                 </a>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
