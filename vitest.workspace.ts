@@ -10,4 +10,5 @@ export default [
   'packages/*',
   'apps/api',
   'apps/pos',
+  'apps/admin',
 ];

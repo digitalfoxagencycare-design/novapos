@@ -54,10 +54,10 @@ export class AdminApi {
   }
 
   async logout() {
-    if (this.tokens?.refreshToken) {
-      await this.raw('POST', '/auth/logout', { refreshToken: this.tokens.refreshToken }).catch(() => undefined);
-    }
+    const refreshToken = this.tokens?.refreshToken;
+    const request = refreshToken ? this.raw('POST', '/auth/logout', { refreshToken }, true) : Promise.resolve();
     this.persist(null);
+    await request.catch(() => undefined);
   }
 
   me() { return this.get('/auth/me'); }
@@ -142,7 +142,11 @@ export class AdminApi {
     const res = await fetch(this.baseUrl + path, {
       method, headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
     }).catch((err) => {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        throw new ApiError(0, 'TIMEOUT', 'The server took too long to respond. Please retry.');
+      }
       throw new ApiError(0, 'NETWORK', `Could not reach the server: ${err.message}`);
     });
 

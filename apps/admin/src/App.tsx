@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatMoney } from '@novapos/shared';
 import { AdminApi, ApiError, downloadCsv, printPage } from './lib/api';
 
@@ -11,146 +11,131 @@ interface Outlet {
   currency: string | null; locale: string | null; country: string;
 }
 
+const NAV: { key: Page; label: string; icon: string; needs: string }[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: '📊', needs: 'report:read' },
+  { key: 'merchants', label: 'Stores & Merchants', icon: '🏪', needs: 'settings:read' },
+  { key: 'menu', label: 'Menu & Catalog', icon: '🍔', needs: 'menu:read' },
+  { key: 'reports', label: 'Sales Reports', icon: '📈', needs: 'report:read' },
+  { key: 'tax', label: 'GST Tax Rules', icon: '⚖️', needs: 'settings:read' },
+  { key: 'printing', label: 'Thermal Printing', icon: '🖨️', needs: 'settings:read' },
+];
+
 export function App() {
   const [signedIn, setSignedIn] = useState(api.isAuthenticated);
   const [page, setPage] = useState<Page>('dashboard');
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletId, setOutletId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pageVersion, setPageVersion] = useState(0);
   const [me, setMe] = useState<{ role: string; permissions: string[] } | null>(null);
+  const requestVersion = useRef(0);
 
   const loadInitialData = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
+    setBootstrapError(null);
     setError(null);
+    setMe(null);
+    setOutlets([]);
     try {
-      const [list, who] = await Promise.all([
-        api.outlets().catch((e) => {
-          console.warn('Failed to fetch outlets:', e);
-          return [];
-        }),
-        api.me().catch((e) => {
-          console.warn('Failed to fetch me:', e);
-          return { role: 'OWNER', permissions: ['report:read', 'settings:read', 'menu:read', 'order:read', 'tenant:admin'] };
-        }),
-      ]);
-      if (Array.isArray(list) && list.length > 0) {
-        setOutlets(list);
-        setOutletId((prev) => prev ?? list[0].id);
+      const [list, who] = await Promise.all([api.outlets(), api.me()]);
+      if (version !== requestVersion.current) return;
+      if (!Array.isArray(list) || list.some(o => !o || typeof o.id !== 'string' || !o.id || typeof o.name !== 'string')) {
+        throw new Error('The server returned an invalid outlet list. Please retry or contact support.');
       }
-      if (who) setMe(who);
+      if (!who || typeof who.role !== 'string' || !Array.isArray(who.permissions) || who.permissions.some((p: unknown) => typeof p !== 'string')) {
+        throw new Error('The server did not return valid account permissions. Please retry or sign in again.');
+      }
+      setOutlets(list);
+      setOutletId(previous => list.some(o => o.id === previous) ? previous : list[0]?.id ?? null);
+      setMe(who);
+      const allowed = NAV.filter(n => who.permissions.includes(n.needs));
+      setPage(previous => allowed.some(n => n.key === previous) ? previous : allowed[0]?.key ?? 'dashboard');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setSignedIn(false);
-      else setError((err as Error).message);
+      if (version !== requestVersion.current) return;
+      if (err instanceof ApiError && err.status === 401) {
+        void api.logout();
+        setSignedIn(false);
+      } else {
+        setBootstrapError(err instanceof Error ? err.message : 'Unable to load your workspace. Please retry.');
+      }
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (signedIn) {
-      void loadInitialData();
-    }
+    if (signedIn) void loadInitialData();
+    return () => { ++requestVersion.current; };
   }, [signedIn, loadInitialData]);
 
-  const defaultOutlet: Outlet = useMemo(() => ({
-    id: outletId || 'df4d8c2c-00ce-4026-89bf-504e17c0406d',
-    name: 'Sri Balaji Traders (Main Branch)',
-    code: 'MAIN',
-    currency: 'INR',
-    locale: 'en-IN',
-    country: 'IN',
-  }), [outletId]);
+  const outlet = useMemo(() => outlets.find(o => o.id === outletId) ?? null, [outlets, outletId]);
+  const allowedNav = me ? NAV.filter(n => me.permissions.includes(n.needs)) : [];
+  const canViewPage = allowedNav.some(n => n.key === page);
+  const retryPage = () => { setError(null); setPageVersion(v => v + 1); };
 
-  const outlet = useMemo(
-    () => outlets.find((o) => o.id === outletId) ?? (outlets.length > 0 ? outlets[0] : defaultOutlet),
-    [outlets, outletId, defaultOutlet],
-  );
-
-  if (!signedIn) {
-    return <SignIn onSignedIn={() => { setSignedIn(true); setError(null); }} />;
-  }
-
-  const nav: { key: Page; label: string; icon: string; needs?: string }[] = [
-    { key: 'dashboard', label: 'Dashboard', icon: '📊', needs: 'report:read' },
-    { key: 'merchants', label: 'Stores & Merchants', icon: '🏪', needs: 'settings:read' },
-    { key: 'menu', label: 'Menu & Catalog', icon: '🍔', needs: 'menu:read' },
-    { key: 'reports', label: 'Sales Reports', icon: '📈', needs: 'report:read' },
-    { key: 'tax', label: 'GST Tax Rules', icon: '⚖️', needs: 'settings:read' },
-    { key: 'printing', label: 'Thermal Printing', icon: '🖨️', needs: 'settings:read' },
-  ];
+  if (!signedIn) return <SignIn onSignedIn={() => { setLoading(true); setSignedIn(true); setError(null); }} />;
 
   return (
     <div className="shell">
-      <nav className="side">
-        <div className="side__brand">
-          <span style={{ color: 'var(--accent)', marginRight: 6 }}>✦</span>
-          NovaPOS Admin
-        </div>
-        {nav
-          .filter((n) => !n.needs || !me?.permissions || me.permissions.includes(n.needs) || me?.role === 'OWNER')
-          .map((n) => (
-            <button
-              key={n.key}
-              className={`side__link ${page === n.key ? 'side__link--active' : ''}`}
-              onClick={() => setPage(n.key)}
-            >
-              <span style={{ marginRight: 8 }}>{n.icon}</span>
-              {n.label}
-            </button>
-          ))}
-        <div className="side__foot">
-          {outlets.length > 1 && (
-            <select
-              value={outletId ?? ''}
-              onChange={(e) => setOutletId(e.target.value)}
-              style={{ width: '100%', marginBottom: 10 }}
-              aria-label="Outlet"
-            >
-              {outlets.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-          )}
-          <div style={{ marginBottom: 8, fontWeight: 600, color: 'var(--text)' }}>
-            👤 {me?.role || 'OWNER'} · Sri Balaji
-          </div>
-          <button className="btn btn--sm" style={{ width: '100%' }} onClick={() => { void api.logout(); setSignedIn(false); }}>
-            Sign out
+      <nav className="side" aria-label="Admin navigation">
+        <div className="side__brand">NovaPOS Admin</div>
+        {!me && <p className="side__status" role="status">{loading ? 'Checking access…' : 'Access could not be verified'}</p>}
+        {(me ? allowedNav : NAV).map(n => (
+          <button key={n.key} disabled={!me || loading}
+            aria-current={me && page === n.key ? 'page' : undefined}
+            className={`side__link ${me && page === n.key ? 'side__link--active' : ''}`}
+            onClick={() => { setPage(n.key); setError(null); }}>
+            <span aria-hidden="true" style={{ marginRight: 8 }}>{n.icon}</span>{n.label}
           </button>
+        ))}
+        <div className="side__foot">
+          {outlets.length > 1 && <select value={outletId ?? ''} aria-label="Outlet" style={{ width: '100%', marginBottom: 10 }}
+            onChange={e => { setOutletId(e.target.value); setError(null); }}>
+            {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>}
+          <div style={{ marginBottom: 8 }}>{me?.role ?? 'Verifying account'}{outlet ? ` · ${outlet.name}` : ''}</div>
+          <button className="btn btn--sm" onClick={() => {
+            ++requestVersion.current;
+            void api.logout();
+            setMe(null); setOutlets([]); setOutletId(null); setSignedIn(false);
+          }}>Sign out</button>
         </div>
       </nav>
-
-      <main className="main">
-        {error && (
-          <div className="error-banner">
-            <strong>Notice: </strong> {error}
-            <button className="btn btn--sm" style={{ marginLeft: 10 }} onClick={() => setError(null)}>
-              Dismiss
-            </button>
-            <button className="btn btn--sm btn--primary" style={{ marginLeft: 6 }} onClick={() => void loadInitialData()}>
-              Retry
-            </button>
-          </div>
-        )}
-
-        {loading && !outlet ? (
-          <div className="empty" style={{ paddingTop: 60 }}>
-            <div style={{ fontSize: 24, marginBottom: 12 }}>⏳</div>
-            <h3>Connecting to NovaPOS Live Cloud…</h3>
-            <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>Fetching outlet analytics & catalog</p>
-            <button className="btn btn--primary btn--sm" onClick={() => void loadInitialData()}>
-              Retry Now
-            </button>
-          </div>
-        ) : (
+      <main className="main" aria-busy={loading}>
+        {loading ? (
+          <section className="workspace-state" role="status"><h1>Loading your workspace</h1><p>Checking account access and available outlets…</p></section>
+        ) : bootstrapError ? (
+          <section className="workspace-state"><h1>Unable to load your workspace</h1>
+            <div className="error-banner" role="alert">{bootstrapError}</div>
+            <button className="btn btn--primary" onClick={() => void loadInitialData()}>Retry</button>
+          </section>
+        ) : !allowedNav.length ? (
+          <section className="workspace-state"><h1>No admin access</h1><p>Your account has no permissions for these pages. Ask your administrator to update your access.</p>
+            <button className="btn" onClick={() => void loadInitialData()}>Retry</button>
+          </section>
+        ) : !outlet ? (
+          <section className="workspace-state"><h1>No outlets assigned</h1><p>Ask your administrator to create or assign an active outlet, then retry.</p>
+            <button className="btn btn--primary" onClick={() => void loadInitialData()}>Retry</button>
+          </section>
+        ) : canViewPage ? (
           <>
-            {page === 'dashboard' && <Dashboard outlet={outlet} onError={setError} />}
-            {page === 'merchants' && <Merchants onError={setError} />}
-            {page === 'menu' && <Menu onError={setError} outlet={outlet} />}
-            {page === 'reports' && <Reports outlet={outlet} onError={setError} />}
-            {page === 'tax' && <TaxSettings outlet={outlet} />}
-            {page === 'printing' && <Printing outlet={outlet} onError={setError} />}
+            {error && <div className="error-banner" role="alert">{error}
+              <button className="btn btn--sm" onClick={retryPage}>Retry</button>
+              <button className="btn btn--sm" onClick={() => setError(null)}>Dismiss</button>
+            </div>}
+            <div key={`${outlet.id}:${page}:${pageVersion}`}>
+              {page === 'dashboard' && <Dashboard outlet={outlet} />}
+              {page === 'merchants' && <Merchants onError={setError} />}
+              {page === 'menu' && <Menu onError={setError} outlet={outlet} />}
+              {page === 'reports' && <Reports outlet={outlet} onError={setError} />}
+              {page === 'tax' && <TaxSettings outlet={outlet} />}
+              {page === 'printing' && <Printing outlet={outlet} onError={setError} />}
+            </div>
           </>
-        )}
+        ) : null}
       </main>
     </div>
   );
@@ -158,12 +143,18 @@ export function App() {
 
 /* ───────────────────────── dashboard ───────────────────────── */
 
-function Dashboard({ outlet, onError }: { outlet: Outlet; onError: (m: string) => void }) {
+function Dashboard({ outlet }: { outlet: Outlet }) {
   const [today, setToday] = useState<any>(null);
   const [week, setWeek] = useState<any[]>([]);
   const money = useMoney(outlet);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const request = useRef(0);
 
   const load = useCallback(async () => {
+    const version = ++request.current;
+    setLoading(true);
+    setLoadError(null);
     try {
       const to = new Date();
       const from = new Date(Date.now() - 7 * 86400_000);
@@ -171,17 +162,24 @@ function Dashboard({ outlet, onError }: { outlet: Outlet; onError: (m: string) =
         api.today(outlet.id),
         api.sales(outlet.id, from.toISOString(), to.toISOString()),
       ]);
+      if (version !== request.current) return;
       setToday(t);
       setWeek(s);
-    } catch (err) { onError((err as Error).message); }
-  }, [outlet.id, onError]);
+    } catch (err) { if (version === request.current) setLoadError((err as Error).message); }
+    finally { if (version === request.current) setLoading(false); }
+  }, [outlet.id]);
 
   useEffect(() => {
     void load();
     // The dashboard is often left open on a back-office screen during service.
     const t = setInterval(() => void load(), 30_000);
-    return () => clearInterval(t);
+    return () => { ++request.current; clearInterval(t); };
   }, [load]);
+
+  if (!today) return <section className="workspace-state"><h1>Today</h1><p>{outlet.name}</p>
+    {loadError ? <><div className="error-banner" role="alert">{loadError}</div><button className="btn btn--primary" onClick={() => void load()}>Retry reports</button></>
+      : <p role="status">Loading reports…</p>}
+  </section>;
 
   const peak = Math.max(1, ...week.map((d) => d.grossMinor));
 
@@ -190,6 +188,9 @@ function Dashboard({ outlet, onError }: { outlet: Outlet; onError: (m: string) =
       <h1 className="page__title">Today</h1>
       <p className="page__sub">{outlet.name} · updates every 30 seconds</p>
 
+      {loadError && <div className="error-banner" role="alert">{loadError} Showing the last successful update.
+        <button className="btn btn--sm" disabled={loading} onClick={() => void load()}>Retry reports</button>
+      </div>}
       <div className="cards">
         <Card label="Sales today" value={money(today?.grossMinor ?? 0)} hint={`${today?.orders ?? 0} orders`} />
         <Card label="Average order" value={money(today?.averageOrderMinor ?? 0)} />
