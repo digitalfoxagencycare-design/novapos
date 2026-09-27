@@ -106,6 +106,13 @@ export const SideDrawer: React.FC<Props> = ({
       forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
     },
     {
+      id: 'staff',
+      label: 'Staff Management (2 Logins)',
+      subtitle: 'Staff credentials & permissions',
+      icon: <Users className="w-5 h-5 text-purple-600" />,
+      forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
+    },
+    {
       id: 'settings',
       label: 'Settings (34 Controls)',
       subtitle: 'Bill layout, print, tax & hardware',

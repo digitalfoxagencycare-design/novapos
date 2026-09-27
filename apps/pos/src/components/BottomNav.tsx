@@ -17,7 +17,8 @@ export type MainTab =
   | 'calculator'
   | 'tables'
   | 'reports'
-  | 'profile';
+  | 'profile'
+  | 'staff';
 
 interface Props {
   activeTab: MainTab;

@@ -19,6 +19,7 @@ import { InventoryScreen, type CatalogItem } from './screens/InventoryScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
+import { StaffScreen } from './screens/StaffScreen';
 
 import {
   type BusinessProfile,
@@ -484,6 +485,13 @@ export function App() {
           />
         )}
 
+        {activeTab === 'staff' && (
+          <StaffScreen
+            phone={profileDetails.phone}
+            onBack={handleBack}
+          />
+        )}
+
         {activeTab === 'settings' && (
           <SettingsScreen
             profileName={profileDetails.profileName}
@@ -501,7 +509,7 @@ export function App() {
       <PrintPreview />
 
       {/* Mobile Bottom Navigation Bar (4 Core Tabs) - Only on primary navigation screens */}
-      {['dashboard', 'party', 'inventory', 'settings', 'reports', 'profile'].includes(activeTab) && (
+      {['dashboard', 'party', 'inventory', 'settings', 'reports', 'profile', 'staff'].includes(activeTab) && (
         <BottomNav
           activeTab={activeTab}
           onSelectTab={handleNavigate}
