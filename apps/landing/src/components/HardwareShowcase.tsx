@@ -29,34 +29,7 @@ export const HardwareShowcase: React.FC = () => {
       rating: '5.0',
       reviewsCount: 148,
       desc: 'Complete all-in-one smart touchscreen billing terminal with in-built 58mm high-speed thermal receipt printer + 1-Year full Pro Cloud SaaS software license.',
-      icon: (
-        <div className="w-full h-44 bg-gradient-to-tr from-indigo-50 via-slate-50 to-purple-50 rounded-xl flex items-center justify-center relative p-4 border border-indigo-100/60">
-          <div className="flex items-center gap-3">
-            {/* Terminal Mockup */}
-            <div className="w-20 h-32 bg-slate-900 rounded-xl border-2 border-indigo-500 shadow-md flex flex-col p-1.5 justify-between">
-              <div className="w-full h-2 bg-indigo-500/40 rounded-sm"></div>
-              <div className="bg-slate-800 rounded p-1 text-[8px] text-center text-emerald-400 font-mono font-bold">
-                NovaPOS
-              </div>
-              <div className="w-full h-4 bg-slate-700 rounded-sm flex items-center justify-center">
-                <span className="w-2 h-0.5 bg-emerald-400 rounded-full"></span>
-              </div>
-            </div>
-            {/* Receipt Strip */}
-            <div className="w-16 h-28 bg-white border border-slate-300 rounded-lg shadow-sm p-1.5 flex flex-col justify-between text-[6.5px] text-slate-700">
-              <div className="font-bold border-b border-slate-200 pb-0.5 text-center text-[7px] text-indigo-700">BILL RECEIPT</div>
-              <div className="space-y-0.5">
-                <div>Rice 1kg · ₹62</div>
-                <div>Dal 1kg · ₹140</div>
-              </div>
-              <div className="border-t border-slate-200 pt-0.5 font-bold text-slate-900">Total: ₹202</div>
-            </div>
-          </div>
-          <span className="absolute top-2 left-2 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-            Combo Sale
-          </span>
-        </div>
-      ),
+      image: '/assets/images/bada-machine.jpg',
       specs: [
         'Android Smart Touchscreen POS Terminal',
         'In-built 58mm High-Speed Thermal Receipt Printer',
@@ -79,24 +52,7 @@ export const HardwareShowcase: React.FC = () => {
       rating: '4.9',
       reviewsCount: 95,
       desc: 'Heavy-duty handheld Android touch billing machine with integrated 58mm thermal receipt printer. Works with NovaPOS or any Android billing app.',
-      icon: (
-        <div className="w-full h-44 bg-gradient-to-tr from-slate-50 via-indigo-50/40 to-slate-100 rounded-xl flex items-center justify-center relative p-4 border border-slate-200">
-          <div className="w-24 h-36 bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-md flex flex-col p-2 justify-between">
-            <div className="w-full h-3 bg-indigo-600 rounded-sm flex items-center justify-center">
-              <span className="text-[7px] text-white font-bold font-mono">58mm PRINTER</span>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-2 text-center text-[9px] text-white font-bold">
-              Touch Terminal
-            </div>
-            <div className="w-full h-3 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="w-3 h-1 bg-emerald-400 rounded-full"></span>
-            </div>
-          </div>
-          <span className="absolute top-2 left-2 bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-            Hardware Only
-          </span>
-        </div>
-      ),
+      image: '/assets/images/handheld-pos.jpg',
       specs: [
         '5.5" IPS High-Sensitivity Capacitive Touchscreen',
         'In-built 58mm ESC/POS Thermal Printer (70mm/s)',
@@ -119,15 +75,17 @@ export const HardwareShowcase: React.FC = () => {
       rating: '5.0',
       reviewsCount: 210,
       desc: 'Complete 365-day license for your Android mobile, tablet, or PC. Unlimited billing, thermal printing, multi-counter sync, and automated GSTR-1 reports.',
+      image: null,
       icon: (
-        <div className="w-full h-44 bg-gradient-to-tr from-purple-50 via-indigo-50 to-emerald-50 rounded-xl flex items-center justify-center relative p-4 border border-purple-100">
+        <div className="w-full h-48 bg-gradient-to-tr from-purple-50 via-indigo-50 to-emerald-50 rounded-xl flex items-center justify-center relative p-4 border border-purple-100">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <Sparkles className="w-7 h-7 text-amber-300" />
+            <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Sparkles className="w-8 h-8 text-amber-300" />
             </div>
             <span className="text-xs font-black text-indigo-900 bg-white px-3 py-1 rounded-full border border-indigo-100 shadow-xs">
               365 Days Pro License
             </span>
+            <span className="text-[10px] text-slate-500 font-semibold">Multi-Counter Cloud Sync</span>
           </div>
           <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
             45% OFF
@@ -156,18 +114,19 @@ export const HardwareShowcase: React.FC = () => {
       rating: '4.8',
       reviewsCount: 82,
       desc: 'Wireless Bluetooth & USB thermal receipt printer. 1-Tap instant printing from NovaPOS mobile app or computer without ink or ribbon.',
+      image: null,
       icon: (
-        <div className="w-full h-44 bg-gradient-to-tr from-amber-50 via-slate-50 to-indigo-50 rounded-xl flex items-center justify-center relative p-4 border border-amber-100">
-          <div className="w-28 h-24 bg-slate-900 rounded-xl border-2 border-slate-700 shadow-md p-2 flex flex-col justify-between">
+        <div className="w-full h-48 bg-gradient-to-tr from-amber-50 via-slate-50 to-indigo-50 rounded-xl flex items-center justify-center relative p-4 border border-amber-100">
+          <div className="w-32 h-28 bg-slate-900 rounded-xl border-2 border-slate-700 shadow-md p-2.5 flex flex-col justify-between">
             <div className="w-full h-4 bg-slate-800 rounded border-b border-slate-600 flex items-center justify-center">
-              <div className="w-12 h-1 bg-white/40 rounded-full"></div>
+              <div className="w-14 h-1 bg-white/40 rounded-full"></div>
             </div>
-            <div className="text-center text-[8px] text-emerald-400 font-mono font-bold">
+            <div className="text-center text-[9px] text-emerald-400 font-mono font-bold">
               ESC/POS BT 58MM
             </div>
             <div className="flex justify-between items-center px-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-[7px] text-slate-400">FEED</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-[7.5px] text-slate-400 font-mono font-bold">READY</span>
             </div>
           </div>
           <span className="absolute top-2 left-2 bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
@@ -235,8 +194,21 @@ export const HardwareShowcase: React.FC = () => {
               className="product-store-card p-5 bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-xl transition-all"
             >
               <div>
-                {/* Visual Graphic */}
-                {p.icon}
+                {/* Visual Graphic: Real Photo or Clean Vector Card */}
+                {p.image ? (
+                  <div className="w-full h-48 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 relative group">
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                      {p.badge}
+                    </span>
+                  </div>
+                ) : (
+                  p.icon
+                )}
 
                 {/* Offer Tag */}
                 <div className="mt-4 mb-2">

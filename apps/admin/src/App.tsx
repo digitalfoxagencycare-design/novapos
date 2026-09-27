@@ -779,9 +779,9 @@ function useMoney(outlet: Outlet) {
 }
 
 function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
-  const [tenantSlug, setTenantSlug] = useState('nova-kitchen');
-  const [email, setEmail] = useState('lokesh');
-  const [password, setPassword] = useState('9701463241');
+  const [tenantSlug, setTenantSlug] = useState('sri-balaji-3241');
+  const [email, setEmail] = useState('9381563241');
+  const [password, setPassword] = useState('1411');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -800,24 +800,27 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
           } finally { setBusy(false); }
         }}
       >
-        <h1 style={{ marginTop: 0 }}>NovaPOS Admin</h1>
+        <h1 style={{ marginTop: 0 }}>NovaPOS Admin Portal</h1>
+        <p style={{ fontSize: '12px', color: '#64748B', marginTop: '-8px', marginBottom: '16px' }}>
+          Store management, live reports, catalog items & merchant approval
+        </p>
         {error && <div className="error-banner">{error}</div>}
         <div className="field">
-          <label htmlFor="t">Business</label>
-          <input id="t" value={tenantSlug} onChange={(e) => setTenantSlug(e.target.value)} required />
+          <label htmlFor="t">Store / Business Slug</label>
+          <input id="t" value={tenantSlug} onChange={(e) => setTenantSlug(e.target.value)} placeholder="e.g. sri-balaji-3241" required />
         </div>
         <div className="field">
-          <label htmlFor="e">Username or Email</label>
+          <label htmlFor="e">Admin Mobile or Username</label>
           <input id="e" type="text" value={email} onChange={(e) => setEmail(e.target.value)}
-                 autoComplete="username" required />
+                 placeholder="e.g. 9381563241 or Lokesh" autoComplete="username" required />
         </div>
         <div className="field">
-          <label htmlFor="p">Password</label>
+          <label htmlFor="p">4-Digit PIN / Password</label>
           <input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                 autoComplete="current-password" required />
+                 placeholder="e.g. 1411" autoComplete="current-password" required />
         </div>
-        <button className="btn btn--primary" style={{ width: '100%' }} type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
+        <button className="btn btn--primary" style={{ width: '100%', marginTop: '8px' }} type="submit" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in to Admin Dashboard'}
         </button>
       </form>
     </div>
