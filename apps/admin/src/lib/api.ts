@@ -27,7 +27,9 @@ export class AdminApi {
   constructor(
     private readonly baseUrl = import.meta.env.VITE_API_URL
       ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
-      : '/api/v1',
+      : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? '/api/v1'
+          : 'https://api.novasaas.net/api/v1'),
   ) {
     try {
       const raw = localStorage.getItem('novapos:admin:tokens');

@@ -27,7 +27,7 @@ class PhonePinLoginDto {
 class LoginDto {
   @IsString() tenantSlug!: string;
   @IsString() email!: string;
-  @MinLength(8) password!: string;
+  @MinLength(4) password!: string;
 }
 
 class PinLoginDto {
