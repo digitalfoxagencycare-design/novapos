@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable } from '@nestjs/common';
+import { Controller, Get, Injectable, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
@@ -52,12 +52,64 @@ export class OutletsService {
           ownerName: owner?.name || 'Store Owner',
           status: t.status,
           plan: sub.plan || 'starter_monthly',
-          subscriptionStatus: sub.status || 'TRIAL',
+          subscriptionStatus: sub.status || 'PENDING_ACTIVATION',
           validUntil: sub.validUntil,
           createdAt: t.createdAt,
           outletsCount: tenantOutlets.length,
         };
       });
+    });
+  }
+
+  async activateMerchant(tenantId: string, days = 365, plan = 'pro_yearly') {
+    return this.db.system(async (db) => {
+      const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      if (!tenant) throw new Error('Tenant not found');
+
+      const existingSettings = (tenant.settings || {}) as Record<string, any>;
+      const validUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      await db.update(tenants)
+        .set({
+          status: 'ACTIVE',
+          settings: {
+            ...existingSettings,
+            subscription: {
+              status: 'ACTIVE',
+              plan,
+              validUntil,
+              activatedAt: new Date().toISOString(),
+            },
+          },
+        })
+        .where(eq(tenants.id, tenantId));
+
+      return { success: true, message: `Merchant activated for ${days} days (${plan})` };
+    });
+  }
+
+  async deactivateMerchant(tenantId: string) {
+    return this.db.system(async (db) => {
+      const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      if (!tenant) throw new Error('Tenant not found');
+
+      const existingSettings = (tenant.settings || {}) as Record<string, any>;
+
+      await db.update(tenants)
+        .set({
+          status: 'SUSPENDED',
+          settings: {
+            ...existingSettings,
+            subscription: {
+              ...(existingSettings.subscription || {}),
+              status: 'SUSPENDED',
+              validUntil: new Date(0).toISOString(),
+            },
+          },
+        })
+        .where(eq(tenants.id, tenantId));
+
+      return { success: true, message: 'Merchant subscription suspended' };
     });
   }
 }
@@ -79,5 +131,19 @@ export class OutletsController {
   @ApiOperation({ summary: 'All registered merchants/stores overview for admin' })
   listMerchants() {
     return this.outlets.listAllMerchants();
+  }
+
+  @Post('merchants/:tenantId/activate')
+  @RequirePermissions('settings:read')
+  @ApiOperation({ summary: 'Activate merchant subscription' })
+  activate(@Param('tenantId') tenantId: string) {
+    return this.outlets.activateMerchant(tenantId);
+  }
+
+  @Post('merchants/:tenantId/deactivate')
+  @RequirePermissions('settings:read')
+  @ApiOperation({ summary: 'Deactivate / suspend merchant subscription' })
+  deactivate(@Param('tenantId') tenantId: string) {
+    return this.outlets.deactivateMerchant(tenantId);
   }
 }

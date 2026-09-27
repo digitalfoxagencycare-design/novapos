@@ -61,6 +61,8 @@ export class AdminApi {
   me() { return this.get('/auth/me'); }
   outlets() { return this.get('/outlets'); }
   merchants() { return this.get('/outlets/merchants'); }
+  activateMerchant(tenantId: string) { return this.post(`/outlets/merchants/${tenantId}/activate`, {}); }
+  deactivateMerchant(tenantId: string) { return this.post(`/outlets/merchants/${tenantId}/deactivate`, {}); }
 
   /* menu */
   categories() { return this.get('/menu/categories'); }

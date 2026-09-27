@@ -698,6 +698,7 @@ function Merchants({ onError }: { onError: (m: string) => void }) {
                 <th>Status</th>
                 <th>Valid Until</th>
                 <th>Branches</th>
+                <th>Admin Action</th>
               </tr>
             </thead>
             <tbody>
@@ -716,6 +717,38 @@ function Merchants({ onError }: { onError: (m: string) => void }) {
                     {m.validUntil ? new Date(m.validUntil).toLocaleDateString('en-IN') : '—'}
                   </td>
                   <td className="num">{m.outletsCount}</td>
+                  <td>
+                    {m.subscriptionStatus === 'ACTIVE' ? (
+                      <button
+                        className="btn btn--sm"
+                        style={{ background: '#FEE2E2', color: '#991B1B', borderColor: '#FCA5A5' }}
+                        onClick={async () => {
+                          try {
+                            await api.deactivateMerchant(m.id);
+                            await load();
+                          } catch (e) {
+                            onError((e as Error).message);
+                          }
+                        }}
+                      >
+                        Suspend
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn--sm btn--primary"
+                        onClick={async () => {
+                          try {
+                            await api.activateMerchant(m.id);
+                            await load();
+                          } catch (e) {
+                            onError((e as Error).message);
+                          }
+                        }}
+                      >
+                        Approve & Activate
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

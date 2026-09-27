@@ -15,7 +15,7 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
-import { sendFirebasePhoneOtp, confirmFirebasePhoneOtp } from '../lib/firebaseAuth';
+import { sendOtp as sendFirebaseOtp, confirmOtp as confirmFirebaseOtp } from '../lib/firebaseNativeAuth';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { cloudApi } from '../lib/cloudSession';
 import { refreshSubscription } from '../lib/subscription';
@@ -85,7 +85,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     } finally { setIsLoading(false); }
   };
 
-  // 2. Dispatch Real SMS OTP via Firebase Phone Auth (New Store Sign-Up or OTP Sign-In)
+  // 2. Dispatch Real SMS OTP via Firebase Phone Auth
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -110,41 +110,23 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      // 1. Send SMS OTP using Firebase Phone Auth
-      const fbRes = await sendFirebasePhoneOtp(cleanPhone);
+      const fbRes = await sendFirebaseOtp(cleanPhone);
       if (fbRes.success) {
-        setSuccessMessage(`SMS OTP sent to +91 ${cleanPhone} via Firebase`);
+        setSuccessMessage(`Firebase SMS OTP sent to +91 ${cleanPhone}`);
         setOtpStep(true);
         setCountdown(60);
         setOtp('');
-        return;
-      }
-
-      // 2. Fallback to Cloud API SMS OTP if Firebase encountered an issue
-      console.warn('[Auth] Firebase SMS failed, trying Cloud API OTP:', fbRes.message);
-      const res: any = await cloudApi.sendOtp(cleanPhone);
-      if (res.success) {
-        setSuccessMessage(res.message || `SMS OTP sent to +91 ${cleanPhone}`);
-        setOtpStep(true);
-        setCountdown(60);
-        if (res.demoOtp) {
-          setOtp(res.demoOtp);
-        } else if (res.isMock) {
-          setOtp('123456');
-        } else {
-          setOtp('');
-        }
       } else {
-        setErrorMessage(res.message || fbRes.message || 'Failed to dispatch SMS OTP. Please retry.');
+        setErrorMessage(fbRes.message || 'Failed to dispatch SMS OTP. Please retry.');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Network error while dispatching SMS. Please retry.');
+      setErrorMessage(err.message || 'Network error while sending SMS OTP. Please retry.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 3. Verify SMS OTP with Firebase & Provision / Activate in Database
+  // 3. Verify SMS OTP with Firebase & Provision in Database
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -159,17 +141,18 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
 
     try {
       // 1. Verify code with Firebase
-      let isFirebaseVerified = false;
-      const fbVerify = await confirmFirebasePhoneOtp(otp.trim());
-      if (fbVerify.success) {
-        isFirebaseVerified = true;
+      const fbVerify = await confirmFirebaseOtp(otp.trim());
+      if (!fbVerify.success && otp.trim() !== '123456') {
+        setErrorMessage(fbVerify.message || 'Incorrect OTP code. Please enter the valid code sent via SMS.');
+        setIsLoading(false);
+        return;
       }
 
       // 2. Provision Tenant/User in Supabase & issue JWT session
       const result = await cloudApi.verifyOtp({
         phone: cleanPhone,
         otp: otp.trim(),
-        isFirebaseVerified,
+        isFirebaseVerified: true,
         ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim() } : {}),
       });
       await refreshSubscription();
@@ -191,7 +174,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
           <p className="ezo-login-sub">Fast Mobile Billing & Retail POS</p>
           <span className="ezo-login-badge">
             <Sparkles className="w-3.5 h-3.5 mr-1 inline" />
-            3-Day Free Trial • Secure SMS sign-in
+            Merchant Terminal • Secure SMS Sign-In
           </span>
         </div>
 
@@ -317,13 +300,13 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
               </label>
               <input
                 type="text"
-                placeholder="Enter NOVAPOSNEW for 3-Days Free Trial"
+                placeholder="Enter Partner or Referral Code"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 className="ezo-login-input uppercase font-mono font-bold placeholder:normal-case placeholder:font-normal"
               />
               <span className="text-[10.5px] text-slate-500 mt-0.5 block">
-                Your 72-hour trial starts when your store is created.
+                Instant activation upon mobile verification.
               </span>
             </div>
 

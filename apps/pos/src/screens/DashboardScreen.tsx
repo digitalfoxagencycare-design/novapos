@@ -219,16 +219,16 @@ export const DashboardScreen: React.FC<Props> = ({
                   : subDetails.plan === 'STARTER'
                   ? 'Starter Monthly Active'
                   : subDetails.isExpired
-                  ? '3-Day Free Trial Expired'
-                  : '3-Day Free Trial Active'}
+                  ? 'Subscription Inactive / Expired'
+                  : 'Merchant License Active'}
               </div>
               <div className="text-[11px] text-slate-500 truncate">
                 {!subDetails.isExpired ? (
                   <>
-                    <b className="text-indigo-600 font-bold">{subDetails.daysRemaining} days remaining</b> (Expires {subDetails.formattedExpiresAt})
+                    <b className="text-indigo-600 font-bold">Valid until {subDetails.formattedExpiresAt}</b>
                   </>
                 ) : (
-                  <span className="text-rose-600 font-bold">Upgrade to keep billing & multi-counter active</span>
+                  <span className="text-rose-600 font-bold">Account inactive · Contact Admin or upgrade</span>
                 )}
               </div>
             </div>

@@ -129,10 +129,10 @@ export const ComplianceModal: React.FC<Props> = ({
               </div>
 
               <div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide mb-1">1. SaaS Subscription & 3-Day Free Trial</h3>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide mb-1">1. SaaS Subscription & Service Activation</h3>
                 <p>
-                  • Every new merchant registration receives an automatic <b>3-Day Free Trial</b> with complete access to Pro billing, barcode scanning, thermal printing, and reporting.<br />
-                  • Upon trial conclusion, the merchant may subscribe to either the Starter Monthly (₹499/mo) or Pro Annual (₹4,999/yr) plan to continue live billing and multi-counter cloud synchronization.
+                  • Registered merchants receive access to POS billing, barcode scanning, thermal printing, and reporting upon account activation.<br />
+                  • Merchants may subscribe to either the Starter Monthly (₹499/mo) or Pro Annual (₹4,999/yr) plan to maintain continuous live billing, multi-counter synchronization, and cloud backup.
                 </p>
               </div>
 
