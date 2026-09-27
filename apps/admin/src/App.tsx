@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatMoney } from '@novapos/shared';
 import { AdminApi, ApiError, downloadCsv, printPage } from './lib/api';
+import { MerchantsManagement } from './components/MerchantsManagement';
 
 type Page = 'dashboard' | 'merchants' | 'menu' | 'reports' | 'printing' | 'tax';
 
@@ -128,7 +129,7 @@ export function App() {
             </div>}
             <div key={`${outlet.id}:${page}:${pageVersion}`}>
               {page === 'dashboard' && <Dashboard outlet={outlet} />}
-              {page === 'merchants' && <Merchants onError={setError} />}
+              {page === 'merchants' && <MerchantsManagement onError={setError} />}
               {page === 'menu' && <Menu onError={setError} outlet={outlet} />}
               {page === 'reports' && <Reports outlet={outlet} onError={setError} />}
               {page === 'tax' && <TaxSettings outlet={outlet} />}

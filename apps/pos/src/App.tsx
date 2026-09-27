@@ -20,6 +20,7 @@ import { ReportsScreen } from './screens/ReportsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { StaffScreen } from './screens/StaffScreen';
+import { SubscriptionBanner } from './components/SubscriptionBanner';
 
 import {
   type BusinessProfile,
@@ -368,6 +369,12 @@ export function App() {
 
   return (
     <div className="pos-app-wrapper">
+      {/* Top Real-time License / Trial Expiry Banner */}
+      <SubscriptionBanner
+        storeName={profileDetails.profileName}
+        phone={profileDetails.phone}
+      />
+
       {/* Side Slide-Over Navigation Drawer */}
       <SideDrawer
         isOpen={isDrawerOpen}
