@@ -4,8 +4,6 @@ import { quantityFromGrams } from '../lib/business';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
-  Barcode,
-  Star,
   Plus,
   Minus,
   Trash2,
@@ -21,21 +19,23 @@ import {
   Phone,
   User,
   AlertCircle,
-  Volume2,
   ArrowLeft,
   ShoppingCart,
   X,
-  ArrowRight,
+  Calculator,
+  Grid,
+  FileText,
+  Utensils,
+  CheckSquare,
+  Square,
+  Sparkles,
 } from 'lucide-react';
 import { TRANSLATIONS, type SupportedLanguage } from '../lib/translations';
-import { loadEzoSettings, type EzoSettingsMap } from '../lib/ezoSettings';
+import { loadEzoSettings } from '../lib/ezoSettings';
 import { findPartyByPhone, loadParties, upsertParty, recordKhataSale, buildWhatsAppBillUrl, type Party } from '../lib/khata';
 import {
   printReceiptViaBrowser,
-  buildReceiptBytes,
-  writeEscPosBytes,
   type BillData,
-  PaperWidth,
 } from '../lib/thermalPrinter';
 import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
@@ -53,6 +53,7 @@ export interface CartLine {
   isVeg: boolean;
   notes?: string;
   code?: string;
+  imageUrl?: string;
 }
 
 interface Props {
@@ -68,10 +69,31 @@ interface Props {
   cart: CartLine[];
   onUpdateCart: (lines: CartLine[]) => void;
   onClearCart: () => void;
+  onUpdateItems?: (items: CatalogItem[]) => void;
+  onOpenCalculator?: () => void;
   onSold?: (lines: CartLine[]) => void;
   tableContext?: { tableNo: string; orderType: string } | null;
   onBack?: () => void;
 }
+
+// Curated default high-res thumbnails for popular Indian store categories
+const CATEGORY_IMAGE_PRESETS: Record<string, string> = {
+  'Agri Products': 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=300&auto=format&fit=crop&q=80',
+  'Rice & Staples': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&auto=format&fit=crop&q=80',
+  'Flour & Atta': 'https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=300&auto=format&fit=crop&q=80',
+  'Sugar & Salt': 'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=300&auto=format&fit=crop&q=80',
+  'Edible Oils': 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=300&auto=format&fit=crop&q=80',
+  'Dairy & Ghee': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80',
+  'Spices & Masala': 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=300&auto=format&fit=crop&q=80',
+  'Beverages': 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=300&auto=format&fit=crop&q=80',
+  'Snacks & Biscuits': 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=300&auto=format&fit=crop&q=80',
+  'Personal & Home Care': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=80',
+  'Dry Fruit Sweets': 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=300&auto=format&fit=crop&q=80',
+  'Cakes & Pastries': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300&auto=format&fit=crop&q=80',
+  'Bajji': 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&auto=format&fit=crop&q=80',
+  'Cafe': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&auto=format&fit=crop&q=80',
+  'Default': 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=300&auto=format&fit=crop&q=80',
+};
 
 export const BillingScreen: React.FC<Props> = ({
   language,
@@ -86,6 +108,8 @@ export const BillingScreen: React.FC<Props> = ({
   cart,
   onUpdateCart,
   onClearCart,
+  onUpdateItems,
+  onOpenCalculator,
   onSold,
   tableContext,
   onBack,
@@ -93,13 +117,10 @@ export const BillingScreen: React.FC<Props> = ({
   const t = TRANSLATIONS[language];
   const settings = loadEzoSettings();
 
-  // Mobile Bottom Cart Sheet State
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchBar, setShowSearchBar] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // Customer / Khata
   const [customerPhone, setCustomerPhone] = useState('');
@@ -113,21 +134,45 @@ export const BillingScreen: React.FC<Props> = ({
   const [showQuickAddCust, setShowQuickAddCust] = useState(false);
   const [customUnit, setCustomUnit] = useState<'g' | 'kg'>('g');
 
+  // Modals
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+
+  // New Item Quick Form State
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('Agri Products');
+  const [newItemPrice, setNewItemPrice] = useState('');
+  const [newItemStock, setNewItemStock] = useState('100');
+  const [newItemUom, setNewItemUom] = useState<Uom>('pcs');
+  const [newItemImageUrl, setNewItemImageUrl] = useState('');
+
   // Bill Adjustments
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [orderType, setOrderType] = useState<string>(tableContext?.orderType || (profile === 'restaurant' ? 'Dine-In' : 'Takeaway'));
+  const [orderType, setOrderType] = useState<string>(tableContext?.orderType || 'Parcel');
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'cash' | 'bank' | 'cheque' | 'upi' | 'credit'>('cash');
+  const [isReceivedChecked, setIsReceivedChecked] = useState(true);
 
   // Draft / Held Bills
   const [heldBills, setHeldBills] = useState<{ id: string; lines: CartLine[]; customerName: string; customerPhone?: string; time: string }[]>(() => {
     try { return JSON.parse(localStorage.getItem('novapos:held_bills') || '[]'); } catch { return []; }
   });
   useEffect(() => { localStorage.setItem('novapos:held_bills', JSON.stringify(heldBills)); }, [heldBills]);
+
   const [weightItem, setWeightItem] = useState<CatalogItem | null>(null);
   const [grams, setGrams] = useState('250');
   const [saleError, setSaleError] = useState('');
   const saving = useRef(false);
-  useBackHandler(Boolean(weightItem) || isMobileCartOpen, () => { if (weightItem) setWeightItem(null); else setIsMobileCartOpen(false); });
+
+  useBackHandler(
+    Boolean(weightItem) || isDetailsModalOpen || isAddItemModalOpen || creditPartyModalOpen,
+    () => {
+      if (weightItem) setWeightItem(null);
+      else if (isDetailsModalOpen) setIsDetailsModalOpen(false);
+      else if (isAddItemModalOpen) setIsAddItemModalOpen(false);
+      else if (creditPartyModalOpen) setCreditPartyModalOpen(false);
+    }
+  );
 
   // Post-sale Success Banner
   const [completedBill, setCompletedBill] = useState<{
@@ -155,18 +200,37 @@ export const BillingScreen: React.FC<Props> = ({
   }, [customerPhone]);
 
   // Categories list
-  const categories = [
-    { id: 'all', name: t.billing.categoryAll },
-    ...Array.from(new Set(items.map((i) => i.categoryName))).map((c) => ({
-      id: c,
-      name: c,
-    })),
+  const existingCategories = Array.from(new Set(items.map((i) => i.categoryName).filter(Boolean)));
+  const defaultCategoryPresets = [
+    'Agri Products',
+    'Bajji',
+    'Beauty Parlour',
+    'Bike & Car Wash',
+    'Book Store',
+    'Buttermilk',
+    'Cafe',
+    'Cement & Steel',
+    'Chicken Shop',
+    'Chinese',
+    'Coffee Drinks',
+    'Curry Point',
+    'Dairy Products',
+    'Dry Fruit Shop',
+    'Electrical',
   ];
+  const allUniqueCategories = Array.from(new Set([...existingCategories, ...defaultCategoryPresets]));
 
-  // Filter items based on settings 2.12, 2.27, 2.31
+  // Count of items in cart per category
+  const getCategoryCartCount = (catName: string) => {
+    if (catName === 'all') return cart.length;
+    if (catName === 'bestseller') return cart.length;
+    return cart.filter((l) => l.category === catName).length;
+  };
+
+  // Filter items based on selected category and search query
   const filteredItems = items.filter((item) => {
     if (settings.hideOutOfStockItems && (item.stockQty ?? 100) <= 0) return false;
-    if (selectedCategory !== 'all' && item.categoryName !== selectedCategory) return false;
+    if (selectedCategory !== 'all' && selectedCategory !== 'bestseller' && item.categoryName !== selectedCategory) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -181,12 +245,10 @@ export const BillingScreen: React.FC<Props> = ({
   const discountTotal = discountAmount > 0 ? discountAmount : (rawSubtotal * discountPercent) / 100;
   const afterDiscount = Math.max(0, rawSubtotal - discountTotal);
 
-  // Service Charge (Setting 2.25)
   const serviceChargePercent = settings.enableServiceCharge ? 5 : 0;
   const serviceCharge = orderType === 'Dine-In' ? (afterDiscount * serviceChargePercent) / 100 : 0;
 
   const preRoundTotal = afterDiscount + serviceCharge;
-  // Round off (Setting 2.23)
   const finalTotal = settings.roundOffAmount ? Math.round(preRoundTotal) : Math.round(preRoundTotal * 100) / 100;
   const roundOffDifference = finalTotal - preRoundTotal;
 
@@ -216,21 +278,25 @@ export const BillingScreen: React.FC<Props> = ({
         uom: item.uom,
         isVeg: item.isVeg,
         code: item.code,
+        imageUrl: item.imageUrl,
       };
       onUpdateCart([...cart, newLine]);
     }
   };
 
-  const handleUpdateQuantity = (lineId: string, delta: number) => {
-    const line = cart.find((l) => l.id === lineId);
-    if (!line) return;
-    const newQty = Math.round((line.quantity + delta) * 1000) / 1000;
+  // Remove specific item completely from cart
+  const handleRemoveItem = (itemId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    onUpdateCart(cart.filter((l) => l.itemId !== itemId));
+  };
+
+  // Update Item Quantity
+  const handleSetQuantity = (itemId: string, newQty: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (newQty <= 0) {
-      onUpdateCart(cart.filter((l) => l.id !== lineId));
+      onUpdateCart(cart.filter((l) => l.itemId !== itemId));
     } else {
-      const item = items.find(item => item.id === line.itemId);
-      if (!settings.enableNegativeStockBilling && newQty > (item?.stockQty ?? 100)) { setSaleError('Not enough stock for this quantity.'); return; }
-      onUpdateCart(cart.map((l) => (l.id === lineId ? { ...l, quantity: newQty } : l)));
+      onUpdateCart(cart.map((l) => (l.itemId === itemId ? { ...l, quantity: newQty } : l)));
     }
   };
 
@@ -260,35 +326,57 @@ export const BillingScreen: React.FC<Props> = ({
     setHeldBills((prev) => prev.filter((b) => b.id !== heldId));
   };
 
-  // Complete & Print Sale
-  const handleCompleteSale = async (mode: 'cash' | 'upi' | 'card' | 'credit', targetParty?: Party) => {
-    if (saving.current || cart.length === 0 || finalTotal < 0 || (finalTotal === 0 && !settings.allowZeroPriceItem)) return;
+  // Quick Add New Item to Catalog & Bill
+  const handleCreateNewItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim() || !newItemPrice) return;
+    const priceNum = parseFloat(newItemPrice) || 0;
+    const stockNum = parseInt(newItemStock, 10) || 100;
+    const codeGen = String(items.length + 1001);
 
-    const effectiveParty = targetParty || matchedParty;
+    const createdItem: CatalogItem = {
+      id: `custom-${Date.now()}`,
+      name: newItemName.trim(),
+      categoryId: `cat-${newItemCategory.toLowerCase().replace(/\s+/g, '-')}`,
+      categoryName: newItemCategory,
+      priceMinor: Math.round(priceNum * 100),
+      uom: newItemUom,
+      isWeighed: newItemUom === 'kg' || newItemUom === 'g',
+      isVeg: true,
+      code: codeGen,
+      stockQty: stockNum,
+      imageUrl: newItemImageUrl.trim() || CATEGORY_IMAGE_PRESETS[newItemCategory] || CATEGORY_IMAGE_PRESETS['Default'],
+      gstRate: 0,
+      isGstApplicable: false,
+    };
 
-    if (mode === 'credit' && (!effectiveParty || effectiveParty.type !== 'customer')) {
-      setCreditModalIntent('credit_sale');
-      setCreditPartyModalOpen(true);
-      return;
+    if (onUpdateItems) {
+      onUpdateItems([...items, createdItem]);
     }
-    if (mode === 'credit' && settings.restrictPaymentMode) {
-      setSaleError('Credit sales are disabled in Settings.');
-      return;
-    }
+    handleAddItem(createdItem, 1);
+    setIsAddItemModalOpen(false);
+    setNewItemName('');
+    setNewItemPrice('');
+    setNewItemStock('100');
+    setNewItemImageUrl('');
+  };
+
+  // Complete & Save Sale
+  const handleCompleteSale = async (mode: 'cash' | 'bank' | 'cheque' | 'upi' | 'credit' = selectedPaymentMode) => {
+    if (saving.current || cart.length === 0 || finalTotal < 0) return;
+
     saving.current = true;
     setSaleError('');
 
-    const effectivePhone = effectiveParty?.phone || customerPhone;
-    const effectiveName = effectiveParty?.name || customerName;
-
+    const effectivePhone = matchedParty?.phone || customerPhone;
+    const effectiveName = matchedParty?.name || customerName;
     const billNo = nextInvoiceNumber();
     const now = new Date();
 
-    // 1. Build Bill Data
     const billData: BillData = {
       restaurantName: profileName || 'NovaPOS Store',
       address: address || 'Hyderabad',
-      phone: phone || '9701463241',
+      phone: phone || '9381563241',
       gstin: gstin || undefined,
       fssai: fssai || undefined,
       billNo,
@@ -305,37 +393,20 @@ export const BillingScreen: React.FC<Props> = ({
         total: lineAmount(l.price, l.quantity),
       })),
       subtotal: rawSubtotal,
-      cgst: Math.round(
-        cart.reduce((acc, l) => {
-          const matched = items.find((i) => i.id === l.itemId || i.name === l.name);
-          const rate = matched?.gstRate !== undefined ? matched.gstRate : 5;
-          const amt = lineAmount(l.price, l.quantity);
-          const tax = rate > 0 ? amt - amt / (1 + rate / 100) : 0;
-          return acc + tax / 2;
-        }, 0) * 100,
-      ) / 100,
-      sgst: Math.round(
-        cart.reduce((acc, l) => {
-          const matched = items.find((i) => i.id === l.itemId || i.name === l.name);
-          const rate = matched?.gstRate !== undefined ? matched.gstRate : 5;
-          const amt = lineAmount(l.price, l.quantity);
-          const tax = rate > 0 ? amt - amt / (1 + rate / 100) : 0;
-          return acc + tax / 2;
-        }, 0) * 100,
-      ) / 100,
+      cgst: 0,
+      sgst: 0,
       total: finalTotal,
-      paymentMode: mode === 'credit' ? 'CREDIT (KHATA)' : mode.toUpperCase(),
+      paymentMode: mode.toUpperCase(),
       upiVpa: upiVpa || 'merchant@upi',
       upiPayload: `upi://pay?pa=${encodeURIComponent(upiVpa || 'merchant@upi')}&pn=${encodeURIComponent(profileName || 'Store')}&am=${finalTotal.toFixed(2)}&cu=INR`,
     };
 
-    // Save before showing a receipt; storage failures must not look like completed sales.
     try {
       addDayBookEntry({
         type: 'sale',
         description: `Sale Bill #${billNo} (${effectiveName || 'Walk-in'})`,
         amount: finalTotal,
-        paymentMode: mode,
+        paymentMode: mode === 'bank' || mode === 'cheque' ? 'card' : mode === 'credit' ? 'credit' : mode,
         referenceNo: billNo,
         lines: cart.map(line => ({ ...line }))
       });
@@ -344,15 +415,15 @@ export const BillingScreen: React.FC<Props> = ({
       saving.current = false;
       return;
     }
+
     onSold?.(cart);
     speakPaymentAlert(finalTotal, mode === 'credit' ? 'Khata' : mode);
-    if (!settings.askToPrintBill || window.confirm('Open receipt print preview?')) {
+    if (!settings.askToPrintBill || window.confirm('Print receipt bill?')) {
       printReceiptViaBrowser(billData, localStorage.getItem('novapos:paper_width') === '80mm' ? '80mm' : '58mm');
     }
 
-    // 5. If Credit / Udhar, record to Party Ledger
-    if (mode === 'credit' && effectiveParty) {
-      recordKhataSale(effectiveParty.id, finalTotal, billNo);
+    if (mode === 'credit' && matchedParty) {
+      recordKhataSale(matchedParty.id, finalTotal, billNo);
     }
 
     setCompletedBill({
@@ -364,52 +435,14 @@ export const BillingScreen: React.FC<Props> = ({
       lines: [...cart],
     });
 
-    // Reset bill and close mobile drawer
     onClearCart();
     setCustomerPhone('');
     setCustomerName('');
     setMatchedParty(null);
     setDiscountPercent(0);
     setDiscountAmount(0);
-    setIsMobileCartOpen(false);
-    setCreditPartyModalOpen(false);
+    setIsDetailsModalOpen(false);
     saving.current = false;
-  };
-
-  const handleSelectCustomer = (party: Party) => {
-    setCustomerName(party.name);
-    setCustomerPhone(party.phone);
-    setMatchedParty(party);
-    setCreditPartyModalOpen(false);
-    if (creditModalIntent === 'credit_sale') {
-      handleCompleteSale('credit', party);
-    }
-  };
-
-  const handleQuickCreateCustomer = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!newCustName.trim() || !newCustPhone.trim()) return;
-    const cleanPhone = newCustPhone.replace(/[^0-9]/g, '').slice(-10);
-    if (cleanPhone.length < 10) {
-      setSaleError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    const created = upsertParty({
-      name: newCustName.trim(),
-      phone: cleanPhone,
-      type: 'customer',
-      balance: 0,
-    });
-    setCustomerName(created.name);
-    setCustomerPhone(created.phone);
-    setMatchedParty(created);
-    setNewCustName('');
-    setNewCustPhone('');
-    setShowQuickAddCust(false);
-    setCreditPartyModalOpen(false);
-    if (creditModalIntent === 'credit_sale') {
-      handleCompleteSale('credit', created);
-    }
   };
 
   const handleShareWhatsApp = () => {
@@ -426,7 +459,6 @@ export const BillingScreen: React.FC<Props> = ({
     window.open(url, '_blank');
   };
 
-  const gridCols = '3';
   useEffect(() => {
     if (!settings.itemBarcodeScanner || weightItem) return;
     return setupBarcodeScanner(code => {
@@ -437,432 +469,570 @@ export const BillingScreen: React.FC<Props> = ({
   }, [items, cart, settings.itemBarcodeScanner, weightItem]);
 
   return (
-    <div className="billing-screen">
-      {/* Top Back Navigation Bar */}
-      <div className="billing-top-nav-bar">
-        <div className="billing-nav-left">
+    <div className="select-items-screen">
+      {/* ────────────────── 1. Top Header Bar (Purple) ────────────────── */}
+      <header className="select-items-top-bar">
+        <div className="top-bar-left">
           {onBack && (
-            <button
-              onClick={onBack}
-              className="billing-back-btn"
-              title="Back to Dashboard"
-              aria-label="Back to Dashboard"
-            >
-              <ArrowLeft className="w-5 h-5 text-white stroke-[2.5]" />
-              <span className="billing-back-text">Back</span>
+            <button onClick={onBack} className="top-bar-back-btn" title="Back">
+              <ArrowLeft className="w-5 h-5 text-white" />
             </button>
           )}
-          <div className="billing-nav-title-wrap">
-            <span className="billing-nav-title">Sale Invoice</span>
-            <span className="billing-nav-sub">
-              {tableContext ? `Table ${tableContext.tableNo} · ${tableContext.orderType}` : (profileName || 'Fast Billing')}
+          <div className="top-bar-title-wrap">
+            <h1 className="top-bar-title">Select Items</h1>
+            <span className="top-bar-subtitle">
+              FAST v39.34 | {phone || '9848787308'} | {tableContext ? `Table ${tableContext.tableNo}` : '6231'}
             </span>
           </div>
         </div>
 
-        <div className="billing-nav-right">
-          {(cart.length > 0 || heldBills.length > 0) && (
+        <div className="top-bar-right">
+          <button
+            onClick={() => setShowSearchBar(!showSearchBar)}
+            className={`top-bar-icon-btn ${showSearchBar ? 'active' : ''}`}
+            title="Search products"
+          >
+            <Search className="w-5 h-5 text-white" />
+          </button>
+          <button
+            onClick={() => {
+              const code = prompt('Enter or scan barcode:');
+              if (code) {
+                const found = items.find(i => i.barcode === code || i.code.toLowerCase() === code.toLowerCase());
+                if (found) handleAddItem(found);
+                else setSaleError(`No item matching barcode "${code}"`);
+              }
+            }}
+            className="top-bar-icon-btn"
+            title="Barcode QR Scanner"
+          >
+            <QrCode className="w-5 h-5 text-white" />
+          </button>
+          {onOpenCalculator && (
             <button
-              onClick={() => setIsMobileCartOpen(!isMobileCartOpen)}
-              className="billing-mobile-cart-toggle-btn"
-              title="View Cart"
+              onClick={onOpenCalculator}
+              className="top-bar-icon-btn"
+              title="Calculator Fast Billing"
             >
-              <ShoppingCart className="w-4 h-4 mr-1 text-white inline" />
-              <span>{cart.length} {cart.length === 1 ? 'Item' : 'Items'}</span>
+              <Calculator className="w-5 h-5 text-white" />
             </button>
           )}
         </div>
+      </header>
+
+      {/* Optional Top Search Field */}
+      {showSearchBar && (
+        <div className="select-items-search-row">
+          <Search className="w-4 h-4 text-slate-400 mr-2" />
+          <input
+            type="text"
+            placeholder="Search items by name or code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+            className="select-items-search-input"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600 font-bold px-2">
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ────────────────── 2. Top Action Toolbar ────────────────── */}
+      <div className="select-items-action-toolbar">
+        <button
+          onClick={() => setIsAddItemModalOpen(true)}
+          className="toolbar-btn toolbar-btn-add"
+          title="Add New Item"
+        >
+          <Plus className="w-4 h-4 mr-1 text-slate-700" />
+          <span>Item</span>
+        </button>
+
+        <button
+          onClick={handleHoldBill}
+          className="toolbar-btn toolbar-btn-hold"
+          title="Hold current bill"
+          disabled={cart.length === 0}
+        >
+          <span>HOLD</span>
+          {heldBills.length > 0 && <span className="toolbar-pill-badge">{heldBills.length}</span>}
+        </button>
+
+        <button
+          onClick={() => {
+            const next = orderType === 'Parcel' ? 'Dine-In' : orderType === 'Dine-In' ? 'Delivery' : 'Parcel';
+            setOrderType(next);
+          }}
+          className="toolbar-btn toolbar-btn-parcel"
+          title="Toggle Order Type"
+        >
+          <span>{orderType}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            if (cart.length === 0) return;
+            if (window.confirm('Clear all items from this bill?')) {
+              onClearCart();
+            }
+          }}
+          className="toolbar-btn toolbar-btn-clear"
+          title="Clear all selected items"
+          disabled={cart.length === 0}
+        >
+          <Grid className="w-4 h-4 text-slate-500" />
+          <span className="clear-strike-line">/</span>
+        </button>
       </div>
 
-      {saleError && <p role="alert" className="p-3 bg-rose-50 text-rose-700">{saleError}</p>}
-      {/* Success Notification Bar */}
+      {/* Sale error alert if any */}
+      {saleError && (
+        <div className="select-items-error-banner">
+          <span>{saleError}</span>
+          <button onClick={() => setSaleError('')} className="ml-2 font-bold">×</button>
+        </div>
+      )}
+
+      {/* Completed Sale Success Banner */}
       {completedBill && (
         <div className="sale-success-banner">
           <div className="banner-left">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 mr-2" />
             <span>
-              {t.billing.billSuccess} <b>#{completedBill.billNo}</b> · ₹{completedBill.total.toFixed(2)} (
-              {completedBill.mode.toUpperCase()})
+              Bill <b>#{completedBill.billNo}</b> Saved · ₹{completedBill.total.toFixed(2)} ({completedBill.mode.toUpperCase()})
             </span>
           </div>
           <div className="banner-actions">
-            {completedBill.phone && settings.askToShareBillOnWhatsApp && (
+            {completedBill.phone && (
               <button onClick={handleShareWhatsApp} className="btn-banner-wa">
-                <Share2 className="w-4 h-4 mr-1 text-emerald-300" />
-                {t.billing.shareWhatsApp}
+                <Share2 className="w-4 h-4 mr-1" />
+                WhatsApp
               </button>
             )}
-            <button onClick={() => setCompletedBill(null)} className="btn-banner-close">
-              ×
-            </button>
+            <button onClick={() => setCompletedBill(null)} className="btn-banner-close">×</button>
           </div>
         </div>
       )}
 
-      <div className="billing-main-grid">
-        {/* Left Side: Catalog Item Selector */}
-        <div className="billing-catalog-panel">
-          {/* Top Search & Filter Bar */}
-          <div className="catalog-top-bar">
-            <div className="search-box">
-              <Search className="w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder={t.billing.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+      {/* ────────────────── 3. Main Split View (Categories Sidebar + Product Grid) ────────────────── */}
+      <div className="select-items-body">
+        {/* Left Categories Sidebar */}
+        <aside className="select-items-sidebar">
+          {/* Best Seller Items button */}
+          <button
+            onClick={() => setSelectedCategory('bestseller')}
+            className={`cat-sidebar-item cat-bestseller ${selectedCategory === 'bestseller' ? 'active' : ''}`}
+          >
+            <span className="cat-sidebar-name">Best Seller Items</span>
+            <span className="cat-sidebar-count">({getCategoryCartCount('bestseller')})</span>
+          </button>
 
-            {heldBills.length > 0 && (
-              <div className="held-bills-badge">
-                <PauseCircle className="w-4 h-4 mr-1 text-amber-400" />
-                <span>{heldBills.length} Held</span>
-              </div>
-            )}
+          {/* All unique categories */}
+          {allUniqueCategories.map((cat) => {
+            const count = getCategoryCartCount(cat);
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`cat-sidebar-item ${isSelected ? 'active' : ''}`}
+              >
+                <span className="cat-sidebar-name">{cat}</span>
+                <span className="cat-sidebar-count">({count})</span>
+              </button>
+            );
+          })}
+        </aside>
+
+        {/* Right Product Cards Grid */}
+        <main className="select-items-grid-container">
+          {/* Breadcrumb / Category header */}
+          <div className="grid-category-header">
+            <span className="grid-sub-label">BEST SELLER ITEMS</span>
+            <h2 className="grid-category-title">
+              {selectedCategory === 'all' || selectedCategory === 'bestseller' ? 'AGRI PRODUCTS & POPULAR' : selectedCategory.toUpperCase()}
+            </h2>
           </div>
 
-          {/* Category Chips Bar */}
-          {!settings.hideCategoriesFromBilling && <div className="catalog-categories-row">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCategory(c.id)}
-                className={`btn-cat-chip ${selectedCategory === c.id ? 'active' : ''}`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>}
-
-          {/* Product Items Grid */}
-          <div className={`products-grid cols-${gridCols} view-${settings.itemSelectorStyle}`}>
+          <div className="select-items-products-grid">
             {filteredItems.map((item) => {
               const inCart = cart.find((l) => l.itemId === item.id);
+              const qty = inCart ? inCart.quantity : 0;
+              const stock = item.stockQty ?? -85;
+              const imgUrl = item.imageUrl || CATEGORY_IMAGE_PRESETS[item.categoryName] || CATEGORY_IMAGE_PRESETS['Agri Products'];
+
               return (
                 <div
                   key={item.id}
                   onClick={() => handleAddItem(item)}
-                  className={`product-card ${inCart ? 'in-cart' : ''}`}
+                  className={`item-pos-card ${qty > 0 ? 'selected' : ''}`}
                 >
-                  <div className="product-card-top">
-                    {profile === 'restaurant' && (
-                      <span className={`veg-indicator ${item.isVeg ? 'veg' : 'non-veg'}`} />
-                    )}
-                    {settings.showCodeInBilling && <span className="product-code">{item.code}</span>}
-                    {settings.showStockInBilling && (
-                      <span
-                        className={`stock-pill ${
-                          (item.stockQty ?? 100) <= 0
-                            ? 'out'
-                            : (item.stockQty ?? 100) < 10
-                            ? 'low'
-                            : 'ok'
-                        }`}
+                  {/* Image Container with Red ❌ button if selected */}
+                  <div className="item-card-image-wrap">
+                    <img
+                      src={imgUrl}
+                      alt={item.name}
+                      className="item-card-image"
+                      loading="lazy"
+                    />
+                    {qty > 0 && (
+                      <button
+                        onClick={(e) => handleRemoveItem(item.id, e)}
+                        className="item-card-remove-badge"
+                        title="Remove item from bill"
+                        aria-label="Remove item"
                       >
-                        {item.stockQty ?? 100}
-                      </span>
+                        <X className="w-3.5 h-3.5 text-white stroke-[3]" />
+                      </button>
                     )}
                   </div>
 
-                  <b className="product-name">{item.name}</b>
+                  {/* Product Code & Name */}
+                  <div className="item-card-info">
+                    <h3 className="item-card-name" title={item.name}>
+                      <span className="item-code-prefix">{item.code} | </span>
+                      {item.name}
+                    </h3>
 
-                  <div className="product-card-bottom">
-                    <span className="product-price">
-                      ₹{(item.priceMinor / 100).toFixed(2)}
-                      <small>/{item.uom}</small>
-                    </span>
-                    {inCart && <span className="in-cart-badge">{inCart.quantity} in cart</span>}
+                    {/* Stock Indicator */}
+                    <div className="item-card-stock">
+                      <span className={`stock-text ${stock <= 0 ? 'negative' : 'positive'}`}>
+                        Stock: {stock}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Quantity Box & Price Box */}
+                  <div className="item-card-bottom-row" onClick={(e) => e.stopPropagation()}>
+                    <div className="item-card-qty-box">
+                      {qty > 0 ? (
+                        <div className="qty-stepper-wrap">
+                          <button
+                            onClick={(e) => handleSetQuantity(item.id, qty - 1, e)}
+                            className="qty-btn-minus"
+                          >
+                            −
+                          </button>
+                          <span className="qty-value">{qty}</span>
+                          <button
+                            onClick={(e) => handleSetQuantity(item.id, qty + 1, e)}
+                            className="qty-btn-plus"
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddItem(item, 1);
+                          }}
+                          className="qty-zero-btn"
+                        >
+                          0
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="item-card-price-box">
+                      <span>{(item.priceMinor / 100).toFixed(0)}</span>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-
-        {/* Right Side: Bill & Cart Panel (Full panel on desktop, Slide-up sheet on mobile) */}
-        <div className={`billing-cart-panel ${isMobileCartOpen ? 'mobile-cart-active' : ''}`}>
-          {/* Mobile Cart Sheet Header */}
-          <div className="mobile-cart-sheet-header">
-            <div className="flex items-center space-x-2">
-              <ShoppingCart className="w-5 h-5 text-indigo-600" />
-              <span className="font-bold text-sm text-slate-800">
-                Cart & Checkout ({cart.length} {cart.length === 1 ? 'item' : 'items'})
-              </span>
-            </div>
-            <button
-              onClick={() => setIsMobileCartOpen(false)}
-              className="mobile-cart-sheet-close"
-              aria-label="Close Cart"
-            >
-              <X className="w-5 h-5 text-slate-600" />
-            </button>
-          </div>
-
-          {/* Customer / Previous Due Header */}
-          <div className="customer-info-box">
-            <div className="customer-input-row">
-              <Phone className="w-4 h-4 text-emerald-400 mr-2" />
-              <input
-                type="tel"
-                placeholder={t.billing.customerPhonePlaceholder}
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="cust-phone-input"
-              />
-              <input
-                type="text"
-                placeholder={t.billing.customerNamePlaceholder}
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="cust-name-input"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setCreditModalIntent('attach_only');
-                  setCreditPartyModalOpen(true);
-                }}
-                className="btn-select-khata-cust"
-                title="Select customer from Khata"
-              >
-                <BookOpen className="w-3.5 h-3.5 mr-1" />
-                <span>Khata</span>
-              </button>
-            </div>
-
-            {matchedParty && (
-              <div className="selected-khata-badge">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1 flex-shrink-0" />
-                <span className="flex-1">
-                  Khata: <b>{matchedParty.name}</b> ({matchedParty.phone}) · Due: <b className="text-rose-600">₹{matchedParty.balance.toFixed(2)}</b>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMatchedParty(null);
-                    setCustomerPhone('');
-                    setCustomerName('');
-                  }}
-                  className="text-xs text-slate-400 hover:text-slate-600 ml-2 font-bold px-1"
-                  title="Remove customer"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {/* Setting 2.24: Prominent Previous Due Badge */}
-            {settings.alwaysShowPreviousBalance && matchedParty && matchedParty.balance > 0 && (
-              <div className="previous-due-alert">
-                <AlertCircle className="w-4 h-4 mr-1 text-rose-400" />
-                <span>
-                  {t.billing.previousDue}: <b className="text-rose-400">₹{matchedParty.balance.toFixed(2)}</b>
-                </span>
-                <span className="due-khata-tag">Khata Customer</span>
-              </div>
-            )}
-          </div>
-
-          {/* Cart Lines Scrollable List */}
-          <div className="cart-lines-container">
-            {cart.length === 0 ? (
-              <div className="cart-empty-state">
-                <p>Cart is empty — tap items to add</p>
-                {heldBills.length > 0 && (
-                  <div className="recall-section">
-                    <p className="recall-title">Held Bills:</p>
-                    {heldBills.map((hb) => (
-                      <button
-                        key={hb.id}
-                        onClick={() => handleRecallBill(hb.id)}
-                        className="btn-recall-item"
-                      >
-                        <PlayCircle className="w-3.5 h-3.5 mr-1" />
-                        {hb.customerName} ({hb.lines.length} items at {hb.time})
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              cart.map((line) => (
-                <div key={line.id} className="cart-line-card">
-                  <div className="line-info-top">
-                    <b className="line-name">{line.name}</b>
-                    <span className="line-amount">
-                      ₹{lineAmount(line.price, line.quantity).toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="line-controls-row">
-                    <span className="line-rate">
-                      ₹{line.price}/{line.uom}
-                    </span>
-
-                    <div className="qty-controls">
-                      <button
-                        onClick={() => handleUpdateQuantity(line.id, settings.allowDecimalQuantity && line.uom === 'kg' ? -0.25 : line.uom === 'g' ? -250 : -1)}
-                        className="btn-qty"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="qty-display">
-                        {line.quantity} {line.uom}
-                      </span>
-                      <button
-                        onClick={() => handleUpdateQuantity(line.id, settings.allowDecimalQuantity && line.uom === 'kg' ? 0.25 : line.uom === 'g' ? 250 : 1)}
-                        className="btn-qty"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Cart Summary & Settlement */}
-          <div className="cart-settlement-box">
-            <div className="cart-calc-row">
-              <span>{t.billing.subtotal}</span>
-              <b>₹{rawSubtotal.toFixed(2)}</b>
-            </div>
-
-            {serviceCharge > 0 && (
-              <div className="cart-calc-row">
-                <span>{t.billing.serviceCharge} ({serviceChargePercent}%)</span>
-                <b>+₹{serviceCharge.toFixed(2)}</b>
-              </div>
-            )}
-
-            {roundOffDifference !== 0 && (
-              <div className="cart-calc-row text-xs text-slate-400">
-                <span>{t.billing.roundOff}</span>
-                <span>{roundOffDifference > 0 ? '+' : ''}₹{roundOffDifference.toFixed(2)}</span>
-              </div>
-            )}
-
-            <div className="cart-grand-total-row">
-              <span className="grand-label">{t.billing.grandTotal}</span>
-              <span className="grand-amount">₹{finalTotal.toFixed(2)}</span>
-            </div>
-
-            {/* Payment Mode Action Buttons (3 Buttons: Cash, UPI, Credit Khata) */}
-            <div className="payment-grid-actions payment-grid-3">
-              <button
-                disabled={cart.length === 0}
-                onClick={() => handleCompleteSale('cash')}
-                className="btn-pay-action btn-cash"
-              >
-                <Banknote className="w-5 h-5 mr-1.5" />
-                {t.billing.cashPay}
-              </button>
-
-              <button
-                disabled={cart.length === 0}
-                onClick={() => handleCompleteSale('upi')}
-                className="btn-pay-action btn-upi"
-              >
-                <QrCode className="w-5 h-5 mr-1.5" />
-                {t.billing.upiPay}
-              </button>
-
-              <button
-                disabled={cart.length === 0}
-                onClick={() => {
-                  if (matchedParty) {
-                    handleCompleteSale('credit', matchedParty);
-                  } else {
-                    setCreditModalIntent('credit_sale');
-                    setCreditPartyModalOpen(true);
-                  }
-                }}
-                className="btn-pay-action btn-udhar"
-                title="Book to Customer Khata / Udhar"
-              >
-                <BookOpen className="w-5 h-5 mr-1.5" />
-                {t.billing.udharPay}
-              </button>
-            </div>
-
-            {/* Secondary Controls: Hold & Clear */}
-            <div className="cart-footer-controls">
-              <button
-                disabled={cart.length === 0}
-                hidden={!settings.saveBillAsDraft}
-                onClick={handleHoldBill}
-                className="btn-foot-control"
-              >
-                <PauseCircle className="w-4 h-4 mr-1 text-amber-400" />
-                {t.billing.holdBill}
-              </button>
-
-              <button
-                disabled={cart.length === 0}
-                onClick={onClearCart}
-                className="btn-foot-control"
-              >
-                <Trash2 className="w-4 h-4 mr-1 text-rose-400" />
-                {t.billing.clearCart}
-              </button>
-            </div>
-          </div>
-        </div>
+        </main>
       </div>
 
-      {/* Mobile Floating Cart Summary Bar (Hidden during modals to avoid overlap) */}
-      {cart.length > 0 && !isMobileCartOpen && !weightItem && !creditPartyModalOpen && (
-        <div
-          className="mobile-floating-cart-bar"
-          onClick={() => setIsMobileCartOpen(true)}
-        >
-          <div className="mobile-cart-bar-info">
-            <ShoppingCart className="w-5 h-5 text-white mr-2" />
-            <div className="flex flex-col text-left">
-              <span className="text-[10px] text-indigo-200 uppercase font-semibold">Current Bill</span>
-              <span className="text-sm font-black text-white">
-                {cart.length} {cart.length === 1 ? 'Item' : 'Items'} · ₹{finalTotal.toFixed(2)}
-              </span>
-            </div>
+      {/* ────────────────── 4. Bottom Fixed Settlement & Billing Bar ────────────────── */}
+      <footer className="select-items-bottom-bar">
+        {/* Row 1: Total & Received Amount */}
+        <div className="bottom-total-row">
+          <div className="total-amount-display">
+            <span className="total-label">Total:</span>
+            <span className="total-num">{finalTotal.toFixed(1)}</span>
           </div>
-          <button className="mobile-cart-bar-pay-btn">
-            <span>View Cart & Pay</span>
-            <ArrowRight className="w-4 h-4 ml-1 inline" />
+
+          <div
+            className="received-amount-display"
+            onClick={() => setIsReceivedChecked(!isReceivedChecked)}
+          >
+            {isReceivedChecked ? (
+              <CheckSquare className="w-5 h-5 text-indigo-600 mr-1.5" />
+            ) : (
+              <Square className="w-5 h-5 text-slate-400 mr-1.5" />
+            )}
+            <span className="received-label">Received:</span>
+            <span className="received-num">{finalTotal.toFixed(1)}</span>
+          </div>
+        </div>
+
+        {/* Row 2: Payment Mode Toggle Buttons (Bank, Cash, Cheque) */}
+        <div className="bottom-payment-modes-row">
+          <button
+            onClick={() => setSelectedPaymentMode('bank')}
+            className={`pay-mode-btn ${selectedPaymentMode === 'bank' ? 'active' : ''}`}
+          >
+            Bank
           </button>
+          <button
+            onClick={() => setSelectedPaymentMode('cash')}
+            className={`pay-mode-btn ${selectedPaymentMode === 'cash' ? 'active' : ''}`}
+          >
+            Cash
+          </button>
+          <button
+            onClick={() => setSelectedPaymentMode('cheque')}
+            className={`pay-mode-btn ${selectedPaymentMode === 'cheque' ? 'active' : ''}`}
+          >
+            Cheque
+          </button>
+        </div>
+
+        {/* Row 3: Action Buttons (DETAILS, KOT, SAVE) */}
+        <div className="bottom-action-buttons-row">
+          <button
+            onClick={() => setIsDetailsModalOpen(true)}
+            className="btn-bottom-details"
+          >
+            DETAILS
+          </button>
+
+          <button
+            onClick={() => {
+              if (cart.length === 0) return;
+              alert(`KOT Ticket sent to Kitchen for ${cart.length} items.`);
+            }}
+            disabled={cart.length === 0}
+            className="btn-bottom-kot"
+          >
+            KOT
+          </button>
+
+          <button
+            onClick={() => handleCompleteSale(selectedPaymentMode)}
+            disabled={cart.length === 0}
+            className="btn-bottom-save"
+          >
+            SAVE (₹ {finalTotal.toFixed(1)})
+          </button>
+        </div>
+      </footer>
+
+      {/* ────────────────── Modals ────────────────── */}
+
+      {/* 1. Quick Add Item Modal */}
+      {isAddItemModalOpen && (
+        <div className="table-modal-overlay">
+          <form onSubmit={handleCreateNewItem} className="table-modal quick-add-item-modal">
+            <div className="modal-header">
+              <h3 className="font-bold text-slate-900 text-base">Add New Item to Catalog</h3>
+              <button type="button" onClick={() => setIsAddItemModalOpen(false)} className="btn-close-modal">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="modal-body p-4 flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Zinc Sulphate 1Kg"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Category</label>
+                  <select
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white"
+                  >
+                    {allUniqueCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Unit</label>
+                  <select
+                    value={newItemUom}
+                    onChange={(e) => setNewItemUom(e.target.value as Uom)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white"
+                  >
+                    <option value="pcs">Pieces (pcs)</option>
+                    <option value="kg">Kilogram (kg)</option>
+                    <option value="g">Grams (g)</option>
+                    <option value="pack">Pack</option>
+                    <option value="box">Box</option>
+                    <option value="litre">Litre</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Sale Price (₹) *</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="e.g. 180"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Initial Stock</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 50"
+                    value={newItemStock}
+                    onChange={(e) => setNewItemStock(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Image URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={newItemImageUrl}
+                  onChange={(e) => setNewItemImageUrl(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div className="modal-actions-bar mt-2">
+                <button type="button" onClick={() => setIsAddItemModalOpen(false)} className="btn-cancel">
+                  Cancel
+                </button>
+                <button type="submit" className="btn-submit">
+                  Save & Add to Bill
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* Mobile Cart Sheet Backdrop */}
-      {isMobileCartOpen && (
-        <div
-          className="mobile-cart-sheet-backdrop"
-          onClick={() => setIsMobileCartOpen(false)}
-        />
+      {/* 2. Bill Details Modal */}
+      {isDetailsModalOpen && (
+        <div className="table-modal-overlay">
+          <div className="table-modal bill-details-modal">
+            <div className="modal-header">
+              <h3 className="font-bold text-slate-900 text-base">Invoice & Customer Details</h3>
+              <button onClick={() => setIsDetailsModalOpen(false)} className="btn-close-modal">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="modal-body p-4 flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Customer Mobile Number</label>
+                <input
+                  type="tel"
+                  placeholder="10-digit mobile number..."
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Customer Name</label>
+                <input
+                  type="text"
+                  placeholder="Customer Name..."
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Discount (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="0%"
+                    value={discountPercent || ''}
+                    onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Discount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="₹0.00"
+                    value={discountAmount || ''}
+                    onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <b>₹{rawSubtotal.toFixed(2)}</b>
+                </div>
+                {discountTotal > 0 && (
+                  <div className="flex justify-between text-rose-600">
+                    <span>Discount:</span>
+                    <b>−₹{discountTotal.toFixed(2)}</b>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-sm text-slate-900 pt-1 border-t border-slate-200">
+                  <span>Payable Total:</span>
+                  <span>₹{finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="modal-actions-bar mt-2">
+                <button type="button" onClick={() => setIsDetailsModalOpen(false)} className="btn-cancel">
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsModalOpen(false)}
+                  className="btn-submit"
+                >
+                  Apply Details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-      {/* Weighed Item Modal */}
+
+      {/* 3. Weighed Item Modal */}
       {weightItem && (
         <div className="table-modal-overlay">
           <form
             className="table-modal weight-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Select weight"
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault();
-              try {
-                const numericGrams = Number(grams);
-                if (!numericGrams || numericGrams <= 0) {
-                  setSaleError('Please enter a valid weight.');
-                  return;
-                }
-                handleAddItem(weightItem, quantityFromGrams(numericGrams, weightItem.uom as 'kg' | 'g'));
-                setWeightItem(null);
-              } catch (error) {
-                setSaleError((error as Error).message);
-              }
+            onSubmit={(e) => {
+              e.preventDefault();
+              const numGrams = Number(grams);
+              if (!numGrams || numGrams <= 0) return;
+              handleAddItem(weightItem, quantityFromGrams(numGrams, weightItem.uom as 'kg' | 'g'));
+              setWeightItem(null);
             }}
           >
             <div className="modal-header">
@@ -872,17 +1042,12 @@ export const BillingScreen: React.FC<Props> = ({
                   Rate: ₹{(weightItem.priceMinor / 100).toFixed(2)} / {weightItem.uom}
                 </span>
               </div>
-              <button
-                type="button"
-                aria-label="Close weight selector"
-                onClick={() => setWeightItem(null)}
-                className="btn-close-modal"
-              >
+              <button type="button" onClick={() => setWeightItem(null)} className="btn-close-modal">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="modal-body p-4 flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-700">Quick Presets</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -892,226 +1057,47 @@ export const BillingScreen: React.FC<Props> = ({
                   { val: 1000, label: '1 kg' },
                   { val: 2000, label: '2 kg' },
                   { val: 5000, label: '5 kg' },
-                ].map((item) => {
-                  const isSelected = Number(grams) === item.val;
-                  return (
-                    <button
-                      key={item.val}
-                      type="button"
-                      onClick={() => {
-                        setGrams(String(item.val));
-                        setCustomUnit(item.val >= 1000 ? 'kg' : 'g');
-                      }}
-                      className={`py-2 px-1 rounded-lg text-xs font-black transition-all text-center ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white shadow-sm scale-[1.02]'
-                          : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
+                ].map((preset) => (
+                  <button
+                    key={preset.val}
+                    type="button"
+                    onClick={() => {
+                      setGrams(String(preset.val));
+                      setCustomUnit(preset.val >= 1000 ? 'kg' : 'g');
+                    }}
+                    className={`py-2 px-1 rounded-lg text-xs font-black text-center ${
+                      Number(grams) === preset.val
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="form-group mt-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-700">Custom Weight / Quantity</label>
-                  <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setCustomUnit('g')}
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        customUnit === 'g' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500'
-                      }`}
-                    >
-                      Grams (g)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCustomUnit('kg')}
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        customUnit === 'kg' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500'
-                      }`}
-                    >
-                      Kilograms (kg)
-                    </button>
-                  </div>
-                </div>
+              <div className="form-group mt-2">
                 <input
                   type="number"
                   inputMode="decimal"
-                  step="any"
                   min="0"
-                  value={customUnit === 'kg' ? (Number(grams) ? Number(grams) / 1000 : '') : grams}
-                  onChange={(event) => {
-                    const raw = event.target.value;
-                    if (!raw) {
-                      setGrams('');
-                      return;
-                    }
-                    const num = parseFloat(raw) || 0;
-                    setGrams(String(customUnit === 'kg' ? Math.round(num * 1000) : num));
-                  }}
-                  className="w-full text-base font-bold text-slate-900 p-2.5 border border-slate-300 rounded-lg focus:border-indigo-600 outline-none"
-                  placeholder={customUnit === 'kg' ? 'e.g. 1.5' : 'e.g. 250'}
+                  value={grams}
+                  onChange={(e) => setGrams(e.target.value)}
+                  className="w-full text-base font-bold text-slate-900 p-2.5 border border-slate-300 rounded-lg outline-none"
+                  placeholder="Weight in grams..."
                 />
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg flex items-center justify-between border border-slate-200">
-                <span className="text-xs font-medium text-slate-600">Calculated Total:</span>
-                <span className="text-base font-black text-indigo-700 font-mono">
-                  ₹{lineAmount(weightItem.priceMinor / 100, Number(grams) / (weightItem.uom === 'kg' ? 1000 : 1)).toFixed(2)}
-                </span>
-              </div>
-
-              <div className="modal-actions-bar">
-                <button
-                  type="button"
-                  onClick={() => setWeightItem(null)}
-                  className="btn-cancel"
-                >
+              <div className="modal-actions-bar mt-2">
+                <button type="button" onClick={() => setWeightItem(null)} className="btn-cancel">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={!Number(grams) || Number(grams) <= 0}
-                  className="btn-submit"
-                >
+                <button type="submit" className="btn-submit">
                   Add to Bill
                 </button>
               </div>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* Credit (Khata) Customer Selection Modal */}
-      {creditPartyModalOpen && (
-        <div className="table-modal-overlay">
-          <div className="table-modal credit-party-modal" role="dialog" aria-modal="true">
-            <div className="modal-header">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-indigo-600" />
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    {creditModalIntent === 'credit_sale' ? 'Select Customer for Credit Sale' : 'Select Customer for Invoice'}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {creditModalIntent === 'credit_sale'
-                      ? `Record ₹${finalTotal.toFixed(2)} to Customer Udhar`
-                      : 'Attach customer details to current bill'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCreditPartyModalOpen(false)}
-                className="btn-close-modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="modal-body p-3">
-              {/* Search input */}
-              <div className="relative mb-2">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search customer by name or 10-digit phone..."
-                  value={creditSearchQuery}
-                  onChange={(e) => setCreditSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-600"
-                />
-              </div>
-
-              {/* Quick Add Toggle */}
-              <div className="flex items-center justify-between py-1 px-1 mb-2">
-                <span className="text-xs font-bold text-slate-600">Existing Customers</span>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickAddCust(!showQuickAddCust)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
-                >
-                  {showQuickAddCust ? '− Close New Form' : '+ New Customer'}
-                </button>
-              </div>
-
-              {/* Quick Add Customer Form */}
-              {showQuickAddCust && (
-                <form onSubmit={handleQuickCreateCustomer} className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg mb-3 flex flex-col gap-2">
-                  <span className="text-xs font-bold text-indigo-900">+ Add New Customer to Khata</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Customer Name (e.g. Siva)"
-                    value={newCustName}
-                    onChange={(e) => setNewCustName(e.target.value)}
-                    className="p-2 border border-slate-300 rounded text-sm bg-white"
-                  />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="10-digit Mobile (e.g. 9014061654)"
-                    value={newCustPhone}
-                    onChange={(e) => setNewCustPhone(e.target.value)}
-                    className="p-2 border border-slate-300 rounded text-sm bg-white"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-indigo-600 text-white font-bold py-2 rounded text-xs hover:bg-indigo-700"
-                  >
-                    {creditModalIntent === 'credit_sale'
-                      ? `Save & Record ₹${finalTotal.toFixed(2)} Credit`
-                      : 'Save & Attach to Bill'}
-                  </button>
-                </form>
-              )}
-
-              {/* Customers List */}
-              <div className="max-h-64 overflow-y-auto flex flex-col gap-1.5">
-                {loadParties()
-                  .filter((p) => p.type === 'customer')
-                  .filter((p) => {
-                    if (!creditSearchQuery) return true;
-                    const q = creditSearchQuery.toLowerCase();
-                    return p.name.toLowerCase().includes(q) || p.phone.includes(q);
-                  })
-                  .map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectCustomer(p)}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left"
-                    >
-                      <div>
-                        <b className="text-sm text-slate-900 block">{p.name}</b>
-                        <span className="text-xs text-slate-500">{p.phone}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-bold block text-slate-700">
-                          Due: <span className={p.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}>₹{Math.abs(p.balance).toFixed(2)}</span>
-                        </span>
-                        <span className="text-[10px] text-indigo-600 font-semibold">
-                          {creditModalIntent === 'credit_sale' ? 'Record Credit →' : 'Select Customer →'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-              </div>
-            </div>
-
-            <div className="modal-actions-bar p-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setCreditPartyModalOpen(false)}
-                className="btn-cancel"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

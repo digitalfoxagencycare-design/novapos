@@ -28,6 +28,7 @@ export interface PresetItemDef {
   isVeg: boolean;
   stockQty?: number;
   barcode?: string;
+  imageUrl?: string;
 }
 
 // 40+ Realistic products per business profile with GST rates & HSN

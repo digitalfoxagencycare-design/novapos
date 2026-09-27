@@ -37,6 +37,7 @@ export interface CatalogItem {
   code: string;
   stockQty?: number;
   barcode?: string;
+  imageUrl?: string;
   gstRate?: number; // 0, 5, 12, 18, 28
   hsnSac?: string;
   isGstApplicable?: boolean;

@@ -411,6 +411,8 @@ export function App() {
             cart={cart}
             onUpdateCart={handleUpdateCart}
             onClearCart={handleClearCart}
+            onUpdateItems={handleUpdateItems}
+            onOpenCalculator={() => handleNavigate('calculator')}
             tableContext={activeTableContext}
             onBack={handleBack}
           />
