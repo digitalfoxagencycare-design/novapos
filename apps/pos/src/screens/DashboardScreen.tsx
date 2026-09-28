@@ -244,28 +244,6 @@ export const DashboardScreen: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* 4. License & Entitlement Status Card */}
-        <div
-          onClick={() => onNavigate('settings')}
-          className="bg-white p-3 rounded-xl border border-emerald-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0">
-              <b className="text-xs font-black text-slate-900 block truncate uppercase">
-                {subDetails.isTrial ? '7-Day Free Trial Active' : 'Pro Annual License Active'}
-              </b>
-              <span className="text-[11px] text-emerald-700 font-semibold truncate block">
-                Valid until {subDetails.formattedExpiresAt}
-              </span>
-            </div>
-          </div>
-          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-            Active
-          </span>
-        </div>
 
         {/* 5. Essential Quick Tools (Non-duplicate, high-utility actions) */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
