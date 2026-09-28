@@ -45,7 +45,8 @@ import {
 import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 import { type BusinessProfile, type Uom, lineAmount, isWeight } from '../lib/business';
-import { type CatalogItem } from './InventoryScreen';
+import { type CatalogItem, type ItemPortion, type ItemExtra } from './InventoryScreen';
+import { PortionSelectModal } from '../components/PortionSelectModal';
 
 export interface CartLine {
   id: string;
@@ -167,14 +168,16 @@ export const BillingScreen: React.FC<Props> = ({
   useEffect(() => { localStorage.setItem('novapos:held_bills', JSON.stringify(heldBills)); }, [heldBills]);
 
   const [weightItem, setWeightItem] = useState<CatalogItem | null>(null);
+  const [portionModalItem, setPortionModalItem] = useState<CatalogItem | null>(null);
   const [grams, setGrams] = useState('250');
   const [saleError, setSaleError] = useState('');
   const saving = useRef(false);
 
   useBackHandler(
-    Boolean(weightItem) || isDetailsModalOpen || isAddItemModalOpen || creditPartyModalOpen,
+    Boolean(weightItem) || Boolean(portionModalItem) || isDetailsModalOpen || isAddItemModalOpen || creditPartyModalOpen,
     () => {
-      if (weightItem) setWeightItem(null);
+      if (portionModalItem) setPortionModalItem(null);
+      else if (weightItem) setWeightItem(null);
       else if (isDetailsModalOpen) setIsDetailsModalOpen(false);
       else if (isAddItemModalOpen) setIsAddItemModalOpen(false);
       else if (creditPartyModalOpen) setCreditPartyModalOpen(false);
@@ -266,6 +269,11 @@ export const BillingScreen: React.FC<Props> = ({
 
   // Add Item to Cart
   const handleAddItem = (item: CatalogItem, quantity?: number) => {
+    if (item.inStock === false) { setSaleError(`${item.name} is currently out of stock.`); return; }
+    if (((item.portions && item.portions.length > 0) || (item.extras && item.extras.length > 0)) && quantity === undefined) {
+      setPortionModalItem(item);
+      return;
+    }
     if (!settings.allowZeroPriceItem && item.priceMinor <= 0) { setSaleError('Zero-price billing is disabled in Settings.'); return; }
     if (isWeight(item.uom) && settings.allowDecimalQuantity && quantity === undefined) { setWeightItem(item); setGrams('250'); return; }
     const amount = quantity ?? 1;
@@ -293,6 +301,48 @@ export const BillingScreen: React.FC<Props> = ({
         isVeg: item.isVeg,
         code: item.code,
         imageUrl: item.imageUrl,
+      };
+      onUpdateCart([...cart, newLine]);
+    }
+  };
+ 
+  const handleConfirmPortion = (
+    item: CatalogItem,
+    selectedPortion: ItemPortion | null,
+    selectedExtras: ItemExtra[],
+    quantity: number
+  ) => {
+    const portionName = selectedPortion ? selectedPortion.name : '';
+    const portionPrice = selectedPortion ? selectedPortion.price : item.priceMinor / 100;
+    const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+    const finalUnitPrice = portionPrice + extrasTotal;
+    const extraNotes = selectedExtras.map((e) => e.name).join(', ');
+
+    const lineName = portionName ? `${item.name} (${portionName})` : item.name;
+    const lineId = `${item.id}-${portionName || 'default'}-${selectedExtras.map((e) => e.id).sort().join('-')}`;
+
+    const existingIndex = cart.findIndex((l) => l.itemId === lineId);
+    if (existingIndex >= 0) {
+      onUpdateCart(
+        cart.map((l, idx) =>
+          idx === existingIndex ? { ...l, quantity: l.quantity + quantity } : l
+        )
+      );
+    } else {
+      const newLine: CartLine = {
+        id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        itemId: lineId,
+        name: lineName,
+        category: item.categoryName,
+        price: finalUnitPrice,
+        gstRate: item.isGstApplicable === false ? 0 : item.gstRate ?? 0,
+        hsnSac: item.hsnSac,
+        quantity,
+        uom: item.uom,
+        isVeg: item.isVeg,
+        code: item.code,
+        imageUrl: item.imageUrl,
+        notes: extraNotes || undefined,
       };
       onUpdateCart([...cart, newLine]);
     }
@@ -1139,6 +1189,13 @@ export const BillingScreen: React.FC<Props> = ({
           </form>
         </div>
       )}
+      {/* Quick Portion & Extras Selection Modal */}
+      <PortionSelectModal
+        isOpen={Boolean(portionModalItem)}
+        onClose={() => setPortionModalItem(null)}
+        item={portionModalItem}
+        onConfirm={handleConfirmPortion}
+      />
     </div>
   );
 };

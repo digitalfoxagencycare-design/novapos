@@ -495,6 +495,9 @@ export function App() {
             customItems={customItems}
             onUpdateItems={handleUpdateItems}
             onBack={handleBack}
+            onOpenMenu={() => setIsDrawerOpen(true)}
+            phone={profileDetails.phone}
+            profileName={profileDetails.profileName}
           />
         )}
 
