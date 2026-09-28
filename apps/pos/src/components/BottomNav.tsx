@@ -5,7 +5,6 @@ import {
   Package,
   Plus,
   BarChart3,
-  Sliders,
 } from 'lucide-react';
 
 export type MainTab =
@@ -64,10 +63,10 @@ export const BottomNav: React.FC<Props> = ({
         <div className="ezo-center-bill-bubble">
           <Plus className="w-6 h-6 text-white stroke-[3]" />
         </div>
-        <span className="ezo-nav-label font-bold text-indigo-600">New Bill</span>
+        <span className="ezo-nav-label font-black text-orange-600">New Bill</span>
       </button>
 
-      {/* 4. Items (formerly Inventory) */}
+      {/* 4. Items (Catalog & Stock) */}
       <button
         onClick={() => onSelectTab('inventory')}
         className={`ezo-nav-item ${activeTab === 'inventory' ? 'active' : ''}`}

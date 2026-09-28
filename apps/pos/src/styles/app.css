@@ -17,13 +17,13 @@
   /* Borders */
   --border-subtle: #E2E8F0;
   --border-medium: #CBD5E1;
-  --border-glow: rgba(91, 66, 243, 0.2);
+  --border-glow: rgba(249, 115, 22, 0.2);
 
-  /* Primary Brand - Vibrant Ezo Royal Purple */
-  --primary: #5B42F3;
-  --primary-hover: #4B33E0;
-  --primary-light: #EEF2FF;
-  --primary-glow: 0 4px 14px rgba(91, 66, 243, 0.35);
+  /* Primary Brand - Warm Modern Orange */
+  --primary: #F97316;
+  --primary-hover: #EA580C;
+  --primary-light: #FFF7ED;
+  --primary-glow: 0 4px 14px rgba(249, 115, 22, 0.35);
 
   /* Status Colors */
   --emerald: #10B981;
@@ -2411,7 +2411,7 @@ input:focus, select:focus, textarea:focus {
   left: 0;
   right: 0;
   z-index: 500;
-  background: #5B42F3;
+  background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
   padding-top: max(22px, env(safe-area-inset-top, 22px));
   min-height: calc(64px + env(safe-area-inset-top, 22px));
   padding-left: 14px;
@@ -2421,7 +2421,7 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: space-between;
   color: #FFFFFF;
-  box-shadow: 0 2px 10px rgba(91, 66, 243, 0.25);
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.25);
 }
 
 .ezo-dash-header-left {

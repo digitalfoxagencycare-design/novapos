@@ -123,29 +123,33 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
   };
 
   return (
-    <div className="ezo-screen-container bg-slate-50 min-h-screen pb-20">
-      {/* Top Header */}
-      <div className="bg-purple-700 text-white p-4 sticky top-0 z-30 shadow-md flex items-center justify-between">
+    <div className="fixed inset-0 z-40 bg-slate-50 flex flex-col overflow-hidden">
+      {/* Top Header - Warm Brand Orange */}
+      <div className="bg-gradient-to-r from-orange-600 to-orange-500 text-white px-4 py-3.5 shadow-md flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
               if (isEditing) setIsEditing(false);
               else if (onBack) onBack();
             }}
-            className="p-1 text-white hover:bg-purple-800 rounded-full"
+            className="p-1.5 text-white hover:bg-orange-700/50 rounded-full transition-colors"
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
-            <h1 className="text-lg font-bold">{isEditing ? (selectedStaff ? 'Edit Staff Member' : 'Add New Staff') : 'Staff Management'}</h1>
-            <span className="text-xs text-purple-200">Max 2 Staff accounts ({staffList.length}/2 registered)</span>
+            <h1 className="text-lg font-extrabold leading-tight">
+              {isEditing ? (selectedStaff ? 'Edit Staff Member' : 'Add New Staff') : 'Staff Management'}
+            </h1>
+            <span className="text-xs text-orange-100 font-medium">
+              Max 2 Staff accounts ({staffList.length}/2 registered)
+            </span>
           </div>
         </div>
 
         {!isEditing && staffList.length < 2 && (
           <button
             onClick={handleOpenAddStaff}
-            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+            className="px-3.5 py-1.5 bg-white text-orange-600 hover:bg-orange-50 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Staff</span>
@@ -155,37 +159,37 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
 
       {/* Messages */}
       {errorMessage && (
-        <div className="m-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
+        <div className="m-3 p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 flex-shrink-0">
           <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="m-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
+        <div className="m-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 flex-shrink-0">
           <UserCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="p-4 max-w-2xl mx-auto space-y-4">
+      {/* Scrollable Main Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 pb-32 space-y-4">
         {!isEditing ? (
           /* Staff List View */
-          <div className="space-y-4">
+          <div className="max-w-xl mx-auto space-y-3">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <b className="text-slate-800 text-sm block">Store Staff Directory</b>
-                <p className="text-xs text-slate-500">Provide controlled POS permissions for cashiers and managers</p>
+                <p className="text-xs text-slate-500">Provide controlled POS permissions for cashiers and helpers</p>
               </div>
-              <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">
+              <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
                 {staffList.length} of 2 Active
               </span>
             </div>
 
             {staffList.length === 0 ? (
               <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-300 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 mx-auto flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 mx-auto flex items-center justify-center">
                   <UserPlus className="w-6 h-6" />
                 </div>
                 <h3 className="font-bold text-slate-800 text-sm">No Staff Accounts Created</h3>
@@ -194,7 +198,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 </p>
                 <button
                   onClick={handleOpenAddStaff}
-                  className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2 shadow-md"
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2 shadow-md transition-all active:scale-95"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Create First Staff Account</span>
@@ -205,11 +209,11 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 {staffList.map((staff) => (
                   <div
                     key={staff.id}
-                    className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-purple-300 transition-colors cursor-pointer"
+                    className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-orange-300 transition-colors cursor-pointer"
                     onClick={() => handleOpenEditStaff(staff)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-base">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-base">
                         {staff.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -218,7 +222,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                           <Phone className="w-3 h-3 text-slate-400" />
                           <span>+91 {staff.phone}</span>
                           <span>•</span>
-                          <span className="font-semibold text-purple-700">{staff.accessType}</span>
+                          <span className="font-semibold text-orange-600">{staff.accessType}</span>
                         </div>
                       </div>
                     </div>
@@ -229,7 +233,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                           e.stopPropagation();
                           handleOpenEditStaff(staff);
                         }}
-                        className="p-2 text-slate-400 hover:text-purple-700 rounded-lg hover:bg-purple-50"
+                        className="p-2 text-slate-400 hover:text-orange-600 rounded-lg hover:bg-orange-50"
                         title="Edit Staff"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -252,7 +256,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
           </div>
         ) : (
           /* Staff Add / Edit Form */
-          <form onSubmit={handleSave} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+          <form id="staff-form" onSubmit={handleSave} className="max-w-xl mx-auto bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
             {/* Staff Name */}
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1">Staff Name *</label>
@@ -262,7 +266,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 placeholder="e.g. Vijay"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-purple-600 outline-none"
+                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-orange-500 outline-none"
               />
             </div>
 
@@ -275,7 +279,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 placeholder="9550249998"
                 value={formPhone}
                 onChange={(e) => setFormPhone(e.target.value)}
-                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-purple-600 outline-none"
+                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-orange-500 outline-none"
               />
             </div>
 
@@ -287,7 +291,7 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 placeholder="Set 4-digit PIN or password"
                 value={formPassword}
                 onChange={(e) => setFormPassword(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-purple-600 outline-none"
+                className="w-full text-sm font-semibold text-slate-800 p-3 border border-slate-200 rounded-xl focus:border-orange-500 outline-none"
               />
             </div>
 
@@ -297,27 +301,30 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
               <select
                 value={formAccessType}
                 onChange={(e) => handleAccessTypeChange(e.target.value as any)}
-                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl bg-white focus:border-purple-600 outline-none"
+                className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-200 rounded-xl bg-white focus:border-orange-500 outline-none"
               >
-                <option value="Full Access">Full Access</option>
-                <option value="Cashier">Cashier (Standard Sales & Reports)</option>
-                <option value="Manager">Manager</option>
+                <option value="Full Access">Full Access (All Permissions)</option>
+                <option value="Cashier">Cashier (Sales & Reports Only)</option>
+                <option value="Manager">Manager (Full Store Operations)</option>
                 <option value="Custom Access">Custom Access (Customized Chips)</option>
               </select>
             </div>
 
-            {/* Granular Chip Permissions (18 Groups) */}
-            <div className="space-y-4 pt-2 border-t border-slate-100">
-              <h3 className="text-xs font-bold text-purple-900 uppercase tracking-wider">
-                Staff Feature Permissions ({PERMISSION_GROUPS.length} Groups)
-              </h3>
+            {/* Granular Chip Permissions (18 Groups) - Fully Scrollable */}
+            <div className="space-y-4 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-extrabold text-orange-950 uppercase tracking-wider">
+                  STAFF FEATURE PERMISSIONS ({PERMISSION_GROUPS.length} GROUPS)
+                </h3>
+                <span className="text-[11px] text-slate-400">Tap chip to toggle</span>
+              </div>
 
               {PERMISSION_GROUPS.map((group) => {
                 const selectedOptions = formPermissions[group.id] || [];
 
                 return (
-                  <div key={group.id} className="space-y-1.5">
-                    <span className="text-xs font-bold text-purple-900 block">{group.title}</span>
+                  <div key={group.id} className="space-y-1.5 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                    <span className="text-xs font-bold text-slate-800 block">{group.title}</span>
                     <div className="flex flex-wrap gap-1.5">
                       {group.options.map((opt) => {
                         const isActive = selectedOptions.includes(opt);
@@ -327,10 +334,10 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                             key={opt}
                             type="button"
                             onClick={() => togglePermission(group.id, opt)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                               isActive
-                                ? 'bg-purple-600 text-white shadow-sm'
-                                : 'bg-purple-100 text-purple-900 hover:bg-purple-200 border border-purple-200'
+                                ? 'bg-orange-600 text-white shadow-xs'
+                                : 'bg-white text-slate-700 hover:bg-orange-50 border border-slate-200'
                             }`}
                           >
                             {opt}
@@ -342,20 +349,23 @@ export const StaffScreen: React.FC<Props> = ({ onBack }) => {
                 );
               })}
             </div>
-
-            {/* Bottom Save Button */}
-            <div className="pt-4 sticky bottom-4">
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm rounded-full shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                SAVE
-              </button>
-            </div>
           </form>
         )}
       </div>
+
+      {/* Fixed Bottom Save Button when Editing - Never Overlaps Content */}
+      {isEditing && (
+        <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl z-50 flex justify-center">
+          <button
+            type="submit"
+            form="staff-form"
+            className="w-full max-w-md py-3.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-extrabold text-sm rounded-full shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
+          >
+            <Save className="w-5 h-5" />
+            <span>SAVE STAFF ACCOUNT</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

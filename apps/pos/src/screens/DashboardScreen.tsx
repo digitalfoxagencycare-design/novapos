@@ -6,7 +6,6 @@ import {
   Headphones,
   Calendar,
   ChevronRight,
-  TrendingUp,
   Receipt,
   Printer,
   Plus,
@@ -19,7 +18,12 @@ import {
   Package,
   ShoppingBag,
   Sparkles,
-  Scale,
+  TrendingUp,
+  Share2,
+  X,
+  CreditCard,
+  DollarSign,
+  Layers,
 } from 'lucide-react';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { loadDayBookEntries, filterEntriesByPeriod, type DayBookEntry } from '../lib/dayBook';
@@ -50,6 +54,7 @@ export const DashboardScreen: React.FC<Props> = ({
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState(false);
+  const [printerBannerDismissed, setPrinterBannerDismissed] = useState(false);
   const subDetails = useSubscriptionDetails();
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
 
@@ -86,14 +91,19 @@ export const DashboardScreen: React.FC<Props> = ({
   // Load today's sales
   const [todaySales, setTodaySales] = useState<DayBookEntry[]>([]);
   const [todayTotal, setTodayTotal] = useState<number>(0);
+  const [cashTotal, setCashTotal] = useState<number>(0);
+  const [digitalTotal, setDigitalTotal] = useState<number>(0);
 
   const refreshTodaySales = () => {
     const entries = loadDayBookEntries();
-    
-    const salesToday = filterEntriesByPeriod(entries, 'today').filter(entry => entry.type === 'sale');
+    const salesToday = filterEntriesByPeriod(entries, 'today').filter((entry) => entry.type === 'sale');
     setTodaySales(salesToday);
     const total = salesToday.reduce((sum, e) => sum + e.amount, 0);
+    const cash = salesToday.filter((e) => e.paymentMode === 'cash').reduce((sum, e) => sum + e.amount, 0);
+    const digital = salesToday.filter((e) => e.paymentMode === 'upi' || e.paymentMode === 'card').reduce((sum, e) => sum + e.amount, 0);
     setTodayTotal(total);
+    setCashTotal(cash);
+    setDigitalTotal(digital);
   };
 
   useEffect(() => {
@@ -110,10 +120,15 @@ export const DashboardScreen: React.FC<Props> = ({
     }, 600);
   };
 
+  const handleShareWhatsApp = (sale: DayBookEntry) => {
+    const text = `*${profileName || 'NovaPOS Store'} - Tax Receipt*\n*Bill:* ${sale.referenceNo || sale.id}\n*Total:* ₹${sale.amount.toFixed(2)}\n*Mode:* ${sale.paymentMode.toUpperCase()}\nThank you for your business! 🙏`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   return (
-    <div className="ezo-dashboard-container">
-      {/* 1. Purple Top App Bar with Notch / Status Bar Safe-Area Support */}
-      <header className="ezo-dash-header">
+    <div className="ezo-dashboard-container pb-28">
+      {/* 1. Warm Orange Top Header */}
+      <header className="ezo-dash-header bg-gradient-to-r from-orange-600 to-orange-500 shadow-md">
         <div className="ezo-dash-header-left">
           <button
             onClick={onOpenMenu}
@@ -125,9 +140,7 @@ export const DashboardScreen: React.FC<Props> = ({
           </button>
           <div className="ezo-dash-title-wrap">
             <h1 className="ezo-dash-store-name">{profileName || 'My Store'}</h1>
-            <span className="ezo-dash-store-sub">
-              FAST v39.31 · Cloud Sync Online
-            </span>
+            <span className="ezo-dash-store-sub">FAST v39.31 · Cloud Sync Online</span>
           </div>
         </div>
 
@@ -151,334 +164,257 @@ export const DashboardScreen: React.FC<Props> = ({
         </div>
       </header>
 
-      {/* Sync Toast Feedback */}
+      {/* Sync Toast */}
       {syncToast && (
-        <div className="ezo-sync-toast">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 mr-1.5" />
-          Data Synced Successfully
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>Cloud data synchronized!</span>
         </div>
       )}
 
-      {/* 2. Date-Time Ribbon with Working Hide Toggle */}
-      {!hideDateBanner && (
-        <div className="ezo-datetime-banner">
-          <div className="ezo-datetime-text">
-            <Calendar className="w-3.5 h-3.5 text-slate-500 mr-1.5 inline" />
-            <span>{currentTime}</span>
-          </div>
-          <button
-            onClick={() => setHideDateBanner(true)}
-            className="ezo-hide-btn"
-            title="Hide date ribbon"
-          >
-            Hide
-          </button>
-        </div>
-      )}
-
-      {/* Scrollable Dashboard Body */}
-      <div className="ezo-dash-scroll-body">
-        {/* 3. Top KPI Cards: Reports, Sale (TDY), & Invoices */}
-        <div className="ezo-kpi-grid">
-          {/* Card 1: Reports */}
-          <div
-            onClick={() => onNavigate('reports')}
-            className="ezo-kpi-card ezo-kpi-reports"
-          >
-            <span className="ezo-kpi-title">Reports</span>
-            <div className="ezo-kpi-action-row">
-              <span className="ezo-kpi-action-text">Check 18 Reports</span>
-              <ChevronRight className="w-4 h-4 text-slate-700" />
+      {/* Main Scroll Content */}
+      <div className="ezo-dash-scroll-body space-y-3.5 px-3.5 py-3">
+        {/* 2. Date & Time Bar */}
+        {!hideDateBanner && (
+          <div className="flex items-center justify-between bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs text-xs">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold">
+              <Calendar className="w-4 h-4 text-orange-600" />
+              <span>{currentTime}</span>
             </div>
+            <button
+              onClick={() => setHideDateBanner(true)}
+              className="text-slate-400 hover:text-slate-600 font-bold text-[11px]"
+            >
+              Hide
+            </button>
           </div>
+        )}
 
-          {/* Card 2: Sale (TDY) */}
-          <div
+        {/* 3. Primary KPI Cards: Reports & Today's Sales */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Reports Card */}
+          <button
             onClick={() => onNavigate('reports')}
-            className="ezo-kpi-card ezo-kpi-sale"
+            className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs text-left hover:border-orange-300 transition-all active:scale-[0.98] flex flex-col justify-between"
           >
-            <span className="ezo-kpi-title">Sale (TDY)</span>
-            <div className="ezo-kpi-amount">₹ {todayTotal.toFixed(0)}</div>
+            <div>
+              <span className="text-xs font-bold text-slate-500 block uppercase tracking-wide">
+                Reports
+              </span>
+              <b className="text-sm font-extrabold text-slate-900 block mt-1">
+                Check 18 Reports
+              </b>
+            </div>
+            <div className="flex items-center text-xs font-bold text-orange-600 mt-2 gap-1">
+              <span>View Analytics</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </button>
+
+          {/* Today's Sales Card */}
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-3.5 rounded-2xl shadow-sm text-white flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-orange-100 uppercase tracking-wide">
+                  Sale (TDY)
+                </span>
+                <TrendingUp className="w-4 h-4 text-orange-200" />
+              </div>
+              <b className="text-2xl font-black text-white block mt-1">
+                ₹ {todayTotal.toFixed(0)}
+              </b>
+            </div>
+            <span className="text-[11px] text-orange-100 font-semibold">
+              {todaySales.length} {todaySales.length === 1 ? 'sale' : 'sales'} recorded today
+            </span>
           </div>
         </div>
 
-        {/* 4. Dynamic 3-Day Free Trial / SaaS License Status Card */}
+        {/* 4. License & Entitlement Status Card */}
         <div
           onClick={() => onNavigate('settings')}
-          className="ezo-pro-status-banner cursor-pointer hover:shadow-md transition-all active:scale-98"
-          title="Click to view subscription & upgrade"
+          className="bg-white p-3 rounded-xl border border-emerald-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all"
         >
-          <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-black text-slate-900 tracking-wide uppercase truncate">
-                {subDetails.plan === 'PRO'
-                  ? 'Pro Annual License Active'
-                  : subDetails.plan === 'STARTER'
-                  ? 'Starter Monthly Active'
-                  : subDetails.isExpired
-                  ? 'Subscription Inactive / Expired'
-                  : 'Merchant License Active'}
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">
-                {!subDetails.isExpired ? (
-                  <>
-                    <b className="text-indigo-600 font-bold">Valid until {subDetails.formattedExpiresAt}</b>
-                  </>
-                ) : (
-                  <span className="text-rose-600 font-bold">License expired · Contact for Premium</span>
-                )}
-              </div>
+              <b className="text-xs font-black text-slate-900 block truncate uppercase">
+                {subDetails.isTrial ? '7-Day Free Trial Active' : 'Pro Annual License Active'}
+              </b>
+              <span className="text-[11px] text-emerald-700 font-semibold truncate block">
+                Valid until {subDetails.formattedExpiresAt}
+              </span>
             </div>
           </div>
-          <span
-            style={{
-              backgroundColor: subDetails.isExpired ? '#EF4444' : '#10B981',
-              color: '#FFFFFF',
-            }}
-            className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex-shrink-0"
-          >
-            {subDetails.isExpired ? 'Expired' : 'Active'}
+          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+            Active
           </span>
         </div>
 
-        {/* 5. Quick POS Shortcuts Grid */}
-        <div className="ezo-quick-shortcuts-grid">
-          <button
-            onClick={() => onNavigate('billing')}
-            className="ezo-shortcut-btn"
-          >
-            <div className="ezo-shortcut-icon bg-indigo-50 text-indigo-600">
-              <Receipt className="w-5 h-5" />
-            </div>
-            <span className="ezo-shortcut-label">Sale Invoice</span>
-          </button>
+        {/* 5. Essential Quick Tools (Non-duplicate, high-utility actions) */}
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+          <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+            POS Business Shortcuts
+          </span>
+          <div className="grid grid-cols-4 gap-2">
+            {/* Quick Invoice */}
+            <button
+              onClick={() => onNavigate('billing')}
+              className="p-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Receipt className="w-5 h-5 text-orange-600" />
+              <span className="text-[11px] font-bold text-center leading-tight">Billing</span>
+            </button>
 
-          <button
-            onClick={() => onNavigate('calculator')}
-            className="ezo-shortcut-btn"
-          >
-            <div className="ezo-shortcut-icon bg-amber-50 text-amber-600">
-              <Calculator className="w-5 h-5" />
-            </div>
-            <span className="ezo-shortcut-label">Calculator</span>
-          </button>
+            {/* Calculator Bill */}
+            <button
+              onClick={() => onNavigate('calculator')}
+              className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Calculator className="w-5 h-5 text-amber-600" />
+              <span className="text-[11px] font-bold text-center leading-tight">Keypad</span>
+            </button>
 
-          <button
-            onClick={() => onNavigate('party')}
-            className="ezo-shortcut-btn"
-          >
-            <div className="ezo-shortcut-icon bg-blue-50 text-blue-600">
-              <Users className="w-5 h-5" />
-            </div>
-            <span className="ezo-shortcut-label">Party / Khata</span>
-          </button>
+            {/* Items / Inventory */}
+            <button
+              onClick={() => onNavigate('inventory')}
+              className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Package className="w-5 h-5 text-blue-600" />
+              <span className="text-[11px] font-bold text-center leading-tight">Items</span>
+            </button>
 
-          <button
-            onClick={() => onNavigate('inventory')}
-            className="ezo-shortcut-btn"
-          >
-            <div className="ezo-shortcut-icon bg-purple-50 text-purple-600">
-              <Package className="w-5 h-5" />
-            </div>
-            <span className="ezo-shortcut-label">Item Catalog</span>
-          </button>
+            {/* Staff Management */}
+            <button
+              onClick={() => onNavigate('staff')}
+              className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Users className="w-5 h-5 text-purple-600" />
+              <span className="text-[11px] font-bold text-center leading-tight">Staff</span>
+            </button>
+          </div>
         </div>
 
-        {/* 6. Section: Recent Sale Transactions */}
-        <div className="ezo-section-card">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="ezo-section-heading">RECENT SALE TRANSACTIONS</h2>
-            <span className="text-[11px] text-indigo-600 font-bold">
-              {todaySales.length} {todaySales.length === 1 ? 'Sale' : 'Sales'} Today
-            </span>
+        {/* 6. Smart Dismissible Printer Status Card */}
+        {!printerBannerDismissed && (
+          <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5" onClick={onOpenPrinterModal}>
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                <Printer className="w-4 h-4 text-orange-400" />
+              </div>
+              <div className="cursor-pointer">
+                <b className="text-xs font-bold block">Connect Thermal Printer</b>
+                <span className="text-[10px] text-slate-300">Bluetooth / USB 58mm & 80mm</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenPrinterModal}
+                className="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white font-bold text-[11px] rounded-lg shadow-xs"
+              >
+                Connect
+              </button>
+              <button
+                onClick={() => setPrinterBannerDismissed(true)}
+                className="p-1 text-slate-400 hover:text-white rounded-md"
+                title="Dismiss banner"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 7. Recent Sales Transactions Live Feed */}
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <b className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+                Recent Sale Transactions
+              </b>
+              <span className="text-[11px] text-slate-400">
+                {todaySales.length} total bills today
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigate('reports')}
+              className="text-xs font-bold text-orange-600 hover:underline"
+            >
+              View all
+            </button>
           </div>
 
           {todaySales.length === 0 ? (
-            <div className="ezo-empty-transactions">
-              <Receipt className="w-9 h-9 text-slate-300 mx-auto mb-1.5" />
-              <p className="ezo-empty-text">No Recent Sale Transactions For Today</p>
-              <button
-                onClick={() => onNavigate('billing')}
-                className="mt-3 px-4 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full hover:bg-indigo-100 inline-flex items-center"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Create First Bill
-              </button>
+            <div className="py-6 text-center text-slate-400 space-y-1">
+              <Receipt className="w-8 h-8 mx-auto text-slate-300" />
+              <p className="text-xs font-semibold">No sales recorded yet today</p>
             </div>
           ) : (
-            <div className="ezo-transactions-list">
-              {todaySales.slice(0, 6).map((sale) => (
-                <div key={sale.id} className="ezo-sale-item">
-                  <div className="ezo-sale-item-left">
-                    <span className="ezo-sale-bill-no">
-                      {sale.referenceNo || 'Invoice'}
-                    </span>
-                    <span className="ezo-sale-time">
-                      <Clock className="w-3 h-3 inline mr-1" />
-                      {new Date(sale.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                      {' · '}
-                      <span className="uppercase text-[10px] font-bold text-indigo-600">
+            <div className="space-y-2">
+              {todaySales.slice(0, 5).map((sale) => (
+                <div
+                  key={sale.id}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:bg-orange-50/50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <b className="text-xs font-bold text-slate-800 block truncate">
+                      {sale.referenceNo || sale.id}
+                    </b>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                      <span>{new Date(sale.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>•</span>
+                      <span className="font-semibold uppercase text-orange-700 bg-orange-100/70 px-1.5 py-0.2 rounded text-[10px]">
                         {sale.paymentMode}
                       </span>
-                    </span>
+                    </div>
                   </div>
-                  <div className="ezo-sale-item-right">
-                    <span className="ezo-sale-amount">
+
+                  <div className="flex items-center gap-2">
+                    <b className="text-sm font-extrabold text-slate-900">
                       ₹{sale.amount.toFixed(2)}
-                    </span>
+                    </b>
+                    <button
+                      onClick={() => handleShareWhatsApp(sale)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50"
+                      title="Share Bill via WhatsApp"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* 7. Receive Daily Report On Email-Id Card with Toggle */}
-        <div className="ezo-email-report-card">
-          <div className="ezo-email-report-info">
-            <span className="ezo-email-report-title">
-              Receive Daily Report On Email-Id
-            </span>
-            <span className="ezo-email-report-status">
-              {emailReportEnabled ? (emailInput || 'Enabled') : 'Disabled'}
-            </span>
-          </div>
-
-          <label className="ezo-switch-label">
-            <input
-              type="checkbox"
-              checked={emailReportEnabled}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setEmailReportEnabled(checked);
-                if (checked && !emailInput) {
-                  setEmailModalOpen(true);
-                }
-              }}
-              className="ezo-switch-input"
-            />
-            <span className="ezo-switch-slider" />
-          </label>
-        </div>
-
-        <div className="ezo-dash-bottom-spacer" />
-      </div>
-
-      {/* 8. Floating Connect Printer Action */}
-      <div className="ezo-floating-actions-bar">
-        <button
-          onClick={onOpenPrinterModal}
-          className="ezo-btn-connect-printer"
-        >
-          <span className="ezo-printer-top-line">👆 CONNECT PRINTER 👆</span>
-          <span className="ezo-printer-sub-line">
-            PERMISSION | BLUETOOTH | LOCATION
-          </span>
-        </button>
       </div>
 
       {/* Support Modal */}
       {supportModalOpen && (
         <div className="ezo-modal-overlay" onClick={() => setSupportModalOpen(false)}>
           <div className="ezo-modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="ezo-modal-hero">
-              <Headphones className="w-10 h-10 text-indigo-600 mx-auto mb-2" />
-              <h3 className="text-lg font-bold text-slate-900">NovaPOS Help & Support</h3>
-              <p className="text-xs text-slate-500">24/7 Merchant Customer Care</p>
+            <div className="ezo-modal-hero bg-gradient-to-br from-orange-600 to-orange-500 text-white p-4 rounded-t-2xl text-center">
+              <Headphones className="w-8 h-8 text-white mx-auto mb-1" />
+              <h3 className="text-base font-bold">NovaPOS Help & Support</h3>
+              <p className="text-xs text-orange-100">24/7 Merchant Customer Helpline</p>
             </div>
             <div className="p-4 space-y-3">
               <a
                 href="https://wa.me/919381563241?text=Hello%20NovaPOS%20Support%2C%20I%20need%20assistance%20with%20my%20POS%20system."
                 target="_blank"
                 rel="noreferrer"
-                className="ezo-support-link wa"
+                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
               >
-                WhatsApp Live Support (+91 9381563241)
+                WhatsApp Helpline (+91 9381563241)
               </a>
               <a
                 href="tel:9381563241"
-                className="ezo-support-link call"
+                className="w-full py-2.5 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
               >
-                <Headphones className="w-4 h-4 mr-2" />
-                Direct Helpline (+91 9381563241)
+                <Headphones className="w-4 h-4" />
+                Call Helpline (+91 9381563241)
               </a>
-              <button
-                type="button"
-                onClick={() => {
-                  setSupportModalOpen(false);
-                  setComplianceModalOpen(true);
-                }}
-                className="w-full py-2 px-3 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center gap-1.5 hover:bg-slate-100 transition-colors"
-              >
-                <Scale className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Privacy Policy, Terms & Legal Compliance</span>
-              </button>
-
-              <button
-                onClick={() => setSupportModalOpen(false)}
-                className="w-full py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-lg mt-1"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Legal & Play Store Compliance Modal */}
-      <ComplianceModal
-        isOpen={complianceModalOpen}
-        onClose={() => setComplianceModalOpen(false)}
-      />
-
-      {/* Email Report Setup Modal */}
-      {emailModalOpen && (
-        <div className="ezo-modal-overlay" onClick={() => setEmailModalOpen(false)}>
-          <div className="ezo-modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4">
-              <Mail className="w-8 h-8 text-indigo-600 mx-auto mb-1.5" />
-              <h3 className="text-base font-bold text-slate-900 text-center">
-                Configure Daily Email Reports
-              </h3>
-              <p className="text-xs text-slate-500 text-center mb-3">
-                Receive an automatic daily end-of-day sales, daybook, and tax summary at 9:00 PM.
-              </p>
-              <input
-                type="email"
-                placeholder="storeowner@gmail.com"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded-lg text-sm mb-3"
-                autoFocus
-              />
-              <button
-                onClick={() => {
-                  if (!emailInput.includes('@')) {
-                    alert('Please enter a valid email address');
-                    return;
-                  }
-                  setEmailReportEnabled(true);
-                  setEmailModalOpen(false);
-                }}
-                className="w-full py-2 bg-indigo-600 text-white font-bold rounded-lg text-xs"
-              >
-                Save & Enable Daily Reports
-              </button>
-              <button
-                onClick={() => {
-                  setEmailReportEnabled(false);
-                  setEmailModalOpen(false);
-                }}
-                className="w-full py-1.5 text-xs text-slate-500 mt-1"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
