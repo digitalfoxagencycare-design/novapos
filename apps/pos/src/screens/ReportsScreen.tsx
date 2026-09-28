@@ -130,6 +130,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   // Search & Expansion state
   const [saleSearch, setSaleSearch] = useState<string>('');
   const [itemSearch, setItemSearch] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -142,6 +143,20 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   const [countedCash, setCountedCash] = useState<string>('');
   const [closingDone, setClosingDone] = useState<DayClosingReport | null>(null);
   const [parties] = useState<Party[]>(loadParties());
+
+  // Distinct Categories across catalog and daybook
+  const distinctCategories = useMemo(() => {
+    const cats = new Set<string>();
+    if (items && items.length > 0) {
+      items.forEach((i) => { if (i.categoryName) cats.add(i.categoryName); });
+    }
+    allEntries.forEach((e) => {
+      if (e.lines) {
+        e.lines.forEach((l) => { if (l.category) cats.add(l.category); });
+      }
+    });
+    return Array.from(cats).filter(Boolean).sort();
+  }, [items, allEntries]);
 
   // Filter entries based on period / custom range
   const entries = useMemo(() => {
@@ -371,11 +386,17 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   const activeReport = REPORT_MENU.flatMap((g) => g.items).find((i) => i.code === selectedReport);
   const activeReportTitle = activeReport?.title || 'Report';
 
-  // Filtered sales list by search keyword
+  // Filtered sales list by search keyword and category
   const filteredSaleEntries = useMemo(() => {
-    if (!saleSearch.trim()) return salesEntries;
+    let list = salesEntries;
+    if (categoryFilter !== 'all') {
+      list = list.filter((tx) =>
+        tx.lines && tx.lines.some((l) => (l.category || 'General').toLowerCase() === categoryFilter.toLowerCase())
+      );
+    }
+    if (!saleSearch.trim()) return list;
     const q = saleSearch.toLowerCase().trim();
-    return salesEntries.filter(
+    return list.filter(
       (tx) =>
         tx.description?.toLowerCase().includes(q) ||
         tx.referenceNo?.toLowerCase().includes(q) ||
@@ -383,16 +404,20 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
         String(tx.amount).includes(q) ||
         tx.lines?.some((l) => l.name.toLowerCase().includes(q))
     );
-  }, [salesEntries, saleSearch]);
+  }, [salesEntries, saleSearch, categoryFilter]);
 
-  // Filtered item sales by search keyword
+  // Filtered item sales by search keyword and category
   const filteredItemWiseSales = useMemo(() => {
-    if (!itemSearch.trim()) return itemWiseSales;
+    let list = itemWiseSales;
+    if (categoryFilter !== 'all') {
+      list = list.filter((item) => item.category.toLowerCase() === categoryFilter.toLowerCase());
+    }
+    if (!itemSearch.trim()) return list;
     const q = itemSearch.toLowerCase().trim();
-    return itemWiseSales.filter(
+    return list.filter(
       (item) => item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q)
     );
-  }, [itemWiseSales, itemSearch]);
+  }, [itemWiseSales, itemSearch, categoryFilter]);
 
   return (
     <div className="ezo-screen-container">
@@ -414,7 +439,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
         </button>
         <div className="ezo-title-group">
           <h1 className="ezo-bar-title">{selectedReport ? activeReportTitle : 'Reports'}</h1>
-          <span className="ezo-bar-sub">FAST v39.31 {phone ? `| +91 ${phone}` : ''}</span>
+          <span className="ezo-bar-sub">FAST v39.31 · Detailed Reports</span>
         </div>
       </div>
 
@@ -518,6 +543,26 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                   </div>
                 </div>
               )}
+
+              {/* Category Filter Dropdown Bar */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs flex-1 min-w-[200px]">
+                  <Layers className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                  <span className="text-slate-500 font-medium">Category:</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-transparent font-bold text-slate-800 outline-none text-xs w-full cursor-pointer"
+                  >
+                    <option value="all">All Categories ({distinctCategories.length})</option>
+                    {distinctCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* 1.1 Business Report */}

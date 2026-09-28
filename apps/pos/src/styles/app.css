@@ -5273,3 +5273,79 @@ button:disabled { cursor: not-allowed; }
   background: #94A3B8;
   box-shadow: none;
 }
+
+/* ───────────────────────── EZO BOTTOM NAVIGATION ───────────────────────── */
+.ezo-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 40;
+  padding: 0 4px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.ezo-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ezo-nav-item.active {
+  color: #4F46E5;
+  font-weight: 700;
+}
+
+.ezo-nav-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.ezo-nav-label {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.ezo-nav-center-bill {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: -16px;
+  z-index: 45;
+}
+
+.ezo-center-bill-bubble {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+  margin-bottom: 2px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ezo-nav-center-bill:active .ezo-center-bill-bubble {
+  transform: scale(0.92);
+}
+

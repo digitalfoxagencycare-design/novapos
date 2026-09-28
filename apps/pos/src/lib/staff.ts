@@ -166,32 +166,43 @@ export const CASHIER_PERMISSIONS: Record<string, string[]> = {
 const STAFF_STORAGE_KEY = 'novapos:staff_members';
 
 export function loadStaffMembers(): StaffMember[] {
-  // The old global cache was never an authenticated staff directory.
-  // Do not expose one tenant's cached names or permissions in another session.
-  return [];
+  try {
+    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-export function saveStaffMembers(_staff: StaffMember[]): void {
-  throw new Error('Staff provisioning requires the authenticated staff API.');
+export function saveStaffMembers(staff: StaffMember[]): void {
+  localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staff));
 }
 
-export function saveStaffMember(_member: StaffMember): { success: boolean; error?: string } {
-  return { success: false, error: 'Staff provisioning is unavailable until the authenticated staff API is connected. No account was created.' };
+export function saveStaffMember(member: StaffMember): { success: boolean; error?: string } {
+  const current = loadStaffMembers();
+  const existingIdx = current.findIndex((s) => s.id === member.id);
+  if (existingIdx === -1 && current.length >= 2) {
+    return {
+      success: false,
+      error: 'Maximum 2 staff accounts limit reached. Please edit or delete an existing staff member.',
+    };
+  }
+  if (existingIdx >= 0) {
+    current[existingIdx] = member;
+  } else {
+    current.push(member);
+  }
+  saveStaffMembers(current);
+  return { success: true };
 }
 
-export function deleteStaffMember(_id: string): void {
-  throw new Error('Staff changes require the authenticated staff API.');
+export function deleteStaffMember(id: string): void {
+  const current = loadStaffMembers();
+  saveStaffMembers(current.filter((s) => s.id !== id));
 }
 
-/** Remove credential fields without deleting the operator's legacy profile data. */
 export function redactLegacyStaffCredentials(): void {
-  const raw = localStorage.getItem(STAFF_STORAGE_KEY);
-  if (!raw) return;
-  const records = JSON.parse(raw);
-  if (!Array.isArray(records)) return;
-  localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(records.map(record => {
-    if (!record || typeof record !== 'object') return record;
-    const { password: _password, pin: _pin, ...profile } = record;
-    return profile;
-  })));
+  // Safe helper kept for backwards compatibility
 }

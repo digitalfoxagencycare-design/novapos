@@ -126,7 +126,7 @@ export const DashboardScreen: React.FC<Props> = ({
           <div className="ezo-dash-title-wrap">
             <h1 className="ezo-dash-store-name">{profileName || 'My Store'}</h1>
             <span className="ezo-dash-store-sub">
-              FAST v39.31 {phone ? `| +91 ${phone}` : ''}
+              FAST v39.31 · Cloud Sync Online
             </span>
           </div>
         </div>
@@ -370,9 +370,8 @@ export const DashboardScreen: React.FC<Props> = ({
         <div className="ezo-dash-bottom-spacer" />
       </div>
 
-      {/* 8. Floating Bottom Actions (Elevated Safely Above Bottom Navigation Bar) */}
+      {/* 8. Floating Connect Printer Action */}
       <div className="ezo-floating-actions-bar">
-        {/* Connect Printer Pill */}
         <button
           onClick={onOpenPrinterModal}
           className="ezo-btn-connect-printer"
@@ -382,25 +381,6 @@ export const DashboardScreen: React.FC<Props> = ({
             PERMISSION | BLUETOOTH | LOCATION
           </span>
         </button>
-
-        {/* Main Action Row: + SALE INVOICE & Circular + FAB */}
-        <div className="ezo-action-buttons-row">
-          <button
-            onClick={() => onNavigate('billing')}
-            className="ezo-btn-sale-invoice"
-          >
-            <Plus className="w-5 h-5 mr-2 inline" />
-            <span>SALE INVOICE</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('calculator')}
-            className="ezo-btn-quick-fab"
-            title="Quick Calculator Bill"
-          >
-            <Plus className="w-6 h-6 text-white stroke-[2.5]" />
-          </button>
-        </div>
       </div>
 
       {/* Support Modal */}

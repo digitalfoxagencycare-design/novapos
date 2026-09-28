@@ -42,10 +42,16 @@ export function getSubscriptionDetails() {
     try { localStorage.setItem(keyFor(state.tenantId), JSON.stringify({ ...state, lastSeenAt: now })); } catch { /* storage unavailable */ }
   }
   return {
-    plan: state.plan, isTrial: state.plan === 'TRIAL', isExpired: remainingMs <= 0,
-    daysRemaining: Math.ceil(remainingMs / 86400000), remainingMs, clockRollback,
+    plan: state.plan,
+    isTrial: state.plan === 'TRIAL',
+    isExpired: remainingMs <= 0,
+    daysRemaining: Math.ceil(remainingMs / 86400000),
+    remainingMs,
+    clockRollback,
     countdown: `${Math.floor(remainingMs / 3600000)}h ${Math.floor(remainingMs / 60000) % 60}m`,
-    formattedExpiresAt: state.expiresAt ? new Date(state.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Connect to verify',
+    formattedExpiresAt: state.expiresAt
+      ? new Date(state.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Connect to verify',
   };
 }
 
