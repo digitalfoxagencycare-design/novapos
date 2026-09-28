@@ -5308,8 +5308,8 @@ button:disabled { cursor: not-allowed; }
 }
 
 .ezo-nav-item.active {
-  color: #4F46E5;
-  font-weight: 700;
+  color: #EA580C;
+  font-weight: 800;
 }
 
 .ezo-nav-icon-wrap {
@@ -5322,6 +5322,7 @@ button:disabled { cursor: not-allowed; }
 .ezo-nav-label {
   font-size: 11px;
   line-height: 1.1;
+  font-weight: 700;
 }
 
 .ezo-nav-center-bill {
@@ -5335,14 +5336,15 @@ button:disabled { cursor: not-allowed; }
 }
 
 .ezo-center-bill-bubble {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+  background-color: #EA580C;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.5);
   margin-bottom: 2px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }

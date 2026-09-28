@@ -219,19 +219,26 @@ export const DashboardScreen: React.FC<Props> = ({
           </button>
 
           {/* Today's Sales Card */}
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-3.5 rounded-2xl shadow-sm text-white flex flex-col justify-between">
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+              backgroundColor: '#EA580C',
+              color: '#FFFFFF',
+            }}
+            className="p-3.5 rounded-2xl shadow-md text-white flex flex-col justify-between"
+          >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-orange-100 uppercase tracking-wide">
+                <span className="text-xs font-extrabold text-white uppercase tracking-wider">
                   Sale (TDY)
                 </span>
-                <TrendingUp className="w-4 h-4 text-orange-200" />
+                <TrendingUp className="w-4 h-4 text-white" />
               </div>
-              <b className="text-2xl font-black text-white block mt-1">
+              <b className="text-2xl font-black text-white block mt-1 tracking-tight">
                 ₹ {todayTotal.toFixed(0)}
               </b>
             </div>
-            <span className="text-[11px] text-orange-100 font-semibold">
+            <span className="text-[11px] text-white/95 font-bold">
               {todaySales.length} {todaySales.length === 1 ? 'sale' : 'sales'} recorded today
             </span>
           </div>

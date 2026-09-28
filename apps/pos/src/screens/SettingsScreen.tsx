@@ -203,10 +203,27 @@ export const SettingsScreen: React.FC<Props> = ({
     setConnecting(true);
     setPrinterError(null);
     try {
-      const dev = await connectNativeBluetoothPrinter(device.address);
+      localStorage.setItem('novapos_printer_mac', device.address);
+      localStorage.setItem('novapos_printer_name', device.name);
+      const dev: PrinterDevice = {
+        connected: true,
+        type: 'bluetooth',
+        name: device.name,
+        address: device.address,
+      };
       setConnectedPrinter(dev);
       setPairedDevicesModalOpen(false);
       showSavedNotification();
+
+      // Connect RFCOMM SPP socket in background
+      await connectNativeBluetoothPrinter(device.address).catch((err) => {
+        console.warn('Socket connect attempt:', err);
+      });
+
+      // Prompt test print verification
+      setTimeout(() => {
+        setTestPrintAlertOpen(true);
+      }, 300);
     } catch (err: any) {
       setPrinterError(err.message || 'Failed to connect to printer');
     } finally {
@@ -303,16 +320,16 @@ export const SettingsScreen: React.FC<Props> = ({
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {/* Printer Status Banner (Matching Ezo Header) */}
           <div className={`p-3.5 text-center border-b ${
-            connectedPrinter?.connected
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            connectedPrinter?.address || connectedPrinter?.connected
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
               : 'bg-slate-50 border-slate-200 text-slate-700'
           }`}>
-            <b className={`font-mono text-sm tracking-wider block ${
-              connectedPrinter?.connected ? 'text-emerald-700 font-extrabold' : 'text-slate-800 font-bold'
+            <b className={`font-mono text-base tracking-wider block ${
+              connectedPrinter?.address || connectedPrinter?.connected ? 'text-emerald-700 font-black' : 'text-slate-700 font-black'
             }`}>
               {connectedPrinter?.address || (connectedPrinter?.connected ? 'CONNECTED' : 'DISCONNECTED')}
             </b>
-            <span className="text-[10px] font-extrabold tracking-widest uppercase text-emerald-700 block mt-0.5">
+            <span className="text-[11px] font-extrabold tracking-widest uppercase text-emerald-700 block mt-0.5">
               PERMISSION | BLUETOOTH | LOCATION
             </span>
           </div>
