@@ -380,7 +380,7 @@ export const KhataScreen: React.FC<Props> = ({ language, merchantName, upiVpa, o
               <div className="statement-table-box">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-bold text-slate-800 text-sm flex items-center">
-                    <FileText className="w-4 h-4 mr-1.5 text-indigo-600" />
+                    <FileText className="w-4 h-4 mr-1.5 text-orange-600" />
                     Ledger Statement ({activeTransactions.length})
                   </h4>
                   <span className="text-[11px] text-slate-500 font-medium">History</span>

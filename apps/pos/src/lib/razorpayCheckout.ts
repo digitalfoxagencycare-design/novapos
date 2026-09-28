@@ -28,7 +28,7 @@ export async function openSubscriptionCheckout(order: CheckoutOrder, name: strin
     key: order.keyId, order_id: order.orderId, amount: order.amount, currency: order.currency,
     name: 'NovaPOS', description: order.planName,
     prefill: { name, contact: phone ? `+91${phone.replace(/\D/g, '').slice(-10)}` : '' },
-    theme: { color: '#5B42F3' },
+    theme: { color: '#EA580C' },
   };
   if (Capacitor.getPlatform() === 'android') {
     if (!Capacitor.isPluginAvailable('NovaCheckout')) throw new Error('Update the Android app to use secure native checkout.');

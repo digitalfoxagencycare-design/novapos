@@ -53,7 +53,7 @@ export const SideDrawer: React.FC<Props> = ({
       id: 'dashboard',
       label: 'Dashboard',
       subtitle: 'Sales overview & quick actions',
-      icon: <LayoutDashboard className="w-5 h-5 text-indigo-600" />,
+      icon: <LayoutDashboard className="w-5 h-5 text-orange-600" />,
       forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
     },
     {

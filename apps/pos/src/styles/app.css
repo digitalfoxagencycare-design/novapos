@@ -1,6 +1,6 @@
 /*
  * NovaPOS Pro - Ezo Mobile Design System
- * 100% English Only - Vibrant Ezo Royal Purple (#5B42F3) Mobile Experience
+ * 100% English Only - Vibrant Warm Orange (#EA580C / #F97316) Mobile Experience
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -160,7 +160,7 @@ input:focus, select:focus, textarea:focus {
 
 .ezo-main-header {
   height: 56px;
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -168,7 +168,7 @@ input:focus, select:focus, textarea:focus {
   padding: 0 16px;
   flex-shrink: 0;
   z-index: 25;
-  box-shadow: 0 2px 8px rgba(91, 66, 243, 0.25);
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
 }
 
 .ezo-header-top {
@@ -319,7 +319,7 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid #D1D5DB;
   border-radius: 8px;
   padding: 15px 16px;
-  color: #5B42F3;
+  color: #EA580C;
   font-weight: 700;
   font-size: 13.5px;
   letter-spacing: 0.5px;
@@ -331,7 +331,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-outline-card-btn:hover {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FBFBFF;
 }
 
@@ -361,7 +361,7 @@ input:focus, select:focus, textarea:focus {
 .ezo-box-action-link {
   font-size: 12px;
   font-weight: 600;
-  color: #5B42F3;
+  color: #EA580C;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -440,7 +440,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-save-fab {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border-radius: 9999px;
   padding: 12px 34px;
@@ -449,14 +449,14 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 0.5px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(91, 66, 243, 0.45);
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.45);
   transition: all 0.15s ease;
 }
 
 .ezo-save-fab:hover {
-  background: #4B33E0;
+  background: #C2410C;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(91, 66, 243, 0.55);
+  box-shadow: 0 8px 22px rgba(234, 88, 12, 0.55);
 }
 
 .ezo-save-fab:active {
@@ -563,7 +563,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-modal-save-btn {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border-radius: 8px;
   padding: 10px 20px;
@@ -593,7 +593,7 @@ input:focus, select:focus, textarea:focus {
 .ezo-report-category-title {
   font-size: 13px;
   font-weight: 700;
-  color: #5B42F3;
+  color: #EA580C;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   margin-top: 12px;
@@ -724,7 +724,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-btn-primary {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border-radius: 8px;
   padding: 10px 18px;
@@ -810,7 +810,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-nav-item.active {
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 .ezo-nav-icon-wrap {
@@ -952,9 +952,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-cat-chip.active {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
-  border-color: #5B42F3;
+  border-color: #EA580C;
   font-weight: 700;
 }
 
@@ -989,8 +989,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .product-card.in-cart {
-  border-color: #5B42F3;
-  background: #F5F3FF;
+  border-color: #EA580C;
+  background: #FFF7ED;
 }
 
 .product-card-top {
@@ -1041,7 +1041,7 @@ input:focus, select:focus, textarea:focus {
 .product-price {
   font-size: 14px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 .product-price small {
@@ -1054,7 +1054,7 @@ input:focus, select:focus, textarea:focus {
 .in-cart-badge {
   font-size: 10px;
   font-weight: 700;
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   padding: 2px 6px;
   border-radius: var(--radius-full);
@@ -1132,7 +1132,7 @@ input:focus, select:focus, textarea:focus {
 .line-amount {
   font-size: 14px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
 }
 
@@ -1166,7 +1166,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-qty:hover {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
 }
 
@@ -1212,7 +1212,7 @@ input:focus, select:focus, textarea:focus {
 .grand-amount {
   font-size: 24px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
   letter-spacing: -0.5px;
 }
@@ -1242,8 +1242,8 @@ input:focus, select:focus, textarea:focus {
 .btn-cash { background: #10B981; color: #FFFFFF; }
 .btn-cash:hover:not(:disabled) { background: #059669; }
 
-.btn-upi { background: #5B42F3; color: #FFFFFF; }
-.btn-upi:hover:not(:disabled) { background: #4B33E0; }
+.btn-upi { background: #EA580C; color: #FFFFFF; }
+.btn-upi:hover:not(:disabled) { background: #C2410C; }
 
 .btn-udhar { background: #EF4444; color: #FFFFFF; }
 .btn-udhar:hover:not(:disabled) { background: #DC2626; }
@@ -1367,7 +1367,7 @@ input:focus, select:focus, textarea:focus {
 
 .calc-line-amount {
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
   margin-right: 8px;
 }
@@ -1399,7 +1399,7 @@ input:focus, select:focus, textarea:focus {
 .calc-total-val {
   font-size: 22px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
 }
 
@@ -1418,7 +1418,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-pay-cash { background: #10B981; }
-.btn-pay-upi { background: #5B42F3; }
+.btn-pay-upi { background: #EA580C; }
 
 /* Calculator Keypad */
 .calculator-keypad-panel {
@@ -1454,7 +1454,7 @@ input:focus, select:focus, textarea:focus {
 .amount-digits {
   font-size: 32px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
 }
 
@@ -1490,13 +1490,13 @@ input:focus, select:focus, textarea:focus {
 .key-clear { color: #EF4444; }
 .key-back { color: #F59E0B; }
 .key-add-line {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   font-size: 15px;
   font-family: var(--font-main);
 }
 .key-add-line:hover {
-  background: #4B33E0;
+  background: #C2410C;
 }
 
 /* ────────────────────────── Tables & KOT Styling ────────────────────────── */
@@ -1534,7 +1534,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .section-pill-btn.active {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   font-weight: 700;
 }
@@ -1596,7 +1596,7 @@ input:focus, select:focus, textarea:focus {
 
 .khata-header {
   height: 56px;
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -1693,12 +1693,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-ptab.active {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
 }
 
 .btn-add-party {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
@@ -1747,8 +1747,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .party-row.selected {
-  border-color: #5B42F3;
-  background: #EEF2FF;
+  border-color: #EA580C;
+  background: #FFF7ED;
 }
 
 .party-row-name {
@@ -1983,16 +1983,16 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-payment-mode-pill.active-upi {
-  background: #EEF2FF !important;
-  border-color: #5B42F3 !important;
-  color: #4338CA !important;
+  background: #FFF7ED !important;
+  border-color: #EA580C !important;
+  color: #C2410C !important;
   box-shadow: 0 2px 8px rgba(91, 66, 243, 0.2) !important;
 }
 
 /* Dynamic Live UPI QR Card */
 .upi-qr-card-container {
   background: #F8FAFC;
-  border: 1.5px solid #C7D2FE;
+  border: 1.5px solid #FED7AA;
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -2071,7 +2071,7 @@ input:focus, select:focus, textarea:focus {
 
 .btn-add-catalog-item {
   background: #FFFFFF;
-  color: #5B42F3;
+  color: #EA580C;
   font-size: 12px;
   font-weight: 700;
   padding: 6px 12px;
@@ -2198,7 +2198,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-submit {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   padding: 8px 18px;
   border-radius: var(--radius-sm);
@@ -2238,9 +2238,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 .inv-modal-input:focus {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(91, 66, 243, 0.1);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
 }
 
 /* High-Contrast Tactile Modern Toggle Switch */
@@ -2367,7 +2367,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-nav-item.active {
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 .ezo-nav-icon-wrap {
@@ -2378,7 +2378,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-nav-item.active .ezo-nav-icon-wrap {
-  color: #5B42F3;
+  color: #EA580C;
   transform: translateY(-1px);
 }
 
@@ -2390,7 +2390,7 @@ input:focus, select:focus, textarea:focus {
 
 .ezo-nav-item.active .ezo-nav-label {
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 /* 2. Ezo Mobile Dashboard Screen */
@@ -2551,7 +2551,7 @@ input:focus, select:focus, textarea:focus {
 
 .ezo-kpi-card {
   background: #FFFFFF;
-  border: 1.5px solid #6366F1;
+  border: 1.5px solid #EA580C;
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
@@ -2714,14 +2714,14 @@ input:focus, select:focus, textarea:focus {
 .ezo-sale-amount {
   font-size: 14px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   font-family: var(--font-mono);
 }
 
 /* Daily Email Report Card */
 .ezo-email-report-card {
   background: #FFFFFF;
-  border: 1.5px solid #5B42F3;
+  border: 1.5px solid #EA580C;
   border-radius: 8px;
   padding: 10px 14px;
   display: flex;
@@ -2783,7 +2783,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-switch-input:checked + .ezo-switch-slider {
-  background-color: #5B42F3;
+  background-color: #EA580C;
 }
 
 .ezo-switch-input:checked + .ezo-switch-slider:before {
@@ -2808,7 +2808,7 @@ input:focus, select:focus, textarea:focus {
 
 .ezo-btn-connect-printer {
   background: #FFFFFF;
-  border: 1.5px solid #5B42F3;
+  border: 1.5px solid #EA580C;
   border-radius: 6px;
   padding: 6px 12px;
   display: flex;
@@ -2819,13 +2819,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-btn-connect-printer:hover {
-  background: #F5F3FF;
+  background: #FFF7ED;
 }
 
 .ezo-printer-top-line {
   font-size: 12px;
   font-weight: 900;
-  color: #5B42F3;
+  color: #EA580C;
   letter-spacing: 0.3px;
 }
 
@@ -2844,7 +2844,7 @@ input:focus, select:focus, textarea:focus {
 
 .ezo-btn-sale-invoice {
   flex: 1;
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border: none;
   border-radius: 50px;
@@ -2855,13 +2855,13 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 14px rgba(91, 66, 243, 0.35);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .ezo-btn-sale-invoice:hover {
-  background: #4F35E8;
+  background: #C2410C;
 }
 
 .ezo-btn-sale-invoice:active {
@@ -2872,12 +2872,12 @@ input:focus, select:focus, textarea:focus {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #5B42F3;
+  background: #EA580C;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(91, 66, 243, 0.35);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -3004,7 +3004,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-drawer-item.active {
-  background: #EEF2FF;
+  background: #FFF7ED;
 }
 
 .ezo-drawer-item-icon {
@@ -3061,7 +3061,7 @@ input:focus, select:focus, textarea:focus {
   left: 0;
   right: 0;
   z-index: 500;
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   padding-top: max(22px, env(safe-area-inset-top, 22px));
   min-height: calc(64px + env(safe-area-inset-top, 22px));
@@ -3071,7 +3071,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(91, 66, 243, 0.25);
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.25);
 }
 
 .billing-nav-left {
@@ -3213,13 +3213,13 @@ input:focus, select:focus, textarea:focus {
     bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
     left: 12px !important;
     right: 12px !important;
-    background: #5B42F3 !important;
+    background: #EA580C !important;
     border-radius: 14px !important;
     padding: 12px 18px !important;
     align-items: center !important;
     justify-content: space-between !important;
     z-index: 850 !important;
-    box-shadow: 0 8px 25px rgba(91, 66, 243, 0.5) !important;
+    box-shadow: 0 8px 25px rgba(234, 88, 12, 0.4) !important;
     cursor: pointer !important;
   }
 
@@ -3230,7 +3230,7 @@ input:focus, select:focus, textarea:focus {
 
   .mobile-cart-bar-pay-btn {
     background: #FFFFFF !important;
-    color: #5B42F3 !important;
+    color: #EA580C !important;
     border: none !important;
     border-radius: 20px !important;
     padding: 8px 18px !important;
@@ -3347,7 +3347,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-modal-hero {
-  background: #EEF2FF;
+  background: #FFF7ED;
   padding: 18px 16px;
   text-align: center;
   border-bottom: 1px solid #E2E8F0;
@@ -3369,9 +3369,9 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid #86EFAC;
 }
 .ezo-support-link.call {
-  background: #EEF2FF;
-  color: #4F46E5;
-  border: 1px solid #C7D2FE;
+  background: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid #FED7AA;
 }
 
 /* 7. Ezo Opening / Login & Onboarding Screen */
@@ -3383,7 +3383,7 @@ input:focus, select:focus, textarea:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%);
+  background: linear-gradient(135deg, #1C1917 0%, #292524 50%, #431407 100%);
   padding: 16px;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -3416,7 +3416,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-login-hero {
-  background: linear-gradient(135deg, #5B42F3 0%, #4338CA 100%);
+  background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
   padding: 24px 20px 20px 20px;
   text-align: center;
   color: #FFFFFF;
@@ -3491,7 +3491,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-phone-input-wrap:focus-within {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FFFFFF;
 }
 
@@ -3524,9 +3524,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-login-input:focus {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(91, 66, 243, 0.12);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
 }
 
 .ezo-login-select {
@@ -3543,12 +3543,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-login-select:focus {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FFFFFF;
 }
 
 .ezo-login-btn {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
@@ -3559,13 +3559,13 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(91, 66, 243, 0.35);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
   transition: all 0.15s ease;
   margin-top: 4px;
 }
 
 .ezo-login-btn:hover {
-  background: #4F35E8;
+  background: #C2410C;
   transform: translateY(-1px);
 }
 
@@ -3574,8 +3574,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ezo-otp-box {
-  background: #EEF2FF;
-  border: 1px dashed #6366F1;
+  background: #FFF7ED;
+  border: 1px dashed #EA580C;
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -3584,14 +3584,14 @@ input:focus, select:focus, textarea:focus {
 .ezo-otp-input {
   width: 160px;
   padding: 10px;
-  border: 2px solid #5B42F3;
+  border: 2px solid #EA580C;
   border-radius: 10px;
   font-size: 22px;
   font-weight: 800;
   text-align: center;
   letter-spacing: 8px;
   background: #FFFFFF;
-  color: #1E1B4B;
+  color: #1C1917;
   font-family: var(--font-mono);
   outline: none;
   margin: 6px auto;
@@ -3616,10 +3616,10 @@ input:focus, select:focus, textarea:focus {
 .ezo-bottom-nav { padding-bottom:max(8px,env(safe-area-inset-bottom));flex-shrink:0; }
 .table-modal,.ezo-modal-card,.ezo-modal-dialog { max-height:calc(100dvh - 32px);overflow-y:auto; }
 .ezo-login-wrapper { height:100dvh;overflow-y:auto; }
-button:focus-visible { outline:3px solid #a5b4fc;outline-offset:2px; }
+button:focus-visible { outline:3px solid #fed7aa;outline-offset:2px; }
 button:disabled { opacity:.5;cursor:not-allowed; }
-.print-preview { position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;background:#eef2ff;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
-.print-preview header { background:#5b42f3;color:white;display:flex;align-items:center;justify-content:space-between;padding:10px;gap:8px; }
+.print-preview { position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;background:#fff7ed;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.print-preview header { background:#ea580c;color:white;display:flex;align-items:center;justify-content:space-between;padding:10px;gap:8px; }
 .print-preview h2 { font-size:16px; }
 .print-preview button { background:#ffffff20;color:white;min-height:44px;gap:6px;padding:8px 12px;border-radius:8px; }
 .print-preview iframe { flex:1;min-height:0;border:0;background:white;width:min(100%,480px);margin:auto; }
@@ -3655,15 +3655,15 @@ button:disabled { opacity:.5;cursor:not-allowed; }
     display: flex;
     align-items: center;
     padding: 10px 14px;
-    background: #EEF2FF;
-    border-bottom: 1.5px solid #C7D2FE;
+    background: #FFF7ED;
+    border-bottom: 1.5px solid #FED7AA;
     margin-bottom: 8px;
     border-radius: 8px;
   }
   .btn-back-parties-mobile {
     background: none;
     border: none;
-    color: #4338CA;
+    color: #C2410C;
     font-size: 13.5px;
     font-weight: 700;
     display: inline-flex;
@@ -3726,8 +3726,8 @@ button:disabled { opacity:.5;cursor:not-allowed; }
     border-top: 1px solid #F1F5F9;
   }
   .btn-action-edit-mobile {
-    background: #EEF2FF;
-    color: #4F46E5;
+    background: #FFF7ED;
+    color: #EA580C;
     border: none;
     border-radius: 6px;
     padding: 6px 12px;
@@ -3753,19 +3753,19 @@ button:disabled { opacity:.5;cursor:not-allowed; }
   bottom: calc(65px + env(safe-area-inset-bottom, 16px));
   left: 12px;
   right: 12px;
-  background: #1E1B4B;
+  background: #1C1917;
   color: #FFFFFF;
   border-radius: 14px;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 10px 25px -5px rgba(30, 27, 75, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(234, 88, 12, 0.35);
   z-index: 600;
   cursor: pointer;
 }
 .mobile-cart-bar-pay-btn {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border: none;
   padding: 8px 16px;
@@ -3792,7 +3792,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 /* Sleek Ultra-Compact Header */
 .calc-slim-header {
   height: 38px;
-  background: #5B42F3;
+  background: #EA580C;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4212,7 +4212,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .calc-note-input:focus {
-  border-color: #5B42F3;
+  border-color: #EA580C;
   background: #FFFFFF;
 }
 
@@ -4236,9 +4236,9 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .calc-note-preset-chip.active {
-  background: #EEF2FF;
-  border-color: #5B42F3;
-  color: #5B42F3;
+  background: #FFF7ED;
+  border-color: #EA580C;
+  color: #EA580C;
 }
 
 .calc-expr-line {
@@ -4260,7 +4260,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 .calc-curr {
   font-size: 20px;
   font-weight: 700;
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 .calc-digits {
@@ -4284,9 +4284,9 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 .btn-quick-amt {
   flex: 1;
   min-width: 52px;
-  background: #EEF2FF;
-  border: 1px solid #C7D2FE;
-  color: #4338CA;
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  color: #C2410C;
   border-radius: 8px;
   padding: 7px 4px;
   font-size: 12px;
@@ -4298,7 +4298,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .btn-quick-amt:active {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   transform: scale(0.96);
 }
@@ -4342,7 +4342,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .btn-numpad.btn-op:active {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
 }
 
@@ -4361,8 +4361,8 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .btn-numpad.btn-eq {
-  background: #5B42F3;
-  border-color: #4338CA;
+  background: #EA580C;
+  border-color: #C2410C;
   color: #FFFFFF;
   font-size: 22px;
   font-weight: 800;
@@ -4371,9 +4371,9 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 /* Prominent Add to Bill Button in Calculator */
 .btn-primary-add-line {
   width: 100%;
-  background: #EEF2FF;
-  border: 1.5px dashed #5B42F3;
-  color: #5B42F3;
+  background: #FFF7ED;
+  border: 1.5px dashed #EA580C;
+  color: #EA580C;
   border-radius: 12px;
   padding: 12px 16px;
   font-size: 14px;
@@ -4390,10 +4390,10 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .btn-primary-add-line.active {
-  background: #5B42F3 !important;
-  border: 1.5px solid #4338CA !important;
+  background: #EA580C !important;
+  border: 1.5px solid #C2410C !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(91, 66, 243, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35) !important;
 }
 
 .btn-primary-add-line:disabled {
@@ -4442,8 +4442,8 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .calc-line-chip {
-  background: #EEF2FF;
-  border: 1px solid #C7D2FE;
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
   border-radius: 20px;
   padding: 4px 10px;
   display: inline-flex;
@@ -4466,9 +4466,9 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 
 /* Khata Selector Button in Billing Screen */
 .btn-select-khata-cust {
-  background: #EEF2FF;
-  border: 1.5px solid #C7D2FE;
-  color: #4338CA;
+  background: #FFF7ED;
+  border: 1.5px solid #FED7AA;
+  color: #C2410C;
   border-radius: 8px;
   padding: 7px 12px;
   font-size: 12px;
@@ -4557,7 +4557,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
   font-size: 22px;
   font-weight: 900;
   font-family: var(--font-mono);
-  color: #5B42F3;
+  color: #EA580C;
 }
 
 .calc-pay-actions {
@@ -4589,7 +4589,7 @@ button:disabled { opacity:.5;cursor:not-allowed; }
 }
 
 .btn-pay-upi {
-  background: #5B42F3;
+  background: #EA580C;
   color: #FFFFFF;
   border: none;
   border-radius: 10px;
@@ -4600,14 +4600,14 @@ button:disabled { opacity:.5;cursor:not-allowed; }
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(91, 66, 243, 0.3);
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
   transition: all 0.1s ease;
   white-space: nowrap;
 }
 
 .btn-pay-upi:active {
   transform: scale(0.97);
-  background: #4338CA;
+  background: #C2410C;
 }
 
 .btn-pay-khata {
@@ -4650,7 +4650,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
 input, select, textarea { font-size: 16px !important; user-select: text; }
 button { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
 button:active { transform: none; }
-button:focus-visible, a:focus-visible { outline: 3px solid #312e81; outline-offset: 3px; }
+button:focus-visible, a:focus-visible { outline: 3px solid #7c2d12; outline-offset: 3px; }
 button:disabled { cursor: not-allowed; }
 .pos-app-wrapper {
   position: relative; inset: auto; width: 100%; height: 100%; max-width: 100%;
@@ -4677,11 +4677,11 @@ button:disabled { cursor: not-allowed; }
 .license-dialog button:disabled { opacity: 1; background: #475569 !important; color: #fff !important; }
 .license-dialog-body { flex: 1; }
 .license-error { padding: 12px; border-radius: 10px; color: #991b1b; background: #fef2f2; font-size: 14px; line-height: 1.5; }
-.license-refresh { padding: 8px 12px; color: #4338ca; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; }
-.license-banner { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; color: #312e81; background: #eef2ff; font-size: 12px; }
-.license-banner button { min-height: 40px; padding: 6px 10px; background: #4338ca; color: white; border-radius: 8px; flex-shrink: 0; }
+.license-refresh { padding: 8px 12px; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; }
+.license-banner { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; color: #7c2d12; background: #fff7ed; font-size: 12px; }
+.license-banner button { min-height: 40px; padding: 6px 10px; background: #c2410c; color: white; border-radius: 8px; flex-shrink: 0; }
 .license-gate { overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.license-gate button { min-height: 48px; padding: 12px; border-radius: 10px; background: #4338ca; color: #fff; }
+.license-gate button { min-height: 48px; padding: 12px; border-radius: 10px; background: #c2410c; color: #fff; }
 .table-modal, .ezo-modal-card, .ezo-modal-dialog { max-height: calc(var(--visible-height, 100dvh) - 32px); }
 @media (max-width: 768px) {
   .input-focused .ezo-bottom-nav { display: none; }
@@ -4710,7 +4710,7 @@ button:disabled { cursor: not-allowed; }
   position: relative;
 }
 
-/* 1. Top Header Bar (Royal Purple #5B42F3) */
+/* 1. Top Header Bar (Warm Orange #EA580C) */
 .select-items-top-bar {
   display: flex;
   align-items: center;
@@ -4966,7 +4966,7 @@ button:disabled { cursor: not-allowed; }
 .grid-sub-label {
   font-size: 9px;
   font-weight: 800;
-  color: #5B42F3;
+  color: #EA580C;
   letter-spacing: 0.05em;
   display: block;
 }

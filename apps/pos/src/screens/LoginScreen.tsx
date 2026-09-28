@@ -194,7 +194,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                 authMode === 'signup'
-                  ? 'bg-white text-indigo-700 shadow-xs'
+                  ? 'bg-white text-orange-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -209,7 +209,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                 authMode === 'signin'
-                  ? 'bg-white text-indigo-700 shadow-xs'
+                  ? 'bg-white text-orange-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -300,7 +300,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
             {/* Promo / Coupon Code */}
             <div className="ezo-login-field">
               <label className="flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5 text-indigo-600" />
+                <Ticket className="w-3.5 h-3.5 text-orange-600" />
                 <span>Referral / Coupon Code (Optional)</span>
               </label>
               <input
@@ -355,7 +355,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
                   <button
                     type="button"
                     onClick={() => setSignInMethod('otp')}
-                    className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                    className="text-[11px] text-orange-600 hover:underline font-semibold"
                   >
                     Login with SMS OTP
                   </button>
@@ -369,7 +369,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
                     value={pin}
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm tracking-widest text-slate-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm tracking-widest text-slate-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   />
                 </div>
               </div>
@@ -378,7 +378,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setSignInMethod('pin')}
-                  className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                  className="text-[11px] text-orange-600 hover:underline font-semibold"
                 >
                   Use 4-digit PIN instead
                 </button>
@@ -405,7 +405,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
             <div className="ezo-otp-box">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-bold text-slate-800">Mobile Verification</span>
-                <span className="text-xs text-indigo-600 font-mono font-bold">+91 {phone}</span>
+                <span className="text-xs text-orange-600 font-mono font-bold">+91 {phone}</span>
               </div>
               <p className="text-xs text-slate-500 mb-2">
                 Enter the 6-digit code received via SMS:
@@ -427,7 +427,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
                   <button
                     type="button"
                     onClick={handleSendOtp}
-                    className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                    className="text-orange-600 font-semibold hover:underline flex items-center gap-1"
                   >
                     <RefreshCw className="w-3 h-3" /> Resend OTP
                   </button>
@@ -468,7 +468,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={() => setShowComplianceModal(true)}
-              className="hover:text-indigo-600 hover:underline transition-colors"
+              className="hover:text-orange-600 hover:underline transition-colors"
             >
               Privacy Policy
             </button>
@@ -476,7 +476,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={() => setShowComplianceModal(true)}
-              className="hover:text-indigo-600 hover:underline transition-colors"
+              className="hover:text-orange-600 hover:underline transition-colors"
             >
               Terms of Service
             </button>
@@ -484,7 +484,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={() => setShowComplianceModal(true)}
-              className="hover:text-indigo-600 hover:underline transition-colors"
+              className="hover:text-orange-600 hover:underline transition-colors"
             >
               App Info
             </button>

@@ -238,7 +238,7 @@ export const ProfileScreen: React.FC<Props> = ({
 
   return (
     <div className="ezo-screen-container">
-      {/* Exact Ezo Purple App Bar */}
+      {/* Exact Ezo App Bar */}
       <div className="ezo-app-bar">
         <button className="ezo-back-btn" onClick={onBack} title="Back">
           <ArrowLeft className="w-6 h-6 text-white" /><span>Back</span></button>
@@ -382,7 +382,7 @@ export const ProfileScreen: React.FC<Props> = ({
                 </div>
               ) : (
                 <label className="ezo-image-upload-trigger">
-                  <Upload className="w-6 h-6 text-indigo-400 mb-1" />
+                  <Upload className="w-6 h-6 text-orange-400 mb-1" />
                   <span className="text-xs text-slate-500">Tap to upload store logo / image</span>
                   <input
                     type="file"

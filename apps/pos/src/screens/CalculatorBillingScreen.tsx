@@ -363,7 +363,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
             <span>Last: ₹{lastBilled.total}</span>
           </button>
         ) : (
-          <span className="text-[11px] text-indigo-200 font-medium">1-Tap Billing</span>
+          <span className="text-[11px] text-orange-100 font-medium">1-Tap Billing</span>
         )}
       </div>
 
@@ -373,7 +373,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
           <div className="calc-lines-header">
             <div className="flex items-center gap-2">
               <h3>Added Lines ({lines.length})</h3>
-              <span className="text-xs font-bold text-indigo-600 font-mono">
+              <span className="text-xs font-bold text-orange-600 font-mono">
                 ₹{grandTotal.toFixed(2)}
               </span>
             </div>
@@ -656,7 +656,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
           <div className="table-modal" role="dialog" aria-modal="true">
             <div className="modal-header">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-indigo-600" />
+                <Users className="w-5 h-5 text-orange-600" />
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">Select Customer for Credit</h3>
                   <p className="text-xs text-slate-500">Record ₹{effectiveTotal.toFixed(2)} to Udhar</p>
@@ -679,7 +679,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
                   placeholder="Search customer name or phone..."
                   value={partySearch}
                   onChange={(e) => setPartySearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-indigo-600"
+                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -689,7 +689,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setShowQuickAddParty(!showQuickAddParty)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700"
                 >
                   {showQuickAddParty ? '− Close New Form' : '+ New Customer'}
                 </button>
@@ -697,8 +697,8 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
 
               {/* Quick Add Customer Form */}
               {showQuickAddParty && (
-                <form onSubmit={handleQuickAddParty} className="mt-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg flex flex-col gap-2">
-                  <span className="text-xs font-bold text-indigo-900">+ Add New Customer to Khata</span>
+                <form onSubmit={handleQuickAddParty} className="mt-2 p-2.5 bg-orange-50 border border-orange-200 rounded-lg flex flex-col gap-2">
+                  <span className="text-xs font-bold text-orange-950">+ Add New Customer to Khata</span>
                   <input
                     type="text"
                     required
@@ -717,7 +717,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
                   />
                   <button
                     type="submit"
-                    className="bg-indigo-600 text-white font-bold py-1.5 rounded text-xs hover:bg-indigo-700"
+                    className="bg-orange-600 text-white font-bold py-1.5 rounded text-xs hover:bg-orange-700"
                   >
                     Save & Record ₹{effectiveTotal.toFixed(2)} Credit
                   </button>
@@ -734,7 +734,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
                     key={p.id}
                     type="button"
                     onClick={() => handleCompleteSale('credit', p)}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-indigo-50 border border-slate-200 text-left transition-colors"
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-orange-50 border border-slate-200 text-left transition-colors"
                   >
                     <div>
                       <b className="text-sm text-slate-900 block">{p.name}</b>
@@ -744,7 +744,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
                       <span className="text-xs font-bold block text-slate-700">
                         Due: <span className={p.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}>₹{Math.abs(p.balance).toFixed(2)}</span>
                       </span>
-                      <span className="text-[10px] text-indigo-600 font-semibold">Select →</span>
+                      <span className="text-[10px] text-orange-600 font-semibold">Select →</span>
                     </div>
                   </button>
                 ))

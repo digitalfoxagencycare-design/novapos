@@ -410,7 +410,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   <span
                     className={`text-[11px] font-bold px-2 py-0.5 rounded ${
                       (item.gstRate ?? 0) > 0
-                        ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                        ? 'bg-orange-50 text-orange-600 border border-orange-200'
                         : 'bg-slate-100 text-slate-600'
                     }`}
                   >
@@ -497,7 +497,7 @@ export const InventoryScreen: React.FC<Props> = ({
                 </td>
                 <td>
                   <div className="flex flex-col gap-0.5">
-                    <span className="font-bold text-xs text-purple-700">GST {item.gstRate ?? 0}%</span>
+                    <span className="font-bold text-xs text-orange-600">GST {item.gstRate ?? 0}%</span>
                     {item.hsnSac && (
                       <span className="text-[10px] font-mono text-slate-500">HSN: {item.hsnSac}</span>
                     )}
@@ -564,7 +564,7 @@ export const InventoryScreen: React.FC<Props> = ({
             onSubmit={handleSaveStockAdjustment}
             className="table-modal max-w-sm w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
           >
-            <div className="p-4 bg-purple-700 text-white flex items-center justify-between">
+            <div className="p-4 bg-orange-600 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ArrowUpDown className="w-5 h-5" />
                 <h3 className="font-bold text-sm">Adjust Stock ({adjustStockItem.name})</h3>
@@ -630,7 +630,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   placeholder="e.g. 50"
                   value={adjustStockQty}
                   onChange={(e) => setAdjustStockQty(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-purple-600"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -685,7 +685,7 @@ export const InventoryScreen: React.FC<Props> = ({
                 <button
                   type="submit"
                   disabled={!adjustStockQty || parseFloat(adjustStockQty) <= 0}
-                  className="btn-submit flex-1 bg-purple-700 hover:bg-purple-800"
+                  className="btn-submit flex-1 bg-orange-600 hover:bg-orange-700"
                 >
                   Update Stock
                 </button>
@@ -699,13 +699,13 @@ export const InventoryScreen: React.FC<Props> = ({
       {modalOpen && (
         <div className="table-modal-overlay">
           <div className="table-modal max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
-            {/* Top Purple App Bar matching Screenshot 1 & 3 */}
-            <div className="p-3.5 bg-purple-700 text-white flex items-center justify-between shadow-md">
+            {/* Top App Bar matching Screenshot 1 & 3 */}
+            <div className="p-3.5 bg-orange-600 text-white flex items-center justify-between shadow-md">
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="p-1 rounded-full text-white hover:bg-purple-800"
+                  className="p-1 rounded-full text-white hover:bg-orange-700"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -713,7 +713,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   <h3 className="font-bold text-base leading-tight">
                     {editingItem ? 'Edit Item' : 'New Item'}
                   </h3>
-                  <span className="text-[11px] text-purple-200">FAST v39.34 | {phone} | 6231</span>
+                  <span className="text-[11px] text-orange-100">FAST v39.34 | {phone} | 6231</span>
                 </div>
               </div>
               <button
@@ -739,7 +739,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   placeholder="e.g. Sona Masoori Rice, Milk, Biscuit"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full text-sm font-semibold text-slate-800 p-3 border border-purple-300 rounded-xl focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+                  className="w-full text-sm font-semibold text-slate-800 p-3 border border-slate-300 rounded-xl focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"
                 />
               </div>
 
@@ -753,7 +753,7 @@ export const InventoryScreen: React.FC<Props> = ({
                       onClick={() => setFormTaxType('taxable')}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                         formTaxType === 'taxable'
-                          ? 'bg-purple-700 text-white shadow-sm'
+                          ? 'bg-orange-600 text-white shadow-sm'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -764,7 +764,7 @@ export const InventoryScreen: React.FC<Props> = ({
                       onClick={() => setFormTaxType('exempt')}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                         formTaxType === 'exempt'
-                          ? 'bg-purple-700 text-white shadow-sm'
+                          ? 'bg-orange-600 text-white shadow-sm'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -777,7 +777,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   <div className="space-y-1.5 pt-1 border-t border-slate-200">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-600 font-medium">Select GST Slab Rate (%):</span>
-                      <span className="font-bold text-purple-700">Active: {formGstRate}% GST</span>
+                      <span className="font-bold text-orange-600">Active: {formGstRate}% GST</span>
                     </div>
                     <div className="grid grid-cols-5 gap-1.5">
                       {[0, 5, 12, 18, 28].map((rate) => (
@@ -787,7 +787,7 @@ export const InventoryScreen: React.FC<Props> = ({
                           onClick={() => setFormGstRate(rate)}
                           className={`py-1.5 rounded-lg text-xs font-bold border transition-all ${
                             formGstRate === rate
-                              ? 'bg-purple-600 text-white border-purple-600'
+                              ? 'bg-orange-600 text-white border-orange-600'
                               : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                           }`}
                         >
@@ -811,7 +811,7 @@ export const InventoryScreen: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setIsAddingNewCat(true)}
-                      className="text-xs text-purple-700 font-bold hover:underline flex items-center gap-0.5"
+                      className="text-xs text-orange-600 font-bold hover:underline flex items-center gap-0.5"
                     >
                       <Plus className="w-3 h-3" /> Add Category
                     </button>
@@ -830,7 +830,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full text-sm font-semibold text-slate-800 p-3 border border-slate-300 rounded-xl bg-white focus:border-purple-600 outline-none"
+                    className="w-full text-sm font-semibold text-slate-800 p-3 border border-slate-300 rounded-xl bg-white focus:border-orange-500 outline-none"
                   >
                     {uniqueCategoryNames.map((cat) => (
                       <option key={cat} value={cat}>
@@ -845,7 +845,7 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Enter new category name..."
                       value={newCatInput}
                       onChange={(e) => setNewCatInput(e.target.value)}
-                      className="flex-1 text-sm font-semibold text-slate-800 p-2.5 border border-purple-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-sm font-semibold text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                   </div>
                 )}
@@ -865,7 +865,7 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="0.00"
                       value={formPrice}
                       onChange={(e) => setFormPrice(e.target.value)}
-                      className="w-full text-sm font-bold text-slate-800 pl-7 pr-3 py-3 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="w-full text-sm font-bold text-slate-800 pl-7 pr-3 py-3 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                   </div>
                 </div>
@@ -877,7 +877,7 @@ export const InventoryScreen: React.FC<Props> = ({
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
                     placeholder="0" step="any" min="0"
-                    className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                    className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                   />
                 </div>
               </div>
@@ -918,7 +918,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   placeholder="e.g. 1006 (Rice), 0401 (Milk)"
                   value={formHsnSac}
                   onChange={(e) => setFormHsnSac(e.target.value)}
-                  className="w-full text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                  className="w-full text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                 />
               </div>
 
@@ -935,7 +935,7 @@ export const InventoryScreen: React.FC<Props> = ({
                       onClick={() => setFormUom(u)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
                         formUom === u
-                          ? 'bg-purple-700 text-white shadow-sm'
+                          ? 'bg-orange-600 text-white shadow-sm'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                       }`}
                     >
@@ -953,7 +953,7 @@ export const InventoryScreen: React.FC<Props> = ({
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value)}
                   placeholder="ITEM-5482"
-                  className="w-full text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                  className="w-full text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                 />
               </div>
 
@@ -972,12 +972,12 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Bar Code"
                       value={formBarcode1}
                       onChange={(e) => setFormBarcode1(e.target.value)}
-                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleOpenScanner('1')}
-                      className="p-2.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+                      className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
                       title="Scan Bar Code 1 with Camera"
                     >
                       <QrCode className="w-5 h-5" />
@@ -994,12 +994,12 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Bar Code 2"
                       value={formBarcode2}
                       onChange={(e) => setFormBarcode2(e.target.value)}
-                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleOpenScanner('2')}
-                      className="p-2.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+                      className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
                       title="Scan Bar Code 2 with Camera"
                     >
                       <QrCode className="w-5 h-5" />
@@ -1016,12 +1016,12 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Bar Code 3"
                       value={formBarcode3}
                       onChange={(e) => setFormBarcode3(e.target.value)}
-                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleOpenScanner('3')}
-                      className="p-2.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+                      className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
                       title="Scan Bar Code 3 with Camera"
                     >
                       <QrCode className="w-5 h-5" />
@@ -1038,12 +1038,12 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Bar Code 4"
                       value={formBarcode4}
                       onChange={(e) => setFormBarcode4(e.target.value)}
-                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleOpenScanner('4')}
-                      className="p-2.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+                      className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
                       title="Scan Bar Code 4 with Camera"
                     >
                       <QrCode className="w-5 h-5" />
@@ -1060,12 +1060,12 @@ export const InventoryScreen: React.FC<Props> = ({
                       placeholder="Bar Code 5"
                       value={formBarcode5}
                       onChange={(e) => setFormBarcode5(e.target.value)}
-                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
+                      className="flex-1 text-xs font-mono text-slate-800 p-2.5 border border-slate-300 rounded-xl focus:border-orange-500 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleOpenScanner('5')}
-                      className="p-2.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors"
+                      className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
                       title="Scan Bar Code 5 with Camera"
                     >
                       <QrCode className="w-5 h-5" />
@@ -1078,7 +1078,7 @@ export const InventoryScreen: React.FC<Props> = ({
               <div className="pt-4 sticky bottom-0 bg-white">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm rounded-full shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm rounded-full shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
                 >
                   SAVE
                 </button>

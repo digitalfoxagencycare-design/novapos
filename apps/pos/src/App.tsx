@@ -30,6 +30,7 @@ import {
 import { setupBarcodeScanner } from './lib/hardwareBridge';
 import { RestaurantTable } from './lib/restaurant';
 
+import { type DayBookEntry } from './lib/dayBook';
 const SESSION_KEY = 'novapos:user_session';
 const PROFILE_KEY = 'novapos:business_profile';
 const PROFILE_DETAILS_KEY = 'novapos:profile_details';
@@ -362,6 +363,37 @@ export function App() {
     handleNavigate('billing');
   };
 
+  // Handler for editing a saved bill (re-populates cart and opens billing)
+  const handleEditBill = (bill: DayBookEntry) => {
+    if (bill.lines && bill.lines.length > 0) {
+      const cartLines: CartLine[] = bill.lines.map((l) => ({
+        id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        itemId: l.itemId || `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: l.name,
+        category: l.category || 'General',
+        price: l.price,
+        quantity: l.quantity,
+        uom: (l.uom as any) || 'pcs',
+        gstRate: l.gstRate,
+        isVeg: true,
+      }));
+      handleUpdateCart(cartLines);
+    } else {
+      const cartLines: CartLine[] = [{
+        id: `line-${Date.now()}`,
+        itemId: `item-general-${Date.now()}`,
+        name: bill.description.replace(/^Sale Bill #\S+\s*/, '') || 'Sale Item',
+        category: 'General',
+        price: bill.amount,
+        quantity: 1,
+        uom: 'pcs',
+        isVeg: true,
+      }];
+      handleUpdateCart(cartLines);
+    }
+    handleNavigate('billing');
+  };
+
   // If user is not logged in, show the Mobile Login / Opening flow first!
   if (!session) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
@@ -389,9 +421,11 @@ export function App() {
             profile={profile}
             profileName={profileDetails.profileName}
             phone={profileDetails.phone}
+            address={profileDetails.address}
             onOpenMenu={() => setIsDrawerOpen(true)}
             onNavigate={(screen) => handleNavigate(screen as MainTab)}
             onOpenPrinterModal={() => handleNavigate('settings')}
+            onEditBill={handleEditBill}
           />
         )}
 
@@ -470,6 +504,7 @@ export function App() {
             phone={profileDetails.phone}
             items={allCatalogItems}
             onBack={handleBack}
+            onEditBill={handleEditBill}
           />
         )}
 

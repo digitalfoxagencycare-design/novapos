@@ -29,7 +29,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
           details.isExpired
             ? 'bg-rose-600 text-white animate-pulse'
             : details.isTrial
-            ? 'bg-purple-900 text-purple-100 border-b border-purple-800'
+            ? 'bg-orange-950 text-orange-100 border-b border-purple-800'
             : 'bg-emerald-800 text-emerald-100 border-b border-emerald-700'
         }`}
       >
@@ -67,20 +67,20 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
         <div role="dialog" aria-modal="true" aria-label="License and subscription" className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[85dvh] overflow-y-auto shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 flex flex-col">
             {/* Header */}
-            <div className="p-4 bg-purple-700 text-white flex items-center justify-between">
+            <div className="p-4 bg-orange-600 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold text-base">NovaPOS License & Subscription</h3>
-                  <span className="text-xs text-purple-200">Official Cloud Billing Support</span>
+                  <span className="text-xs text-orange-100">Official Cloud Billing Support</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="p-1 text-white/80 hover:text-white rounded-full hover:bg-purple-800"
+                className="p-1 text-white/80 hover:text-white rounded-full hover:bg-orange-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -94,7 +94,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
                   details.isExpired
                     ? 'bg-rose-50 border-rose-200 text-rose-900'
                     : details.isTrial
-                    ? 'bg-purple-50 border-purple-200 text-purple-900'
+                    ? 'bg-orange-50 border-purple-200 text-orange-950'
                     : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}
               >
@@ -117,7 +117,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
                       details.isExpired
                         ? 'bg-rose-200 text-rose-900'
                         : details.isTrial
-                        ? 'bg-purple-200 text-purple-900'
+                        ? 'bg-orange-200 text-orange-900'
                         : 'bg-emerald-200 text-emerald-900'
                     }`}
                   >
@@ -152,12 +152,12 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
               </div>
 
               {/* Direct Support & Activation Box */}
-              <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200 space-y-3">
+              <div className="p-4 bg-orange-50 rounded-2xl border border-purple-200 space-y-3">
                 <div>
-                  <b className="text-xs font-bold text-purple-900 block">
+                  <b className="text-xs font-bold text-orange-950 block">
                     📞 Contact for Subscription & Activation:
                   </b>
-                  <p className="text-[11px] text-purple-700 mt-0.5">
+                  <p className="text-[11px] text-orange-700 mt-0.5">
                     Contact our executive directly via WhatsApp or Phone call to activate your license.
                   </p>
                 </div>
@@ -175,7 +175,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
 
                   <a
                     href={`tel:+91${supportNumber}`}
-                    className="py-2.5 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    className="py-2.5 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <Phone className="w-4 h-4" />
                     Call +91 {supportNumber}

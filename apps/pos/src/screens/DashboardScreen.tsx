@@ -24,28 +24,35 @@ import {
   CreditCard,
   DollarSign,
   Layers,
+  Edit3,
 } from 'lucide-react';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { loadDayBookEntries, filterEntriesByPeriod, type DayBookEntry } from '../lib/dayBook';
 import { useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
+import { printBillDirect, type BillData, type BillItem } from '../lib/thermalPrinter';
+import { speakPaymentAlert } from '../lib/hardwareBridge';
 
 interface Props {
   profile: BusinessProfile;
   profileName: string;
   phone: string;
+  address?: string;
   onOpenMenu: () => void;
   onNavigate: (screen: string) => void;
   onOpenPrinterModal: () => void;
+  onEditBill?: (bill: DayBookEntry) => void;
 }
 
 export const DashboardScreen: React.FC<Props> = ({
   profile,
   profileName,
   phone,
+  address,
   onOpenMenu,
   onNavigate,
   onOpenPrinterModal,
+  onEditBill,
 }) => {
   const [hideDateBanner, setHideDateBanner] = useState(false);
   const [emailReportEnabled, setEmailReportEnabled] = useState(false);
@@ -58,8 +65,14 @@ export const DashboardScreen: React.FC<Props> = ({
   const subDetails = useSubscriptionDetails();
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
 
-  useBackHandler(emailModalOpen || supportModalOpen || complianceModalOpen, () => {
-    if (complianceModalOpen) setComplianceModalOpen(false);
+  // Saved Bill Details Modal state
+  const [selectedSale, setSelectedSale] = useState<DayBookEntry | null>(null);
+  const [billPrintSuccess, setBillPrintSuccess] = useState(false);
+  const [billPrintError, setBillPrintError] = useState<string | null>(null);
+
+  useBackHandler(Boolean(selectedSale) || emailModalOpen || supportModalOpen || complianceModalOpen, () => {
+    if (selectedSale) setSelectedSale(null);
+    else if (complianceModalOpen) setComplianceModalOpen(false);
     else if (supportModalOpen) setSupportModalOpen(false);
     else setEmailModalOpen(false);
   });
@@ -123,6 +136,53 @@ export const DashboardScreen: React.FC<Props> = ({
   const handleShareWhatsApp = (sale: DayBookEntry) => {
     const text = `*${profileName || 'NovaPOS Store'} - Tax Receipt*\n*Bill:* ${sale.referenceNo || sale.id}\n*Total:* ₹${sale.amount.toFixed(2)}\n*Mode:* ${sale.paymentMode.toUpperCase()}\nThank you for your business! 🙏`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handlePrintSaleDirect = async (sale: DayBookEntry) => {
+    setBillPrintError(null);
+    speakPaymentAlert(sale.amount, sale.paymentMode === 'credit' ? 'Khata' : sale.paymentMode);
+    try {
+      let billData: BillData;
+      if (sale.receiptSnapshot) {
+        billData = { ...sale.receiptSnapshot, isDuplicate: true };
+      } else {
+        const dateObj = new Date(sale.timestamp);
+        const items: BillItem[] = sale.lines && sale.lines.length > 0
+          ? sale.lines.map((l) => ({
+              name: l.name,
+              quantity: l.quantity,
+              price: l.price,
+              total: l.price * l.quantity,
+            }))
+          : [{
+              name: sale.description || 'Sale Item',
+              quantity: 1,
+              price: sale.amount,
+              total: sale.amount,
+            }];
+        billData = {
+          restaurantName: profileName || 'NovaPOS Store',
+          address: address || '',
+          phone: phone || '',
+          billNo: sale.referenceNo || sale.id,
+          date: dateObj.toLocaleDateString('en-IN'),
+          time: dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+          orderType: 'DINE-IN',
+          items,
+          subtotal: sale.amount,
+          cgst: 0,
+          sgst: 0,
+          total: sale.amount,
+          paymentMode: sale.paymentMode.toUpperCase(),
+          isDuplicate: true,
+        };
+      }
+      await printBillDirect(billData);
+      setBillPrintSuccess(true);
+      setTimeout(() => setBillPrintSuccess(false), 3000);
+    } catch (err) {
+      setBillPrintError((err as Error).message || 'Failed to print bill');
+    }
   };
 
   return (
@@ -281,9 +341,9 @@ export const DashboardScreen: React.FC<Props> = ({
             {/* Staff Management */}
             <button
               onClick={() => onNavigate('staff')}
-              className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-95"
             >
-              <Users className="w-5 h-5 text-purple-600" />
+              <Users className="w-5 h-5 text-slate-700" />
               <span className="text-[11px] font-bold text-center leading-tight">Staff</span>
             </button>
           </div>
@@ -327,7 +387,7 @@ export const DashboardScreen: React.FC<Props> = ({
                 Recent Sale Transactions
               </b>
               <span className="text-[11px] text-slate-400">
-                {todaySales.length} total bills today
+                {todaySales.length} total bills today • Tap to View / Print / Edit
               </span>
             </div>
             <button
@@ -348,7 +408,8 @@ export const DashboardScreen: React.FC<Props> = ({
               {todaySales.slice(0, 5).map((sale) => (
                 <div
                   key={sale.id}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:bg-orange-50/50 transition-colors"
+                  onClick={() => setSelectedSale(sale)}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:bg-orange-50/70 transition-colors cursor-pointer active:scale-[0.99]"
                 >
                   <div className="min-w-0">
                     <b className="text-xs font-bold text-slate-800 block truncate">
@@ -368,7 +429,11 @@ export const DashboardScreen: React.FC<Props> = ({
                       ₹{sale.amount.toFixed(2)}
                     </b>
                     <button
-                      onClick={() => handleShareWhatsApp(sale)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShareWhatsApp(sale);
+                      }}
                       className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50"
                       title="Share Bill via WhatsApp"
                     >
@@ -382,6 +447,152 @@ export const DashboardScreen: React.FC<Props> = ({
         </div>
         <div className="h-12" />
       </div>
+
+      {/* Saved Bill Details Modal (Clicking any bill opens print & edit options) */}
+      {selectedSale && (
+        <div className="ezo-modal-overlay" onClick={() => setSelectedSale(null)}>
+          <div
+            className="ezo-modal-dialog max-w-sm w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <Receipt className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm leading-tight">
+                    {selectedSale.referenceNo || selectedSale.id}
+                  </h3>
+                  <span className="text-[11px] text-orange-100">
+                    {new Date(selectedSale.timestamp).toLocaleString('en-IN', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSale(null)}
+                className="p-1 text-white/80 hover:text-white rounded-full"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-4 space-y-3.5 max-h-[70vh] overflow-y-auto">
+              {/* Toast Feedback */}
+              {billPrintSuccess && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>Receipt printed & voice alert announced!</span>
+                </div>
+              )}
+              {billPrintError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold">
+                  {billPrintError}
+                </div>
+              )}
+
+              {/* Bill Details summary */}
+              <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Payment Mode</span>
+                  <span className="font-extrabold text-orange-700 uppercase">
+                    {selectedSale.paymentMode}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Total Amount</span>
+                  <span className="font-black text-slate-900 text-base">
+                    ₹{selectedSale.amount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Items Breakdown */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-bold text-slate-700 block">
+                  Billed Items
+                </span>
+                {selectedSale.lines && selectedSale.lines.length > 0 ? (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white text-xs">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="p-2">Item</th>
+                          <th className="p-2 text-center">Qty</th>
+                          <th className="p-2 text-right">Price</th>
+                          <th className="p-2 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {selectedSale.lines.map((l, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50">
+                            <td className="p-2 font-medium text-slate-800">{l.name}</td>
+                            <td className="p-2 text-center font-bold text-slate-600">
+                              {l.quantity} {l.uom || ''}
+                            </td>
+                            <td className="p-2 text-right text-slate-500">₹{l.price.toFixed(2)}</td>
+                            <td className="p-2 text-right font-bold text-slate-900">
+                              ₹{(l.price * l.quantity).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600 flex justify-between">
+                    <span>{selectedSale.description}</span>
+                    <span className="font-bold text-slate-900">₹{selectedSale.amount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons: 1. Talk & Print, 2. Edit Bill, 3. WhatsApp */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                {/* Print & Voice button */}
+                <button
+                  type="button"
+                  onClick={() => handlePrintSaleDirect(selectedSale)}
+                  className="w-full py-2.5 px-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-transform"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Bill & Talk Announcement</span>
+                </button>
+
+                {/* Edit Bill Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const billToEdit = selectedSale;
+                    setSelectedSale(null);
+                    onEditBill?.(billToEdit);
+                  }}
+                  className="w-full py-2.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-700" />
+                  <span>Edit Bill (Modify Items / Re-invoice)</span>
+                </button>
+
+                {/* WhatsApp Share */}
+                <button
+                  type="button"
+                  onClick={() => handleShareWhatsApp(selectedSale)}
+                  className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-600" />
+                  <span>Share Receipt on WhatsApp</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Support Modal */}
       {supportModalOpen && (

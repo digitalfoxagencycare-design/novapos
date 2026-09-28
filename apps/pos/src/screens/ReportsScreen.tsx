@@ -16,6 +16,7 @@ import {
   Layers,
   ShoppingBag,
   TrendingUp,
+  Edit3,
 } from 'lucide-react';
 import {
   DayBookEntry,
@@ -29,12 +30,14 @@ import {
 import { loadParties, type Party, buildWhatsAppReminderUrl } from '../lib/khata';
 import { printReceiptViaBrowser, type BillData, type BillItem } from '../lib/thermalPrinter';
 import { type CatalogItem } from './InventoryScreen';
+import { speakPaymentAlert } from '../lib/hardwareBridge';
 
 interface Props {
   profileName: string;
   phone?: string;
   items?: CatalogItem[];
   onBack?: () => void;
+  onEditBill?: (bill: DayBookEntry) => void;
 }
 
 export type ReportId =
@@ -117,7 +120,7 @@ const REPORT_MENU: ReportGroup[] = [
   },
 ];
 
-export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '9381563241', items = [], onBack }) => {
+export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '9381563241', items = [], onBack, onEditBill }) => {
   const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'>('today');
   
@@ -356,6 +359,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
 
   const handlePrintInvoice = (entry: DayBookEntry) => {
     if (!entry.receiptSnapshot) { window.alert('This legacy bill has no frozen receipt snapshot. Original tax cannot be reconstructed safely.'); return; }
+    speakPaymentAlert(entry.amount, entry.paymentMode === 'credit' ? 'Khata' : entry.paymentMode);
     printReceiptViaBrowser({ ...entry.receiptSnapshot, isDuplicate: true });
   };
 
@@ -421,7 +425,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
 
   return (
     <div className="ezo-screen-container">
-      {/* Top Purple App Bar */}
+      {/* Top App Bar */}
       <div className="ezo-app-bar">
         <button
           className="ezo-back-btn"
@@ -499,7 +503,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       onClick={() => setDateFilter(df)}
                       className={`text-xs font-semibold px-2.5 py-1 rounded-md capitalize transition-colors ${
                         dateFilter === df
-                          ? 'bg-purple-700 text-white shadow-sm'
+                          ? 'bg-orange-600 text-white shadow-sm'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -510,7 +514,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                 <div className="flex gap-2 items-center">
                   <button
                     onClick={handlePrintSlip}
-                    className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-colors"
+                    className="p-1.5 text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors"
                     title="Print Thermal Slip"
                   >
                     <Printer className="w-4 h-4" />
@@ -522,7 +526,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
               {dateFilter === 'custom' && (
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
                   <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
-                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <Calendar className="w-3.5 h-3.5 text-orange-600" />
                     <span className="text-slate-500 font-medium">From:</span>
                     <input
                       type="date"
@@ -532,7 +536,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     />
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
-                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <Calendar className="w-3.5 h-3.5 text-orange-600" />
                     <span className="text-slate-500 font-medium">To:</span>
                     <input
                       type="date"
@@ -547,7 +551,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
               {/* Category Filter Dropdown Bar */}
               <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
                 <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs flex-1 min-w-[200px]">
-                  <Layers className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                  <Layers className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
                   <span className="text-slate-500 font-medium">Category:</span>
                   <select
                     value={categoryFilter}
@@ -571,7 +575,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                 <div className="ezo-kpi-grid">
                   <div className="ezo-kpi-box">
                     <span className="ezo-kpi-label">Total Revenue</span>
-                    <b className="ezo-kpi-val text-purple-700">₹{totalSales.toFixed(2)}</b>
+                    <b className="ezo-kpi-val text-orange-600">₹{totalSales.toFixed(2)}</b>
                     <span className="ezo-kpi-note">{salesEntries.length} bills generated</span>
                   </div>
                   <div className="ezo-kpi-box">
@@ -698,7 +702,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       <h3 className="font-bold text-slate-800 text-sm">Recorded Tax Summary & Slab Register</h3>
                       <p className="text-xs text-slate-500">Period: {dateFilter.toUpperCase()}</p>
                     </div>
-                    <span className="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full">
+                    <span className="text-xs font-bold px-2.5 py-1 bg-orange-50 text-orange-600 border border-orange-200 rounded-full">
                       GST B2C Register
                     </span>
                   </div>
@@ -706,7 +710,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                   <div className="ezo-kpi-grid">
                     <div className="ezo-kpi-box">
                       <span className="ezo-kpi-label">Gross Turnover</span>
-                      <b className="ezo-kpi-val text-purple-700">₹{totalSales.toFixed(2)}</b>
+                      <b className="ezo-kpi-val text-orange-600">₹{totalSales.toFixed(2)}</b>
                       <span className="ezo-kpi-note">{salesEntries.length} Invoices</span>
                     </div>
                     <div className="ezo-kpi-box">
@@ -716,12 +720,12 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     </div>
                     <div className="ezo-kpi-box">
                       <span className="ezo-kpi-label">CGST (Central)</span>
-                      <b className="ezo-kpi-val text-purple-600">₹{totalCgst.toFixed(2)}</b>
+                      <b className="ezo-kpi-val text-orange-600">₹{totalCgst.toFixed(2)}</b>
                       <span className="ezo-kpi-note">50% Central Tax share</span>
                     </div>
                     <div className="ezo-kpi-box">
                       <span className="ezo-kpi-label">SGST (State)</span>
-                      <b className="ezo-kpi-val text-purple-600">₹{totalSgst.toFixed(2)}</b>
+                      <b className="ezo-kpi-val text-orange-600">₹{totalSgst.toFixed(2)}</b>
                       <span className="ezo-kpi-note">50% State Tax share</span>
                     </div>
                   </div>
@@ -758,7 +762,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                               <td className="text-right">₹{data.taxable.toFixed(2)}</td>
                               <td className="text-right">₹{data.cgst.toFixed(2)}</td>
                               <td className="text-right">₹{data.sgst.toFixed(2)}</td>
-                              <td className="text-right text-purple-700 font-bold">₹{data.totalGst.toFixed(2)}</td>
+                              <td className="text-right text-orange-600 font-bold">₹{data.totalGst.toFixed(2)}</td>
                               <td className="text-right font-bold text-slate-900">₹{data.gross.toFixed(2)}</td>
                             </tr>
                           );
@@ -770,8 +774,8 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           <td className="text-right">₹{totalTaxable.toFixed(2)}</td>
                           <td className="text-right">₹{totalCgst.toFixed(2)}</td>
                           <td className="text-right">₹{totalSgst.toFixed(2)}</td>
-                          <td className="text-right text-purple-700">₹{totalGstCollected.toFixed(2)}</td>
-                          <td className="text-right text-purple-700">₹{totalSales.toFixed(2)}</td>
+                          <td className="text-right text-orange-600">₹{totalGstCollected.toFixed(2)}</td>
+                          <td className="text-right text-orange-600">₹{totalSales.toFixed(2)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -846,7 +850,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     </div>
                     <div className="ezo-calc-item font-bold text-slate-900 border-t pt-2 mt-1">
                       <span>Expected Cash in Drawer</span>
-                      <b className="text-purple-700">₹{expectedCashInDrawer.toFixed(2)}</b>
+                      <b className="text-orange-600">₹{expectedCashInDrawer.toFixed(2)}</b>
                     </div>
                   </div>
                 </div>
@@ -910,7 +914,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       Sale Invoices ({filteredSaleEntries.length})
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Total: <span className="font-bold text-purple-700">₹{totalSales.toFixed(2)}</span>
+                      Total: <span className="font-bold text-orange-600">₹{totalSales.toFixed(2)}</span>
                     </p>
                   </div>
                   <button
@@ -928,7 +932,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                         ])
                       )
                     }
-                    className="text-xs text-purple-700 font-semibold hover:underline flex items-center gap-1"
+                    className="text-xs text-orange-600 font-semibold hover:underline flex items-center gap-1"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export CSV
@@ -943,7 +947,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     placeholder="Search by Bill No, Customer, Item name, Amount..."
                     value={saleSearch}
                     onChange={(e) => setSaleSearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-purple-600 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-orange-500 outline-none"
                   />
                 </div>
 
@@ -958,7 +962,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       return (
                         <div
                           key={tx.id}
-                          className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm transition-all hover:border-purple-300"
+                          className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm transition-all hover:border-orange-300"
                         >
                           {/* Invoice Card Header (Click to Expand) */}
                           <div
@@ -967,7 +971,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-mono text-xs font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                                <span className="font-mono text-xs font-bold text-slate-900 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
                                   {tx.referenceNo || 'BILL'}
                                 </span>
                                 <span className="font-semibold text-slate-800 text-sm truncate">
@@ -985,7 +989,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                                       ? 'bg-blue-50 text-blue-700'
                                       : tx.paymentMode === 'credit'
                                       ? 'bg-amber-50 text-amber-700'
-                                      : 'bg-purple-50 text-purple-700'
+                                      : 'bg-orange-50 text-orange-600'
                                   }`}
                                 >
                                   {tx.paymentMode}
@@ -1003,16 +1007,16 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
 
                             <div className="text-right flex items-center gap-2.5">
                               <div>
-                                <span className="font-bold text-purple-900 text-base block">
+                                <span className="font-bold text-slate-900 text-base block">
                                   ₹{tx.amount.toFixed(2)}
                                 </span>
                               </div>
                               <button
-                                className="p-1 text-slate-400 hover:text-purple-700 rounded-full hover:bg-purple-50"
+                                className="p-1 text-slate-400 hover:text-orange-600 rounded-full hover:bg-orange-50"
                                 aria-label="Toggle details"
                               >
                                 {isExpanded ? (
-                                  <ChevronUp className="w-5 h-5 text-purple-700" />
+                                  <ChevronUp className="w-5 h-5 text-orange-600" />
                                 ) : (
                                   <ChevronDown className="w-5 h-5" />
                                 )}
@@ -1076,14 +1080,23 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                               <div className="flex gap-2 pt-1">
                                 <button
                                   onClick={() => handlePrintInvoice(tx)}
-                                  className="flex-1 py-1.5 px-3 bg-purple-700 text-white text-xs font-semibold rounded-lg hover:bg-purple-800 flex items-center justify-center gap-1.5 shadow-sm"
+                                  className="flex-1 py-1.5 px-3 bg-orange-600 text-white text-xs font-semibold rounded-lg hover:bg-orange-700 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
                                 >
                                   <Printer className="w-3.5 h-3.5" />
-                                  Print Receipt
+                                  Print
                                 </button>
+                                {onEditBill && (
+                                  <button
+                                    onClick={() => onEditBill(tx)}
+                                    className="py-1.5 px-3 bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold rounded-lg hover:bg-amber-100 flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                                    Edit Bill
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleShareInvoice(tx)}
-                                  className="py-1.5 px-3 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-1.5 shadow-sm"
+                                  className="py-1.5 px-3 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
                                   WhatsApp
@@ -1120,7 +1133,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           <div className="text-xs text-slate-400">Terminal 1</div>
                         </td>
                         <td className="text-center font-semibold">{salesEntries.length}</td>
-                        <td className="text-right font-bold text-purple-700">₹{totalSales.toFixed(2)}</td>
+                        <td className="text-right font-bold text-orange-600">₹{totalSales.toFixed(2)}</td>
                         <td className="text-right font-semibold">100%</td>
                       </tr>
                     </tbody>
@@ -1136,7 +1149,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                 <div className="ezo-kpi-grid">
                   <div className="ezo-kpi-box">
                     <span className="ezo-kpi-label">Total Revenue</span>
-                    <b className="ezo-kpi-val text-purple-700">₹{totalSales.toFixed(2)}</b>
+                    <b className="ezo-kpi-val text-orange-600">₹{totalSales.toFixed(2)}</b>
                   </div>
                   <div className="ezo-kpi-box">
                     <span className="ezo-kpi-label">Estimated COGS (~70%)</span>
@@ -1152,12 +1165,12 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                   </div>
                 </div>
 
-                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-900 flex justify-between items-center">
+                <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 text-xs text-slate-900 flex justify-between items-center">
                   <div>
                     <span className="font-bold block text-sm">Estimated Net Profit</span>
-                    <span className="text-[11px] text-purple-700">Gross Margin - Recorded Operating Expenses</span>
+                    <span className="text-[11px] text-orange-600">Gross Margin - Recorded Operating Expenses</span>
                   </div>
-                  <span className="text-lg font-extrabold text-purple-900">
+                  <span className="text-lg font-extrabold text-slate-900">
                     ₹{Math.max(0, totalSales * 0.3 - expensesTotal).toFixed(2)}
                   </span>
                 </div>
@@ -1270,7 +1283,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           <b className="text-slate-800 text-xs block">{bill.customerName || 'Held Customer'}</b>
                           <span className="text-[11px] text-slate-400">{bill.lines.length} items</span>
                         </div>
-                        <span className="font-bold text-purple-700 text-sm">
+                        <span className="font-bold text-orange-600 text-sm">
                           ₹{bill.lines.reduce((s, l) => s + l.price * l.quantity, 0).toFixed(2)}
                         </span>
                       </div>
@@ -1372,7 +1385,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                         parties.map((p) => [p.name, p.phone, p.type, p.balance])
                       )
                     }
-                    className="text-xs text-purple-700 font-semibold hover:underline"
+                    className="text-xs text-orange-600 font-semibold hover:underline"
                   >
                     Export CSV
                   </button>
@@ -1418,7 +1431,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                 <div className="ezo-kpi-grid">
                   <div className="ezo-kpi-box">
                     <span className="ezo-kpi-label">Stock Valuation</span>
-                    <b className="ezo-kpi-val text-purple-700">₹{inventoryValuation.toFixed(2)}</b>
+                    <b className="ezo-kpi-val text-orange-600">₹{inventoryValuation.toFixed(2)}</b>
                     <span className="ezo-kpi-note">{displayItems.length} SKUs total</span>
                   </div>
                   <div className="ezo-kpi-box">
@@ -1495,7 +1508,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                         ])
                       )
                     }
-                    className="text-xs text-purple-700 font-semibold hover:underline flex items-center gap-1"
+                    className="text-xs text-orange-600 font-semibold hover:underline flex items-center gap-1"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export CSV
@@ -1510,7 +1523,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     placeholder="Search product or category..."
                     value={itemSearch}
                     onChange={(e) => setItemSearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-purple-600 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-orange-500 outline-none"
                   />
                 </div>
 
@@ -1529,11 +1542,11 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       </thead>
                       <tbody>
                         {filteredItemWiseSales.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-purple-50/50">
+                          <tr key={idx} className="hover:bg-orange-50/50">
                             <td className="font-bold text-slate-400 text-xs">{idx + 1}</td>
                             <td>
                               <b className="text-slate-800 text-xs block">{item.name}</b>
-                              <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded font-medium inline-block mt-0.5">
+                              <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.2 rounded font-medium inline-block mt-0.5">
                                 {item.category}
                               </span>
                             </td>
@@ -1543,7 +1556,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                               </span>
                             </td>
                             <td className="text-right">
-                              <span className="font-bold text-purple-900 text-xs">
+                              <span className="font-bold text-slate-900 text-xs">
                                 ₹{item.revenue.toFixed(2)}
                               </span>
                             </td>
@@ -1580,7 +1593,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                         ])
                       )
                     }
-                    className="text-xs text-purple-700 font-semibold hover:underline flex items-center gap-1"
+                    className="text-xs text-orange-600 font-semibold hover:underline flex items-center gap-1"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export CSV
@@ -1614,7 +1627,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                                 </div>
                               </div>
                               <div className="text-right">
-                                <span className="font-extrabold text-purple-900 text-sm block">
+                                <span className="font-extrabold text-slate-900 text-sm block">
                                   ₹{cat.revenue.toFixed(2)}
                                 </span>
                                 <span className="text-[11px] font-bold text-emerald-600">
@@ -1626,7 +1639,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                             {/* Progress bar */}
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                               <div
-                                className="bg-purple-600 h-2 rounded-full transition-all"
+                                className="bg-orange-600 h-2 rounded-full transition-all"
                                 style={{ width: `${Math.min(100, Math.max(5, sharePercent))}%` }}
                               />
                             </div>
@@ -1685,7 +1698,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                         <tr key={item.id}>
                           <td className="font-semibold text-slate-800">{item.name}</td>
                           <td className="font-mono text-xs text-slate-500">{item.code}</td>
-                          <td className="text-right font-bold text-purple-700">
+                          <td className="text-right font-bold text-orange-600">
                             ₹{(item.priceMinor / 100).toFixed(2)}
                           </td>
                           <td className="text-right text-slate-600">{item.gstRate ?? 0}%</td>

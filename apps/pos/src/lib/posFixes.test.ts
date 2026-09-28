@@ -36,3 +36,24 @@ it('does not silently drop older bills after 500 transactions', () => {
   addDayBookEntry({ type: 'sale', description: 'Sale', amount: 1, paymentMode: 'cash' });
   expect(loadDayBookEntries()).toHaveLength(501);
 });
+
+it('preserves granular bill items and receipt snapshots for reprint and edit re-invoicing', () => {
+  const bill = addDayBookEntry({
+    type: 'sale',
+    description: 'Sale Bill #VM-T1-2627-00001 (Ramesh)',
+    amount: 367,
+    paymentMode: 'cash',
+    referenceNo: 'VM-T1-2627-00001',
+    lines: [
+      { itemId: 'item-1', name: 'Sona Masoori Rice', category: 'Grains', price: 60, quantity: 5, uom: 'kg' },
+      { itemId: 'item-2', name: 'Fortune Oil', category: 'Groceries', price: 67, quantity: 1, uom: 'pcs' },
+    ],
+  });
+
+  const loaded = loadDayBookEntries().find(e => e.id === bill.id);
+  expect(loaded).toBeDefined();
+  expect(loaded?.lines).toHaveLength(2);
+  expect(loaded?.lines?.[0].name).toBe('Sona Masoori Rice');
+  expect(loaded?.lines?.[1].quantity).toBe(1);
+  expect(loaded?.amount).toBe(367);
+});

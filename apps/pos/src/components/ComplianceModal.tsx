@@ -25,8 +25,8 @@ export const ComplianceModal: React.FC<Props> = ({
         {/* Header */}
         <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
-              <Scale className="w-4 h-4 text-indigo-400" />
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
+              <Scale className="w-4 h-4 text-orange-400" />
             </div>
             <div>
               <h2 className="text-sm font-black tracking-wide text-white">Legal, Privacy & Compliance</h2>
@@ -49,11 +49,11 @@ export const ComplianceModal: React.FC<Props> = ({
             onClick={() => setActiveTab('privacy')}
             className={`pb-2.5 px-3 text-xs font-black border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'privacy'
-                ? 'border-indigo-600 text-indigo-700'
+                ? 'border-orange-600 text-orange-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Lock className="w-3.5 h-3.5 text-indigo-600" />
+            <Lock className="w-3.5 h-3.5 text-orange-600" />
             <span>Privacy Policy</span>
           </button>
 
@@ -62,11 +62,11 @@ export const ComplianceModal: React.FC<Props> = ({
             onClick={() => setActiveTab('terms')}
             className={`pb-2.5 px-3 text-xs font-black border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'terms'
-                ? 'border-indigo-600 text-indigo-700'
+                ? 'border-orange-600 text-orange-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+            <FileText className="w-3.5 h-3.5 text-orange-600" />
             <span>Terms of Service</span>
           </button>
 
@@ -75,11 +75,11 @@ export const ComplianceModal: React.FC<Props> = ({
             onClick={() => setActiveTab('about')}
             className={`pb-2.5 px-3 text-xs font-black border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'about'
-                ? 'border-indigo-600 text-indigo-700'
+                ? 'border-orange-600 text-orange-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+            <Building2 className="w-3.5 h-3.5 text-orange-600" />
             <span>App & Publisher</span>
           </button>
         </div>
@@ -88,7 +88,7 @@ export const ComplianceModal: React.FC<Props> = ({
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
           {activeTab === 'privacy' && (
             <div className="space-y-3.5">
-              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-indigo-900">
+              <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-xl text-orange-950">
                 <b className="text-xs font-bold block mb-1">Google Play Data Safety & Privacy Policy</b>
                 NovaPOS Pro is committed to protecting merchant business data and customer transaction privacy.
                 Last updated: September 2026.
@@ -115,7 +115,7 @@ export const ComplianceModal: React.FC<Props> = ({
               <div>
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide mb-1">3. Data Retention & Account Deletion</h3>
                 <p>
-                  Merchants retain 100% ownership of their ledger and sales history. To request full deletion of store records and cloud backups, contact our grievance desk at <a href="mailto:privacy@novapos.in" className="text-indigo-600 font-bold underline">privacy@novapos.in</a>. Requests are completed within 7 business days.
+                  Merchants retain 100% ownership of their ledger and sales history. To request full deletion of store records and cloud backups, contact our grievance desk at <a href="mailto:privacy@novapos.in" className="text-orange-600 font-bold underline">privacy@novapos.in</a>. Requests are completed within 7 business days.
                 </p>
               </div>
             </div>
@@ -188,7 +188,7 @@ export const ComplianceModal: React.FC<Props> = ({
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide mb-1">Grievance & Customer Support Desk</h3>
                 <p>
                   • <b>Helpline:</b> +91 9701463241 / +91 9381563241<br />
-                  • <b>Support Email:</b> <a href="mailto:support@novapos.in" className="text-indigo-600 font-bold underline">support@novapos.in</a><br />
+                  • <b>Support Email:</b> <a href="mailto:support@novapos.in" className="text-orange-600 font-bold underline">support@novapos.in</a><br />
                   • <b>Operating Hours:</b> Mon – Sat, 9:00 AM – 8:00 PM IST
                 </p>
               </div>
@@ -201,7 +201,7 @@ export const ComplianceModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition-colors"
+            className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs rounded-xl shadow-xs transition-colors"
           >
             I Understand & Agree
           </button>

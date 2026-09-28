@@ -33,7 +33,7 @@ const TEMPLATES = [
     title: 'Festive Season Greetings',
     tagline: 'Wishing all our valued customers joy and prosperity!',
     discount: 'SPECIAL FESTIVE COMBO',
-    bgGradient: 'from-purple-600 via-indigo-600 to-blue-700',
+    bgGradient: 'from-orange-600 via-amber-600 to-red-600',
     accentColor: '#8B5CF6',
     emoji: '✨',
   },
@@ -113,7 +113,7 @@ export const AiPosterScreen: React.FC<Props> = ({ storeName, phone, onBack }) =>
                 onClick={() => handleSelectTemplate(tpl)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedTemplate.id === tpl.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-orange-600 text-white shadow-sm'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -216,7 +216,7 @@ export const AiPosterScreen: React.FC<Props> = ({ storeName, phone, onBack }) =>
               onClick={() => {
                 alert('Poster saved! You can share it to your WhatsApp status or Instagram story.');
               }}
-              className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center shadow-md active:scale-95 transition-transform"
+              className="px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl text-xs flex items-center justify-center shadow-md active:scale-95 transition-transform"
             >
               <Download className="w-4 h-4 mr-1" />
               Save
