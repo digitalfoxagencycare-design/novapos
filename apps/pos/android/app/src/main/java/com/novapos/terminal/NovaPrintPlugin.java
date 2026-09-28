@@ -1,21 +1,25 @@
 package com.novapos.terminal;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.print.PrintAttributes;
 import android.print.PrintManager;
 import android.util.Base64;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.getcapacitor.annotation.Permission;
 import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
@@ -24,6 +28,7 @@ import java.util.UUID;
  * Native ESC/POS Thermal Printing Plugin for 58mm / 80mm Bluetooth & System Printers.
  * Supports:
  * - Direct RFCOMM SPP Socket connection to Classic Bluetooth thermal printers (Ezo, TVS, Everycom, Z91, etc.)
+ * - Automatic Android 12+ (BLUETOOTH_CONNECT & BLUETOOTH_SCAN) runtime permission handling
  * - Paired device discovery by MAC Address
  * - Raw ESC/POS byte streaming
  * - Android system printing dialog fallback
@@ -37,15 +42,64 @@ public class NovaPrintPlugin extends Plugin {
     private WebView printView;
 
     @PluginMethod
+    public void requestBluetoothPermissions(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            boolean hasConnect = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+            boolean hasScan = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+            if (!hasConnect || !hasScan) {
+                ActivityCompat.requestPermissions(getActivity(), new String[]{
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                }, 101);
+                JSObject ret = new JSObject();
+                ret.put("granted", false);
+                ret.put("requested", true);
+                call.resolve(ret);
+                return;
+            }
+        } else {
+            boolean hasLocation = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            if (!hasLocation) {
+                ActivityCompat.requestPermissions(getActivity(), new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                }, 101);
+                JSObject ret = new JSObject();
+                ret.put("granted", false);
+                ret.put("requested", true);
+                call.resolve(ret);
+                return;
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("granted", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void listPairedDevices(PluginCall call) {
         try {
+            // Check Android 12+ permissions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(getActivity(), new String[]{
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    }, 101);
+                    call.reject("Please grant Bluetooth permission in the Android popup prompt, then tap PAIR / SCAN again.");
+                    return;
+                }
+            }
+
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
             if (adapter == null) {
-                call.reject("Bluetooth is not supported on this device");
+                call.reject("Bluetooth hardware is not available on this device");
                 return;
             }
             if (!adapter.isEnabled()) {
-                call.reject("Bluetooth is turned off. Please turn on Bluetooth in Android Settings.");
+                call.reject("Bluetooth is currently turned off. Please turn on Bluetooth in phone Settings.");
                 return;
             }
 
@@ -55,7 +109,8 @@ public class NovaPrintPlugin extends Plugin {
                 for (BluetoothDevice device : pairedDevices) {
                     JSObject devObj = new JSObject();
                     try {
-                        devObj.put("name", device.getName() != null ? device.getName() : "Unknown Printer");
+                        String name = device.getName();
+                        devObj.put("name", name != null && !name.isEmpty() ? name : "Thermal Printer");
                     } catch (SecurityException se) {
                         devObj.put("name", "Paired Printer");
                     }
@@ -84,6 +139,17 @@ public class NovaPrintPlugin extends Plugin {
 
         new Thread(() -> {
             try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(getActivity(), new String[]{
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                            Manifest.permission.BLUETOOTH_SCAN
+                        }, 101);
+                        call.reject("Please grant Bluetooth permission in the popup prompt, then tap Connect again.");
+                        return;
+                    }
+                }
+
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
                 if (adapter == null || !adapter.isEnabled()) {
                     call.reject("Bluetooth is unavailable or disabled");
@@ -105,7 +171,8 @@ public class NovaPrintPlugin extends Plugin {
                 activeSocket = socket;
                 activeAddress = address.trim();
                 try {
-                    activeName = device.getName() != null ? device.getName() : "Bluetooth Printer";
+                    String name = device.getName();
+                    activeName = name != null && !name.isEmpty() ? name : "Bluetooth Printer";
                 } catch (SecurityException se) {
                     activeName = "Bluetooth Printer";
                 }
@@ -120,7 +187,7 @@ public class NovaPrintPlugin extends Plugin {
                 call.reject("Bluetooth permission missing: " + se.getMessage());
             } catch (Exception ex) {
                 closeActiveSocket();
-                call.reject("Could not connect to printer (" + address + "): " + ex.getMessage());
+                call.reject("Could not connect to printer (" + address + "). Make sure printer is turned on & paired: " + ex.getMessage());
             }
         }).start();
     }

@@ -32,6 +32,7 @@ import {
   connectBluetoothPrinter,
   isBluetoothSupported,
   listPairedBluetoothPrinters,
+  requestNativeBluetoothPermissions,
   connectNativeBluetoothPrinter,
   disconnectNativeBluetoothPrinter,
   getActiveNativePrinter,
@@ -186,18 +187,13 @@ export const SettingsScreen: React.FC<Props> = ({
     setConnecting(true);
     setPrinterError(null);
     try {
+      // First ensure runtime permissions on Android 12+
+      await requestNativeBluetoothPermissions().catch(() => undefined);
       const devices = await listPairedBluetoothPrinters();
       setPairedDevicesList(devices);
       setPairedDevicesModalOpen(true);
     } catch (err: any) {
-      // If Web Bluetooth or not Android, fallback to standard connect
-      try {
-        const dev = await connectBluetoothPrinter();
-        setConnectedPrinter(dev);
-        showSavedNotification();
-      } catch (e: any) {
-        setPrinterError(err.message || e.message || 'No paired Bluetooth printers found.');
-      }
+      setPrinterError(err.message || 'Bluetooth permission needed or no paired printers found. Please allow Bluetooth permission.');
     } finally {
       setConnecting(false);
     }
@@ -293,7 +289,7 @@ export const SettingsScreen: React.FC<Props> = ({
       </header>
 
       {/* 2. Scrollable Body */}
-      <div className="flex-1 overflow-y-auto p-4 pb-28 space-y-4 max-w-4xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-4 pb-36 space-y-4 max-w-4xl mx-auto w-full">
         {savedBadge && (
           <div className="bg-emerald-600 text-white p-3 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in">
             <CheckCircle2 className="w-4 h-4" />
@@ -795,6 +791,7 @@ export const SettingsScreen: React.FC<Props> = ({
             })}
           </div>
         </div>
+        <div className="h-16" />
       </div>
 
       {/* ========================================================================= */}

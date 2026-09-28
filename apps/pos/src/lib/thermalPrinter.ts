@@ -67,6 +67,7 @@ export interface KotData {
 }
 
 export interface NovaPrintPluginType {
+  requestBluetoothPermissions(): Promise<{ granted: boolean; requested?: boolean }>;
   listPairedDevices(): Promise<{ devices: Array<{ name: string; address: string }> }>;
   connectBluetooth(options: { address: string }): Promise<{ connected: boolean; address: string; name: string }>;
   disconnectBluetooth(): Promise<{ connected: boolean }>;
@@ -97,11 +98,28 @@ export function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 /**
+ * Request Bluetooth permissions on Android
+ */
+export async function requestNativeBluetoothPermissions(): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await NovaPrint.requestBluetoothPermissions();
+      return res.granted;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * List paired Bluetooth devices on Android
  */
 export async function listPairedBluetoothPrinters(): Promise<Array<{ name: string; address: string }>> {
   if (Capacitor.isNativePlatform()) {
     try {
+      // First ensure permissions are requested
+      await NovaPrint.requestBluetoothPermissions().catch(() => undefined);
       const res = await NovaPrint.listPairedDevices();
       return res?.devices || [];
     } catch (e: any) {

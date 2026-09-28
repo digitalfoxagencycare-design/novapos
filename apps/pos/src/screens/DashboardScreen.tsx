@@ -126,7 +126,7 @@ export const DashboardScreen: React.FC<Props> = ({
   };
 
   return (
-    <div className="ezo-dashboard-container pb-28">
+    <div className="ezo-dashboard-container pb-36">
       {/* 1. Warm Orange Top Header */}
       <header
         className="ezo-dash-header shadow-md"
@@ -395,6 +395,7 @@ export const DashboardScreen: React.FC<Props> = ({
             </div>
           )}
         </div>
+        <div className="h-12" />
       </div>
 
       {/* Support Modal */}
