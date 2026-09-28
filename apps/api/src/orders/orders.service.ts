@@ -1,7 +1,7 @@
 import { subscriptionStatus } from '../payments/subscription.service';
 import { Injectable, Logger } from '@nestjs/common';
-import { createHash } from 'node:crypto';
-import { and, asc, eq, gte, inArray, isNull, ne, not, sql } from 'drizzle-orm';
+import { createHash, randomUUID } from 'node:crypto';
+import { and, asc, desc, eq, gte, inArray, isNull, ne, not, sql } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
 import type { Db } from '../db/client';
 import {
@@ -602,6 +602,196 @@ export class OrdersService {
       .where(inArray(restaurantTables.id, tableIds));
   }
 
+  /**
+   * Directly record a completed retail/counter POS sale.
+   * Creates or resolves menu items as needed, writes orders, order_lines, and payments with status PAID.
+   * Completely idempotent on clientOrderId.
+   */
+  async recordPosSale(input: {
+    clientOrderId: string;
+    orderNumber?: string;
+    invoiceNumber?: string;
+    amount: number;
+    paymentMode: 'cash' | 'upi' | 'card' | 'credit';
+    customerName?: string;
+    customerPhone?: string;
+    notes?: string;
+    taxSnapshot?: any;
+    receiptSnapshot?: any;
+    lines?: {
+      itemId?: string;
+      name: string;
+      quantity: number;
+      price: number;
+      uom?: string;
+      taxSlabId?: string;
+      hsnSac?: string;
+      netMinor?: number;
+    }[];
+    placedAt?: string;
+  }) {
+    const ctx = requireTenantContext();
+    return this.db.tx(async (db) => {
+      // 1. Resolve outlet
+      let outletId = ctx.outletId;
+      if (!outletId) {
+        const [firstOutlet] = await db.select().from(outlets)
+          .where(eq(outlets.tenantId, ctx.tenantId)).limit(1);
+        if (!firstOutlet) throw Errors.notFound('Outlet', 'None configured for tenant');
+        outletId = firstOutlet.id;
+      }
+
+      // 2. Check for existing order by clientOrderId (Idempotent)
+      const existing = await db.select().from(orders)
+        .where(and(
+          eq(orders.tenantId, ctx.tenantId),
+          eq(orders.clientOrderId, input.clientOrderId),
+        )).limit(1);
+      if (existing.length > 0) {
+        return existing[0];
+      }
+
+      const totalMinor = Math.round(input.amount * 100);
+      const placedAt = input.placedAt ? new Date(input.placedAt) : new Date();
+      const invoiceNum = input.invoiceNumber || input.orderNumber || `INV-${Date.now()}`;
+      const orderNum = input.orderNumber || invoiceNum;
+
+      // 3. Ensure a general Category for this tenant exists
+      let [generalCat] = await db.select().from(categories)
+        .where(and(eq(categories.tenantId, ctx.tenantId), eq(categories.name, 'General')))
+        .limit(1);
+      if (!generalCat) {
+        [generalCat] = await db.insert(categories).values({
+          tenantId: ctx.tenantId,
+          name: 'General',
+          sortOrder: 0,
+        }).returning();
+      }
+
+      // 4. Insert into orders table
+      const [newOrder] = await db.insert(orders).values({
+        tenantId: ctx.tenantId,
+        outletId,
+        clientOrderId: input.clientOrderId,
+        orderNumber: orderNum,
+        channel: 'QUICK_BILL',
+        status: 'PAID',
+        staffId: ctx.staffId ?? null,
+        currency: 'INR',
+        subtotalMinor: input.taxSnapshot?.taxableMinor ?? totalMinor,
+        taxMinor: input.taxSnapshot?.totalTaxMinor ?? 0,
+        totalMinor,
+        paidMinor: totalMinor,
+        invoiceNumber: invoiceNum,
+        taxSnapshot: input.taxSnapshot ?? null,
+        notes: input.notes ?? (input.customerName ? `Customer: ${input.customerName}${input.customerPhone ? ` (${input.customerPhone})` : ''}` : null),
+        billedAt: placedAt,
+        paidAt: placedAt,
+        placedAt,
+        createdAt: placedAt,
+        updatedAt: new Date(),
+      }).returning();
+
+      // 5. Handle lines if provided
+      if (input.lines && input.lines.length > 0) {
+        for (const line of input.lines) {
+          let menuItemId: string | null = null;
+          if (line.itemId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(line.itemId)) {
+            const [itemExists] = await db.select({ id: menuItems.id }).from(menuItems)
+              .where(and(eq(menuItems.tenantId, ctx.tenantId), eq(menuItems.id, line.itemId))).limit(1);
+            if (itemExists) menuItemId = itemExists.id;
+          }
+
+          if (!menuItemId) {
+            const itemName = (line.name || 'General Item').trim();
+            const [byName] = await db.select({ id: menuItems.id }).from(menuItems)
+              .where(and(eq(menuItems.tenantId, ctx.tenantId), eq(menuItems.name, itemName))).limit(1);
+            if (byName) {
+              menuItemId = byName.id;
+            } else {
+              const [createdItem] = await db.insert(menuItems).values({
+                tenantId: ctx.tenantId,
+                categoryId: generalCat.id,
+                name: itemName,
+                priceMinor: Math.round(line.price * 100),
+                taxSlabId: line.taxSlabId || 'gst-0',
+                hsnSac: line.hsnSac ?? null,
+                isActive: true,
+              }).returning();
+              menuItemId = createdItem.id;
+            }
+          }
+
+          const lineTotal = line.netMinor != null ? line.netMinor : Math.round(line.price * line.quantity * 100);
+          await db.insert(orderLines).values({
+            tenantId: ctx.tenantId,
+            orderId: newOrder.id,
+            clientLineId: randomUUID(),
+            itemId: menuItemId,
+            nameSnapshot: line.name || 'Item',
+            quantity: String(line.quantity),
+            unitPriceMinor: Math.round(line.price * 100),
+            lineTotalMinor: lineTotal,
+            taxSlabId: line.taxSlabId || 'gst-0',
+            hsnSac: line.hsnSac ?? null,
+            status: 'SERVED',
+          });
+        }
+      }
+
+      // 6. Record payment in payments table
+      const methodMap: Record<string, 'CASH' | 'UPI' | 'CARD' | 'CREDIT'> = {
+        cash: 'CASH',
+        upi: 'UPI',
+        card: 'CARD',
+        credit: 'CREDIT',
+      };
+      const mappedMethod = methodMap[input.paymentMode] || 'CASH';
+
+      await db.insert(payments).values({
+        tenantId: ctx.tenantId,
+        orderId: newOrder.id,
+        clientPaymentId: randomUUID(),
+        method: mappedMethod,
+        status: 'CAPTURED',
+        amountMinor: totalMinor,
+        currency: 'INR',
+        gateway: 'counter',
+        reference: invoiceNum,
+        capturedAt: placedAt,
+      });
+
+      return newOrder;
+    });
+  }
+
+  async listSales(outletId: string, limit = 100) {
+    const ctx = requireTenantContext();
+    return this.db.tx(async (db) => {
+      const rows = await db.select().from(orders)
+        .where(and(
+          eq(orders.tenantId, ctx.tenantId),
+          eq(orders.outletId, outletId),
+          eq(orders.status, 'PAID'),
+        ))
+        .orderBy(desc(orders.placedAt))
+        .limit(limit);
+
+      if (rows.length === 0) return [];
+      const orderIds = rows.map((r) => r.id);
+
+      const [lines, pays] = await Promise.all([
+        db.select().from(orderLines).where(inArray(orderLines.orderId, orderIds)),
+        db.select().from(payments).where(inArray(payments.orderId, orderIds)),
+      ]);
+
+      return rows.map((o) => ({
+        ...o,
+        lines: lines.filter((l) => l.orderId === o.id),
+        payments: pays.filter((p) => p.orderId === o.id),
+      }));
+    });
+  }
 }
 
 /**

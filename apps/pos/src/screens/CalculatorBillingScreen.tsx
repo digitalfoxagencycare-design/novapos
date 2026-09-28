@@ -27,6 +27,7 @@ import {
   type PaperWidth,
 } from '../lib/thermalPrinter';
 import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
+import { recordSale } from '../lib/cloudSaleSync';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 import { loadParties, upsertParty, recordKhataSale, type Party } from '../lib/khata';
 
@@ -274,7 +275,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
     };
 
     // Persist the receipt before starting any hardware side effects.
-    try { addDayBookEntry({
+    try { recordSale({
       type: 'sale',
       description: `Fast Calculator Sale #${billNo} (${mode.toUpperCase()})`,
       amount: total,

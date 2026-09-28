@@ -49,6 +49,32 @@ class VoidOrderDto {
   @IsString() reason!: string;
 }
 
+export class PosSaleLineDto {
+  @IsOptional() @IsString() itemId?: string;
+  @IsString() name!: string;
+  @IsNumber() @Min(0.001) quantity!: number;
+  @IsNumber() @Min(0) price!: number;
+  @IsOptional() @IsString() uom?: string;
+  @IsOptional() @IsString() taxSlabId?: string;
+  @IsOptional() @IsString() hsnSac?: string;
+  @IsOptional() @IsNumber() netMinor?: number;
+}
+
+export class PosSaleDto {
+  @IsString() clientOrderId!: string;
+  @IsOptional() @IsString() orderNumber?: string;
+  @IsOptional() @IsString() invoiceNumber?: string;
+  @IsNumber() @Min(0) amount!: number;
+  @IsEnum(['cash', 'upi', 'card', 'credit']) paymentMode!: 'cash' | 'upi' | 'card' | 'credit';
+  @IsOptional() @IsString() customerName?: string;
+  @IsOptional() @IsString() customerPhone?: string;
+  @IsOptional() @IsString() notes?: string;
+  @IsOptional() taxSnapshot?: any;
+  @IsOptional() receiptSnapshot?: any;
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => PosSaleLineDto) lines?: PosSaleLineDto[];
+  @IsOptional() @IsString() placedAt?: string;
+}
+
 @ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
@@ -56,6 +82,20 @@ export class OrdersController {
     private readonly orders: OrdersService,
     private readonly receipts: ReceiptService,
   ) {}
+
+  @Post('pos-sale')
+  @RequirePermissions('order:create')
+  @ApiOperation({ summary: 'Record completed retail/counter POS sale directly' })
+  recordPosSale(@Body() dto: PosSaleDto) {
+    return this.orders.recordPosSale(dto);
+  }
+
+  @Get('sales')
+  @RequirePermissions('order:read')
+  @ApiOperation({ summary: 'List recent completed sales for this outlet' })
+  listSales(@Query('outletId') outletId: string, @Query('limit') limit: string, @CurrentUser() user: TenantContext) {
+    return this.orders.listSales(outletId ?? user.outletId!, limit ? parseInt(limit, 10) : 100);
+  }
 
   @Post()
   @RequirePermissions('order:create')

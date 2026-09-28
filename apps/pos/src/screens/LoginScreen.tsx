@@ -27,6 +27,7 @@ interface Props {
     profile: BusinessProfile;
     token?: string;
     tenantId?: string;
+    outletId?: string;
   }) => void;
 }
 
@@ -78,7 +79,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     try {
       const result = await cloudApi.loginPhonePin(cleanPhone, pin);
       await refreshSubscription();
-      onLoginSuccess({ phone: cleanPhone, storeName: result.tenant.name, profile, tenantId: result.tenant.id });
+      onLoginSuccess({ phone: cleanPhone, storeName: result.tenant.name, profile, tenantId: result.tenant.id, outletId: result.staff?.outletId });
     } catch (err) {
       setErrorMessage((err as Error).message || 'Sign in online with your merchant PIN.');
     } finally { setIsLoading(false); }
@@ -161,7 +162,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
         ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim() } : {}),
       });
       await refreshSubscription();
-      onLoginSuccess({ phone: cleanPhone, storeName: result.tenant.name, profile, tenantId: result.tenant.id });
+      onLoginSuccess({ phone: cleanPhone, storeName: result.tenant.name, profile, tenantId: result.tenant.id, outletId: result.staff?.outletId });
     } catch (err) {
       setErrorMessage((err as Error).message || 'Verification failed. Please retry.');
     } finally { setIsLoading(false); }

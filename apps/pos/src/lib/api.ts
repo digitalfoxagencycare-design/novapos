@@ -144,6 +144,36 @@ export class ApiClient {
     return this.request('GET', `/reports/today?outletId=${encodeURIComponent(outletId)}`);
   }
 
+  recordPosSale(sale: {
+    clientOrderId: string;
+    orderNumber?: string;
+    invoiceNumber?: string;
+    amount: number;
+    paymentMode: 'cash' | 'upi' | 'card' | 'credit';
+    customerName?: string;
+    customerPhone?: string;
+    notes?: string;
+    taxSnapshot?: any;
+    receiptSnapshot?: any;
+    lines?: {
+      itemId?: string;
+      name: string;
+      quantity: number;
+      price: number;
+      uom?: string;
+      taxSlabId?: string;
+      hsnSac?: string;
+      netMinor?: number;
+    }[];
+    placedAt?: string;
+  }) {
+    return this.request('POST', '/orders/pos-sale', sale);
+  }
+
+  salesHistory(outletId: string, limit = 100) {
+    return this.request('GET', `/orders/sales?outletId=${encodeURIComponent(outletId)}&limit=${limit}`);
+  }
+
   /**
    * Bill an order.
    *

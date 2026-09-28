@@ -43,6 +43,7 @@ import {
   type PaperWidth,
 } from '../lib/thermalPrinter';
 import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
+import { recordSale } from '../lib/cloudSaleSync';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 import { type BusinessProfile, type Uom, lineAmount, isWeight } from '../lib/business';
 import { type CatalogItem, type ItemPortion, type ItemExtra } from './InventoryScreen';
@@ -481,7 +482,7 @@ export const BillingScreen: React.FC<Props> = ({
     };
 
     try {
-      addDayBookEntry({
+      recordSale({
         type: 'sale',
         description: `Sale Bill #${billNo} (${effectiveName || 'Walk-in'})`,
         amount: finalTotal,

@@ -19,6 +19,8 @@ export interface DayBookEntry {
   taxSnapshot?: TaxComputation;
   receiptSnapshot?: BillData;
   lines?: { itemId: string; name: string; category: string; price: number; quantity: number; uom: Uom; gstRate?: number; netMinor?: number }[];
+  synced?: boolean;
+  cloudOrderId?: string;
 }
 
 export interface DayClosingReport {
@@ -196,6 +198,23 @@ export function addDayBookEntry(entry: Omit<DayBookEntry, 'id' | 'timestamp'>): 
     throw new Error('Bill could not be saved. Free device storage and try again.');
   }
   return created;
+}
+
+export function saveDayBookEntries(entries: DayBookEntry[]): void {
+  try {
+    localStorage.setItem(DAYBOOK_STORAGE_KEY, JSON.stringify(entries));
+  } catch (e) {
+    console.error('Failed to save daybook entries', e);
+  }
+}
+
+export function updateDayBookEntry(id: string, patch: Partial<DayBookEntry>): void {
+  const all = loadDayBookEntries();
+  const index = all.findIndex((e) => e.id === id);
+  if (index !== -1) {
+    all[index] = { ...all[index], ...patch };
+    saveDayBookEntries(all);
+  }
 }
 
 export function filterEntriesByPeriod<T extends { timestamp: string }>(

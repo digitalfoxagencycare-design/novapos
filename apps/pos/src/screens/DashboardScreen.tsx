@@ -32,6 +32,7 @@ import { useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
 import { printBillDirect, getActiveNativePrinter, type BillData, type BillItem } from '../lib/thermalPrinter';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
+import { syncPendingSales } from '../lib/cloudSaleSync';
 
 interface Props {
   profile: BusinessProfile;
@@ -139,16 +140,21 @@ export const DashboardScreen: React.FC<Props> = ({
 
   useEffect(() => {
     refreshTodaySales();
+    void syncPendingSales().then(() => refreshTodaySales()).catch(() => undefined);
   }, []);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setIsSyncing(true);
-    refreshTodaySales();
-    setTimeout(() => {
+    try {
+      await syncPendingSales();
+    } catch {
+      // ignore
+    } finally {
+      refreshTodaySales();
       setIsSyncing(false);
       setSyncToast(true);
       setTimeout(() => setSyncToast(false), 2000);
-    }, 600);
+    }
   };
 
   const handleShareWhatsApp = (sale: DayBookEntry) => {

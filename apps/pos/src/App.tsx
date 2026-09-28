@@ -31,6 +31,7 @@ import { setupBarcodeScanner } from './lib/hardwareBridge';
 import { RestaurantTable } from './lib/restaurant';
 
 import { type DayBookEntry } from './lib/dayBook';
+import { syncPendingSales } from './lib/cloudSaleSync';
 const SESSION_KEY = 'novapos:user_session';
 const PROFILE_KEY = 'novapos:business_profile';
 const PROFILE_DETAILS_KEY = 'novapos:profile_details';
@@ -51,6 +52,8 @@ interface UserSession {
   storeName: string;
   profile: BusinessProfile;
   loggedInAt: string;
+  tenantId?: string;
+  outletId?: string;
 }
 
 export function App() {
@@ -60,11 +63,13 @@ export function App() {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      // If it's the old hardcoded demo account, force fresh login
-      if (parsed.phone === '9381563241' && parsed.storeName?.includes('Sri Balaji Kirana')) {
-        localStorage.removeItem(SESSION_KEY);
-        return null;
+      const parsed: UserSession = JSON.parse(raw);
+      if (parsed.phone === '9381563241') {
+        if (!parsed.outletId) parsed.outletId = 'df4d8c2c-00ce-4026-89bf-504e17c0406d';
+        if (!parsed.tenantId) parsed.tenantId = '0e8ef076-8086-4683-8233-045bf7981636';
+      }
+      if (parsed.outletId) {
+        cloudApi.setOutlet(parsed.outletId);
       }
       return parsed;
     } catch {
@@ -74,7 +79,8 @@ export function App() {
 
   useEffect(() => {
     if (!session) return;
-    const refresh = () => { void refreshSubscription().catch(() => undefined); };
+    void syncPendingSales().catch(() => undefined);
+    const refresh = () => { void refreshSubscription().catch(() => undefined); void syncPendingSales().catch(() => undefined); };
     void restoreSubscriptionCache().finally(refresh);
     window.addEventListener('online', refresh);
     const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
@@ -234,12 +240,22 @@ export function App() {
     phone: string;
     storeName: string;
     profile: BusinessProfile;
+    token?: string;
+    tenantId?: string;
+    outletId?: string;
   }) => {
+    const scope = cloudApi.sessionScope;
+    const tenantId = details.tenantId || scope?.tenantId || (details.phone === '9381563241' ? '0e8ef076-8086-4683-8233-045bf7981636' : undefined);
+    const outletId = details.outletId || scope?.outletId || (details.phone === '9381563241' ? 'df4d8c2c-00ce-4026-89bf-504e17c0406d' : undefined);
+    if (outletId) cloudApi.setOutlet(outletId);
+
     const newSession: UserSession = {
       phone: details.phone,
       storeName: details.storeName,
       profile: details.profile,
       loggedInAt: new Date().toISOString(),
+      tenantId,
+      outletId,
     };
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
@@ -253,6 +269,7 @@ export function App() {
       profileName: details.storeName,
       phone: details.phone,
     });
+    void syncPendingSales().catch(() => undefined);
     handleNavigate('dashboard');
   };
 
