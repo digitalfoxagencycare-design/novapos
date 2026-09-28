@@ -23,8 +23,8 @@ export const DownloadSection: React.FC = () => {
               </p>
 
               <div className="space-y-2 text-xs text-slate-700">
-                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span>Instant 7-Day Free Trial Activated on Install</span></div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span>10 Pre-loaded Merchant Test Stores</span></div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span>7-Day Free Trial Starts After Store Verification</span></div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span>Register your own store with SMS verification</span></div>
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span>Target SDK 35 (Android 15) Ready & Verified</span></div>
               </div>
 
@@ -36,17 +36,17 @@ export const DownloadSection: React.FC = () => {
                   className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download APK (v4.5 · 5.18 MB)</span>
+                  <span>Download Android APK</span>
                 </a>
 
                 <a
-                  href="https://play.google.com/store"
+                  href="#contact"
                   target="_blank"
                   rel="noreferrer"
                   className="px-6 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 border border-slate-300 transition-all"
                 >
                   <Play className="w-4 h-4 text-indigo-600 fill-indigo-600" />
-                  <span>Google Play Store</span>
+                  <span>Get setup help</span>
                 </a>
               </div>
             </div>

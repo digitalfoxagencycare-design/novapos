@@ -14,7 +14,6 @@ interface Outlet {
 
 const NAV: { key: Page; label: string; icon: string; needs: string }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊', needs: 'report:read' },
-  { key: 'merchants', label: 'Stores & Merchants', icon: '🏪', needs: 'settings:read' },
   { key: 'menu', label: 'Menu & Catalog', icon: '🍔', needs: 'menu:read' },
   { key: 'reports', label: 'Sales Reports', icon: '📈', needs: 'report:read' },
   { key: 'tax', label: 'GST Tax Rules', icon: '⚖️', needs: 'settings:read' },
@@ -831,7 +830,7 @@ function useMoney(outlet: Outlet) {
 function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [tenantSlug, setTenantSlug] = useState('sri-balaji-3241');
   const [email, setEmail] = useState('9381563241');
-  const [password, setPassword] = useState('1411');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -867,7 +866,7 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
         <div className="field">
           <label htmlFor="p">4-Digit PIN / Password</label>
           <input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                 placeholder="e.g. 1411" autoComplete="current-password" required />
+                 placeholder="Your password or PIN" autoComplete="current-password" required />
         </div>
         <button className="btn btn--primary" style={{ width: '100%', marginTop: '8px' }} type="submit" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in to Admin Dashboard'}

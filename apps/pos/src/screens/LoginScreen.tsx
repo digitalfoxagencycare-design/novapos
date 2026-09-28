@@ -15,7 +15,6 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
-import { sendOtp as sendFirebaseOtp, confirmOtp as confirmFirebaseOtp } from '../lib/firebaseNativeAuth';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { cloudApi } from '../lib/cloudSession';
 import { refreshSubscription } from '../lib/subscription';
@@ -85,7 +84,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     } finally { setIsLoading(false); }
   };
 
-  // 2. Dispatch Real SMS OTP via Firebase Phone Auth
+  // Dispatch an OTP that the backend can verify.
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -125,9 +124,9 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      const fbRes = await sendFirebaseOtp(cleanPhone);
+      const fbRes = await cloudApi.sendOtp(cleanPhone);
       if (fbRes.success) {
-        setSuccessMessage(`Firebase SMS OTP sent to +91 ${cleanPhone}`);
+        setSuccessMessage(`SMS OTP sent to +91 ${cleanPhone}`);
         setOtpStep(true);
         setCountdown(60);
         setOtp('');
@@ -141,12 +140,12 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     }
   };
 
-  // 3. Verify SMS OTP with Firebase & Provision in Database
+  // Verify SMS OTP on the backend and provision the merchant.
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-    if (!otp.trim() || otp.length < 4) {
+    if (!/^\d{6}$/.test(otp.trim())) {
       setErrorMessage('Please enter the 6-digit code received via SMS.');
       return;
     }
@@ -155,19 +154,10 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
 
     try {
-      // 1. Verify code with Firebase
-      const fbVerify = await confirmFirebaseOtp(otp.trim());
-      if (!fbVerify.success && otp.trim() !== '123456') {
-        setErrorMessage(fbVerify.message || 'Incorrect OTP code. Please enter the valid code sent via SMS.');
-        setIsLoading(false);
-        return;
-      }
-
       // 2. Provision Tenant/User in Supabase & issue JWT session
       const result = await cloudApi.verifyOtp({
         phone: cleanPhone,
         otp: otp.trim(),
-        isFirebaseVerified: true,
         ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim() } : {}),
       });
       await refreshSubscription();

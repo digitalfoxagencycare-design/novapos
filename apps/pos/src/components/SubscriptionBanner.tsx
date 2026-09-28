@@ -1,3 +1,4 @@
+import { useBackHandler } from '../lib/navigation';
 import React, { useState } from 'react';
 import { useSubscriptionDetails } from '../lib/subscription';
 import { Clock, CheckCircle2, AlertTriangle, Phone, MessageSquare, ShieldCheck, X, Sparkles } from 'lucide-react';
@@ -7,9 +8,10 @@ interface Props {
   phone?: string;
 }
 
-export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', phone = '9848787308' }) => {
+export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', phone = '' }) => {
   const details = useSubscriptionDetails();
   const [modalOpen, setModalOpen] = useState(false);
+  useBackHandler(modalOpen, () => setModalOpen(false));
 
   const supportNumber = '9381563241';
   const whatsappUrl = `https://wa.me/91${supportNumber}?text=${encodeURIComponent(
@@ -20,6 +22,8 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
     <>
       {/* Top Banner Bar */}
       <div
+        role="button" tabIndex={0} aria-label="Manage subscription"
+        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setModalOpen(true); } }}
         onClick={() => setModalOpen(true)}
         className={`w-full px-3 py-1.5 text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors shadow-xs ${
           details.isExpired
@@ -42,7 +46,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
             {details.isExpired
               ? 'License Expired · Contact Support to Continue Billing'
               : details.isTrial
-              ? `Free trial · ${details.countdown} remaining`
+              ? `Free trial · ${details.daysRemaining > 1 ? `${details.daysRemaining} days` : details.countdown} remaining`
               : `Active Subscription · Valid till ${details.formattedExpiresAt}`}
           </span>
         </div>
@@ -54,10 +58,14 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
         </div>
       </div>
 
+      {(details.isExpired || details.daysRemaining <= 2) && <div className="flex gap-4 px-3 py-2 bg-amber-50 text-amber-950 text-sm">
+        <a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp support</a>
+        <a href="tel:+919381563241">Call +91 9381563241</a>
+      </div>}
       {/* Subscription / Support Dialog */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 flex flex-col">
+        <div role="dialog" aria-modal="true" aria-label="License and subscription" className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[85dvh] overflow-y-auto shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 flex flex-col">
             {/* Header */}
             <div className="p-4 bg-purple-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -130,7 +138,7 @@ export const SubscriptionBanner: React.FC<Props> = ({ storeName = 'My Store', ph
                   </li>
                   <li className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    <span>2 Staff Accounts with 18 Granular Permissions</span>
+                    <span>Staff access setup requires the authenticated staff service</span>
                   </li>
                   <li className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />

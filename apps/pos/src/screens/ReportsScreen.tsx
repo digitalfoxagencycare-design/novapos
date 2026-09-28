@@ -1,3 +1,4 @@
+import { exportCsv } from '../lib/csv';
 import { showPrintPreview } from '../components/PrintPreview';
 import { useBackHandler } from '../lib/navigation';
 import React, { useState, useMemo } from 'react';
@@ -121,7 +122,8 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'>('today');
   
   // Custom date picker state
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [customStart, setCustomStart] = useState<string>(todayStr);
   const [customEnd, setCustomEnd] = useState<string>(todayStr);
 
@@ -225,7 +227,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
     for (const sale of salesEntries) {
       if (sale.lines && sale.lines.length > 0) {
         for (const line of sale.lines) {
-          const key = line.name.toLowerCase().trim();
+          const key = `${line.itemId || line.name}|${line.uom}|${line.category}`;
           const existing = itemMap.get(key) || {
             name: line.name,
             category: line.category || 'General',
@@ -235,7 +237,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
             ordersCount: 0,
           };
           existing.quantity += line.quantity;
-          existing.revenue += line.price * line.quantity;
+          existing.revenue += (line.netMinor !== undefined ? line.netMinor / 100 : line.price * line.quantity);
           existing.ordersCount += 1;
           itemMap.set(key, existing);
         }
@@ -269,20 +271,20 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
             ordersCount: 0,
             items: [],
           };
-          existing.revenue += line.price * line.quantity;
+          existing.revenue += (line.netMinor !== undefined ? line.netMinor / 100 : line.price * line.quantity);
           existing.totalQty += line.quantity;
           existing.ordersCount += 1;
 
           const itemIndex = existing.items.findIndex((i) => i.name.toLowerCase() === line.name.toLowerCase());
           if (itemIndex >= 0) {
             existing.items[itemIndex].qty += line.quantity;
-            existing.items[itemIndex].revenue += line.price * line.quantity;
+            existing.items[itemIndex].revenue += (line.netMinor !== undefined ? line.netMinor / 100 : line.price * line.quantity);
           } else {
             existing.items.push({
               name: line.name,
               qty: line.quantity,
               uom: line.uom || 'pcs',
-              revenue: line.price * line.quantity,
+              revenue: (line.netMinor !== undefined ? line.netMinor / 100 : line.price * line.quantity),
             });
           }
 
@@ -338,45 +340,8 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   };
 
   const handlePrintInvoice = (entry: DayBookEntry) => {
-    const dateObj = new Date(entry.timestamp);
-    const itemsList: BillItem[] =
-      entry.lines && entry.lines.length > 0
-        ? entry.lines.map((l) => ({
-            name: l.name,
-            quantity: l.quantity,
-            price: l.price,
-            total: l.price * l.quantity,
-          }))
-        : [
-            {
-              name: entry.description || 'General Items',
-              quantity: 1,
-              price: entry.amount,
-              total: entry.amount,
-            },
-          ];
-
-    const subtotal = entry.amount / 1.05;
-    const gst = entry.amount - subtotal;
-
-    const billData: BillData = {
-      restaurantName: profileName || 'NovaPOS Store',
-      address: 'Main Road, Market Center',
-      phone: phone || '9381563241',
-      billNo: entry.referenceNo || entry.id,
-      date: dateObj.toLocaleDateString('en-IN'),
-      time: dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      orderType: 'Counter Sale',
-      customerName: entry.description?.split('(')[1]?.replace(')', '') || 'Walk-in Customer',
-      items: itemsList,
-      subtotal,
-      cgst: gst / 2,
-      sgst: gst / 2,
-      total: entry.amount,
-      paymentMode: entry.paymentMode.toUpperCase(),
-    };
-
-    printReceiptViaBrowser(billData);
+    if (!entry.receiptSnapshot) { window.alert('This legacy bill has no frozen receipt snapshot. Original tax cannot be reconstructed safely.'); return; }
+    printReceiptViaBrowser({ ...entry.receiptSnapshot, isDuplicate: true });
   };
 
   const handleShareInvoice = (entry: DayBookEntry) => {
@@ -400,19 +365,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
   };
 
   const handleExportCSV = (reportName: string, headers: string[], rows: (string | number)[][]) => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [
-        headers.join(','),
-        ...rows.map((row) => row.map((value) => '"' + String(value).replace(/"/g, '""') + '"').join(',')),
-      ].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${reportName}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportCsv(`${reportName}_${todayStr}.csv`, headers, rows);
   };
 
   const activeReport = REPORT_MENU.flatMap((g) => g.items).find((i) => i.code === selectedReport);
@@ -525,7 +478,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      {df === 'week' ? 'This Week' : df === 'month' ? 'This Month' : df}
+                      {df === 'week' ? 'Last 7 Days' : df === 'month' ? 'This Month' : df}
                     </button>
                   ))}
                 </div>
@@ -675,55 +628,29 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
               let totalSgst = 0;
               let totalGstCollected = 0;
 
+              const missingSnapshots = salesEntries.filter(sale => !sale.taxSnapshot).length;
               for (const sale of salesEntries) {
-                if (sale.lines && sale.lines.length > 0) {
-                  for (const line of sale.lines) {
-                    const matched = displayItems.find(
-                      (i) => i.id === line.itemId || i.name.toLowerCase() === line.name.toLowerCase()
-                    );
-                    const rate = matched?.gstRate !== undefined ? matched.gstRate : 5;
-                    const lineGross = line.price * line.quantity;
-                    const taxable = rate > 0 ? lineGross / (1 + rate / 100) : lineGross;
-                    const tax = lineGross - taxable;
-                    const halfTax = tax / 2;
-
-                    if (!slabTotals[rate]) {
-                      slabTotals[rate] = { taxable: 0, cgst: 0, sgst: 0, totalGst: 0, gross: 0 };
-                    }
-                    slabTotals[rate].taxable += taxable;
-                    slabTotals[rate].cgst += halfTax;
-                    slabTotals[rate].sgst += halfTax;
-                    slabTotals[rate].totalGst += tax;
-                    slabTotals[rate].gross += lineGross;
-
-                    totalTaxable += taxable;
-                    totalCgst += halfTax;
-                    totalSgst += halfTax;
-                    totalGstCollected += tax;
-                  }
-                } else {
-                  const rate = 5;
-                  const lineGross = sale.amount;
-                  const taxable = lineGross / 1.05;
-                  const tax = lineGross - taxable;
-                  const halfTax = tax / 2;
-                  slabTotals[rate].taxable += taxable;
-                  slabTotals[rate].cgst += halfTax;
-                  slabTotals[rate].sgst += halfTax;
-                  slabTotals[rate].totalGst += tax;
-                  slabTotals[rate].gross += lineGross;
-                  totalTaxable += taxable;
-                  totalCgst += halfTax;
-                  totalSgst += halfTax;
-                  totalGstCollected += tax;
+                for (const line of sale.taxSnapshot?.lines ?? []) {
+                  const rate = Number(line.slabId.replace('gst-', ''));
+                  if (!Number.isFinite(rate)) continue;
+                  const taxable = line.taxableMinor / 100;
+                  const cgst = (line.components.find(c => c.code === 'CGST')?.amountMinor ?? 0) / 100;
+                  const sgst = (line.components.find(c => c.code === 'SGST')?.amountMinor ?? 0) / 100;
+                  const bucket = slabTotals[rate] ??= { taxable: 0, cgst: 0, sgst: 0, totalGst: 0, gross: 0 };
+                  bucket.taxable += taxable;
+                  bucket.cgst += cgst; bucket.sgst += sgst;
+                  bucket.totalGst += line.taxMinor / 100; bucket.gross += line.grossMinor / 100;
+                  totalTaxable += taxable; totalCgst += cgst; totalSgst += sgst;
+                  totalGstCollected += line.taxMinor / 100;
                 }
               }
 
               return (
                 <div className="ezo-detail-card space-y-4">
+                  {missingSnapshots > 0 && <p role="alert" className="text-amber-800">Incomplete tax report: {missingSnapshots} legacy bills have no frozen tax snapshot and are excluded. Do not use this as a complete filing export.</p>}
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-slate-800 text-sm">GSTR-1 Tax Summary & Slab Register</h3>
+                      <h3 className="font-bold text-slate-800 text-sm">Recorded Tax Summary & Slab Register</h3>
                       <p className="text-xs text-slate-500">Period: {dateFilter.toUpperCase()}</p>
                     </div>
                     <span className="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full">
@@ -808,7 +735,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                   <button
                     onClick={() =>
                       handleExportCSV(
-                        'GSTR1_Tax_Report',
+                        missingSnapshots ? 'INCOMPLETE_Tax_Snapshot_Report' : 'Tax_Snapshot_Report',
                         ['GST Slab Rate', 'Taxable Value', 'CGST', 'SGST', 'Total GST', 'Gross Invoice Value'],
                         [0, 5, 12, 18, 28].map((slab) => {
                           const d = slabTotals[slab] || {
@@ -832,7 +759,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                     className="ezo-outline-card-btn text-xs py-2"
                   >
                     <Download className="w-4 h-4 mr-1.5 inline" />
-                    Export GSTR-1 Tax Summary CSV
+                    Export Tax Snapshot CSV
                   </button>
                 </div>
               );
@@ -1058,6 +985,9 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                                 </span>
                               </div>
 
+                              <p className="text-xs">{tx.taxSnapshot
+                                ? `Recorded GST: ₹${(tx.taxSnapshot.taxMinor / 100).toFixed(2)} · ${tx.taxSnapshot.componentTotals.map(c => `${c.code} ₹${(c.amountMinor / 100).toFixed(2)}`).join(' · ')}`
+                                : 'Original tax details unavailable for this legacy bill.'}</p>
                               {hasLines ? (
                                 <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                                   <table className="w-full text-xs text-left">
@@ -1083,7 +1013,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                                           </td>
                                           <td className="p-2 text-right text-slate-600">₹{line.price.toFixed(2)}</td>
                                           <td className="p-2 text-right font-bold text-slate-900">
-                                            ₹{(line.price * line.quantity).toFixed(2)}
+                                            ₹{((line.netMinor !== undefined ? line.netMinor / 100 : line.price * line.quantity)).toFixed(2)}
                                           </td>
                                         </tr>
                                       ))}
@@ -1510,7 +1440,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                       handleExportCSV(
                         'Item_Sales_Report',
                         ['Rank', 'Item Name', 'Category', 'Quantity Sold', 'UOM', 'Total Revenue'],
-                        itemWiseSales.map((item, idx) => [
+                        filteredItemWiseSales.map((item, idx) => [
                           idx + 1,
                           item.name,
                           item.category,
@@ -1713,7 +1643,7 @@ export const ReportsScreen: React.FC<Props> = ({ profileName, phone = '938156324
                           <td className="text-right font-bold text-purple-700">
                             ₹{(item.priceMinor / 100).toFixed(2)}
                           </td>
-                          <td className="text-right text-slate-600">5.0%</td>
+                          <td className="text-right text-slate-600">{item.gstRate ?? 0}%</td>
                         </tr>
                       ))}
                     </tbody>

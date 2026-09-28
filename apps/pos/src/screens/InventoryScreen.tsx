@@ -1,4 +1,4 @@
-import { mergeCatalog } from '../lib/catalog';
+import { mergeCatalog, barcodeConflict, itemBarcodes } from '../lib/catalog';
 import { useBackHandler } from '../lib/navigation';
 import React, { useState, useEffect } from 'react';
 import {
@@ -78,6 +78,7 @@ export const InventoryScreen: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
 
   // Stock Adjustment Modal States
@@ -101,7 +102,7 @@ export const InventoryScreen: React.FC<Props> = ({
   const [formPrice, setFormPrice] = useState('');
   const [formMrp, setFormMrp] = useState('');
   const [formPurchasePrice, setFormPurchasePrice] = useState('');
-  const [formStock, setFormStock] = useState('100');
+  const [formStock, setFormStock] = useState('0');
   const [formHsnSac, setFormHsnSac] = useState('');
   const [formUom, setFormUom] = useState<Uom>('pcs');
   const [formCode, setFormCode] = useState('');
@@ -145,13 +146,12 @@ export const InventoryScreen: React.FC<Props> = ({
       item.name.toLowerCase().includes(q) ||
       item.code.toLowerCase().includes(q) ||
       (item.hsnSac && item.hsnSac.includes(q)) ||
-      (item.barcode && item.barcode.includes(q)) ||
-      (item.barcode2 && item.barcode2.includes(q)) ||
-      (item.barcode3 && item.barcode3.includes(q))
+      itemBarcodes(item).some(code => code.toLowerCase().includes(q))
     );
   });
 
   const handleOpenAddModal = () => {
+    setFormError('');
     setEditingItem(null);
     setFormName('');
     setFormTaxType('exempt'); // default exempt (0%)
@@ -162,7 +162,7 @@ export const InventoryScreen: React.FC<Props> = ({
     setFormPrice('');
     setFormMrp('');
     setFormPurchasePrice('');
-    setFormStock('100');
+    setFormStock('0');
     setFormHsnSac('');
     setFormUom('pcs');
     setFormCode(`ITEM-${Date.now().toString().slice(-4)}`);
@@ -175,18 +175,19 @@ export const InventoryScreen: React.FC<Props> = ({
   };
 
   const handleOpenEditModal = (item: CatalogItem) => {
+    setFormError('');
     setEditingItem(item);
     setFormName(item.name);
     const isTaxable = (item.gstRate ?? 0) > 0 || item.isGstApplicable === true;
     setFormTaxType(isTaxable ? 'taxable' : 'exempt');
-    setFormGstRate(item.gstRate && item.gstRate > 0 ? item.gstRate : 5);
+    setFormGstRate(item.gstRate ?? 0);
     setFormCategory(item.categoryName || 'General');
     setIsAddingNewCat(false);
     setNewCatInput('');
     setFormPrice(String(item.priceMinor / 100));
     setFormMrp(item.mrpMinor ? String(item.mrpMinor / 100) : '');
     setFormPurchasePrice(item.purchasePriceMinor ? String(item.purchasePriceMinor / 100) : '');
-    setFormStock(String(item.stockQty ?? 100));
+    setFormStock(String(item.stockQty ?? 0));
     setFormHsnSac(item.hsnSac || '');
     setFormUom(item.uom);
     setFormCode(item.code);
@@ -225,9 +226,9 @@ export const InventoryScreen: React.FC<Props> = ({
     e.preventDefault();
     if (!adjustStockItem) return;
     const adjustment = parseFloat(adjustStockQty) || 0;
-    if (adjustment <= 0) return;
+    if (!Number.isFinite(adjustment) || adjustment <= 0) return;
 
-    const currentStock = adjustStockItem.stockQty ?? 100;
+    const currentStock = adjustStockItem.stockQty ?? 0;
     const newStock =
       adjustStockMode === 'add' ? currentStock + adjustment : Math.max(0, currentStock - adjustment);
 
@@ -246,11 +247,20 @@ export const InventoryScreen: React.FC<Props> = ({
     e.preventDefault();
     if (!formName.trim() || !formPrice) return;
 
-    const price = parseFloat(formPrice) || 0;
+    const price = Number(formPrice);
     const mrp = formMrp ? parseFloat(formMrp) : undefined;
     const purchase = formPurchasePrice ? parseFloat(formPurchasePrice) : undefined;
-    const stock = parseFloat(formStock) || 0;
-    if (!Number.isFinite(price) || price < 0 || !Number.isFinite(stock)) return;
+    const stock = Number(formStock);
+    if (!Number.isFinite(price) || price < 0 || !Number.isSafeInteger(Math.round(price * 100)) ||
+        !Number.isFinite(stock) || stock < 0 ||
+        [mrp, purchase].some(value => value !== undefined && (!Number.isFinite(value) || value < 0))) {
+      setFormError('Enter valid non-negative prices and stock.'); return;
+    }
+    const conflict = barcodeConflict([...allItems, ...customItems],
+      [formBarcode1, formBarcode2, formBarcode3, formBarcode4, formBarcode5, formCode], editingItem?.id);
+    if (conflict) { setFormError(conflict); return; }
+    if (isAddingNewCat && !newCatInput.trim()) { setFormError('Enter a category name.'); return; }
+    setFormError('');
 
     const effectiveCategory = isAddingNewCat && newCatInput.trim() ? newCatInput.trim() : formCategory;
     const effectiveGstRate = formTaxType === 'taxable' ? Number(formGstRate) : 0;
@@ -263,8 +273,8 @@ export const InventoryScreen: React.FC<Props> = ({
         categoryName: effectiveCategory,
         categoryId: `cat-${effectiveCategory.toLowerCase().replace(/\s+/g, '-')}`,
         priceMinor: Math.round(price * 100),
-        mrpMinor: mrp ? Math.round(mrp * 100) : undefined,
-        purchasePriceMinor: purchase ? Math.round(purchase * 100) : undefined,
+        mrpMinor: mrp !== undefined ? Math.round(mrp * 100) : undefined,
+        purchasePriceMinor: purchase !== undefined ? Math.round(purchase * 100) : undefined,
         uom: formUom,
         isWeighed: isWeight(formUom),
         code: formCode || editingItem.code,
@@ -287,8 +297,8 @@ export const InventoryScreen: React.FC<Props> = ({
         categoryName: effectiveCategory,
         categoryId: `cat-${effectiveCategory.toLowerCase().replace(/\s+/g, '-')}`,
         priceMinor: Math.round(price * 100),
-        mrpMinor: mrp ? Math.round(mrp * 100) : undefined,
-        purchasePriceMinor: purchase ? Math.round(purchase * 100) : undefined,
+        mrpMinor: mrp !== undefined ? Math.round(mrp * 100) : undefined,
+        purchasePriceMinor: purchase !== undefined ? Math.round(purchase * 100) : undefined,
         uom: formUom,
         isWeighed: isWeight(formUom),
         code: formCode || `ITM-${Date.now().toString().slice(-4)}`,
@@ -418,14 +428,14 @@ export const InventoryScreen: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <span
                       className={`stock-badge ${
-                        (item.stockQty ?? 100) <= 0
+                        (item.stockQty ?? 0) <= 0
                           ? 'out'
-                          : (item.stockQty ?? 100) < 10
+                          : (item.stockQty ?? 0) < 10
                           ? 'low'
                           : 'ok'
                       }`}
                     >
-                      Stock: {item.stockQty ?? 100} {item.uom}
+                      Stock: {item.stockQty ?? 0} {item.uom}
                     </span>
                     <button
                       onClick={(e) => handleOpenAdjustStock(item, e)}
@@ -505,14 +515,14 @@ export const InventoryScreen: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <span
                       className={`stock-badge ${
-                        (item.stockQty ?? 100) <= 0
+                        (item.stockQty ?? 0) <= 0
                           ? 'out'
-                          : (item.stockQty ?? 100) < 10
+                          : (item.stockQty ?? 0) < 10
                           ? 'low'
                           : 'ok'
                       }`}
                     >
-                      {item.stockQty ?? 100} {item.uom}
+                      {item.stockQty ?? 0} {item.uom}
                     </span>
                     <button
                       onClick={(e) => handleOpenAdjustStock(item, e)}
@@ -572,7 +582,7 @@ export const InventoryScreen: React.FC<Props> = ({
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
                 <span className="text-slate-500 font-medium">Current In Stock:</span>
                 <span className="font-bold text-slate-800 text-sm">
-                  {adjustStockItem.stockQty ?? 100} {adjustStockItem.uom}
+                  {adjustStockItem.stockQty ?? 0} {adjustStockItem.uom}
                 </span>
               </div>
 
@@ -657,8 +667,8 @@ export const InventoryScreen: React.FC<Props> = ({
                   <span className="text-xs font-bold text-emerald-900">New Resulting Stock:</span>
                   <span className="text-base font-black text-emerald-700 font-mono">
                     {adjustStockMode === 'add'
-                      ? (adjustStockItem.stockQty ?? 100) + (parseFloat(adjustStockQty) || 0)
-                      : Math.max(0, (adjustStockItem.stockQty ?? 100) - (parseFloat(adjustStockQty) || 0))}{' '}
+                      ? (adjustStockItem.stockQty ?? 0) + (parseFloat(adjustStockQty) || 0)
+                      : Math.max(0, (adjustStockItem.stockQty ?? 0) - (parseFloat(adjustStockQty) || 0))}{' '}
                     {adjustStockItem.uom}
                   </span>
                 </div>
@@ -716,6 +726,7 @@ export const InventoryScreen: React.FC<Props> = ({
             </div>
 
             <form onSubmit={handleSaveItem} className="p-4 space-y-4 overflow-y-auto flex-1">
+              {formError && <p role="alert" className="text-red-700">{formError}</p>}
               {/* Field 1: Product / Item Name * */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
@@ -865,7 +876,7 @@ export const InventoryScreen: React.FC<Props> = ({
                     type="number"
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
-                    placeholder="100"
+                    placeholder="0" step="any" min="0"
                     className="w-full text-sm font-bold text-slate-800 p-3 border border-slate-300 rounded-xl focus:border-purple-600 outline-none"
                   />
                 </div>

@@ -3,6 +3,17 @@ import { addDayBookEntry, filterEntriesByPeriod, nextInvoiceNumber, loadDayBookE
 import { mergeCatalog } from './catalog';
 
 beforeEach(() => localStorage.clear());
+it('does not seed financial activity or overwrite stores with fewer than twenty bills', () => {
+  expect(loadDayBookEntries()).toEqual([]);
+  const bill = addDayBookEntry({ type: 'sale', description: 'First real bill', amount: 50, paymentMode: 'cash' });
+  expect(loadDayBookEntries()).toEqual([bill]);
+});
+it('excludes recognisable generated demo entries without deleting the stored original', () => {
+  const records = [{ id: 'db-seed-1-123' }, { id: 'db-exp-2' }, { id: 'db-money-in-3' }, { id: 'real-bill' }];
+  localStorage.setItem('novapos:daybook_entries', JSON.stringify(records));
+  expect(loadDayBookEntries()).toEqual([{ id: 'real-bill' }]);
+  expect(JSON.parse(localStorage.getItem('novapos:daybook_entries')!)).toEqual(records);
+});
 it('keeps archived presets deleted and edits profile-specific', () => {
   const preset = { id: 'preset:kirana:0', name: 'Rice', archived: false };
   expect(mergeCatalog([preset], [{ ...preset, archived: true }], 'kirana')).toEqual([]);

@@ -25,7 +25,7 @@ export const Footer: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms, onOpenAbou
             </p>
             <div className="pt-2 text-[11px] text-slate-400">
               <span>Helpline: </span>
-              <a href="tel:9381563241" className="text-white font-bold hover:text-indigo-400">
+              <a href="tel:+919381563241" className="text-white font-bold hover:text-indigo-400">
                 +91 9381563241
               </a>
             </div>
@@ -37,7 +37,7 @@ export const Footer: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms, onOpenAbou
             <ul className="space-y-1.5 text-slate-400">
               <li><a href="#products" className="hover:text-white">Bada Machine + 1-Yr Software (₹6,499)</a></li>
               <li><a href="#products" className="hover:text-white">Touch POS Hardware Standalone (₹2,999)</a></li>
-              <li><a href="#products" className="hover:text-white">1-Year Software SaaS License (₹2,999)</a></li>
+              <li><a href="#products" className="hover:text-white">1-Year Software SaaS License (₹4,999)</a></li>
               <li><a href="#products" className="hover:text-white">Bluetooth Thermal Printers (₹1,999)</a></li>
               <li><a href="#download" className="hover:text-white">Android Mobile POS App</a></li>
             </ul>

@@ -23,6 +23,7 @@ export interface Tokens { accessToken: string; refreshToken: string }
 export class AdminApi {
   private tokens: Tokens | null = null;
   private refreshing: Promise<void> | null = null;
+  private sessionVersion = 0;
 
   constructor(
     private readonly baseUrl = import.meta.env.VITE_API_URL
@@ -48,12 +49,16 @@ export class AdminApi {
   }
 
   async login(tenantSlug: string, email: string, password: string) {
+    const version = ++this.sessionVersion;
     const res = await this.raw('POST', '/auth/login', { tenantSlug, email, password });
+    if (version !== this.sessionVersion) throw new ApiError(401, 'SESSION_CHANGED', 'The session changed. Please sign in again.');
     this.persist(res.tokens);
     return res.staff;
   }
 
   async logout() {
+    this.sessionVersion++;
+    this.refreshing = null;
     const refreshToken = this.tokens?.refreshToken;
     const request = refreshToken ? this.raw('POST', '/auth/logout', { refreshToken }, true) : Promise.resolve();
     this.persist(null);
@@ -106,11 +111,14 @@ export class AdminApi {
   private post(path: string, body?: unknown) { return this.request('POST', path, body); }
 
   private async request(method: string, path: string, body?: unknown): Promise<any> {
+    const version = this.sessionVersion;
     try {
       return await this.raw(method, path, body, true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401 && this.tokens?.refreshToken) {
+        if (version !== this.sessionVersion) throw err;
         await this.refresh();
+        if (version !== this.sessionVersion) throw new ApiError(401, 'SESSION_CHANGED', 'The session changed. Please sign in again.');
         return this.raw(method, path, body, true);
       }
       throw err;
@@ -122,14 +130,18 @@ export class AdminApi {
     // already-rotated token and trip the server's reuse detection, which signs
     // every session out.
     if (this.refreshing) return this.refreshing;
+    const version = this.sessionVersion;
+    const refreshToken = this.tokens?.refreshToken;
     this.refreshing = (async () => {
       try {
-        this.persist(await this.raw('POST', '/auth/refresh', { refreshToken: this.tokens!.refreshToken }));
+        const tokens = await this.raw('POST', '/auth/refresh', { refreshToken });
+        if (version !== this.sessionVersion) throw new ApiError(401, 'SESSION_CHANGED', 'The session changed. Please sign in again.');
+        this.persist(tokens);
       } catch (err) {
-        this.persist(null);
+        if (version === this.sessionVersion) this.persist(null);
         throw err;
       } finally {
-        this.refreshing = null;
+        if (version === this.sessionVersion) this.refreshing = null;
       }
     })();
     return this.refreshing;

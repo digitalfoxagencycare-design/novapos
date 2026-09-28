@@ -4,6 +4,8 @@
  */
 
 import { financialYear, type Uom } from './business';
+import type { TaxComputation } from '@novapos/tax-engine';
+import type { BillData } from './thermalPrinter';
 
 export interface DayBookEntry {
   id: string;
@@ -14,7 +16,9 @@ export interface DayBookEntry {
   amount: number;
   paymentMode: 'cash' | 'upi' | 'card' | 'credit';
   referenceNo?: string;
-  lines?: { itemId: string; name: string; category: string; price: number; quantity: number; uom: Uom }[];
+  taxSnapshot?: TaxComputation;
+  receiptSnapshot?: BillData;
+  lines?: { itemId: string; name: string; category: string; price: number; quantity: number; uom: Uom; gstRate?: number; netMinor?: number }[];
 }
 
 export interface DayClosingReport {
@@ -164,18 +168,15 @@ export function generateSeedDayBookEntries(): DayBookEntry[] {
 export function loadDayBookEntries(): DayBookEntry[] {
   try {
     const raw = localStorage.getItem(DAYBOOK_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 20) {
-        return parsed;
-      }
-    }
-    // Auto-seed rich 100+ invoices if empty or fresh
-    const seeded = generateSeedDayBookEntries();
-    localStorage.setItem(DAYBOOK_STORAGE_KEY, JSON.stringify(seeded));
-    return seeded;
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e) => e && typeof e === 'object' && typeof e.id === 'string' &&
+        !e.id.startsWith('db-seed-') && !e.id.startsWith('db-exp-') && !e.id.startsWith('db-money-in-')
+    );
   } catch {
-    return generateSeedDayBookEntries();
+    return [];
   }
 }
 
@@ -213,8 +214,8 @@ export function filterEntriesByPeriod<T extends { timestamp: string }>(
   }
 
   if (period === 'custom' && customRange) {
-    const startTime = customRange.start ? new Date(customRange.start).setHours(0, 0, 0, 0) : 0;
-    const endTime = customRange.end ? new Date(customRange.end).setHours(23, 59, 59, 999) : Infinity;
+    const startTime = customRange.start ? new Date(`${customRange.start}T00:00:00`).getTime() : 0;
+    const endTime = customRange.end ? new Date(`${customRange.end}T23:59:59.999`).getTime() : Infinity;
     return entries.filter(entry => {
       const time = new Date(entry.timestamp).getTime();
       return time >= startTime && time <= endTime;

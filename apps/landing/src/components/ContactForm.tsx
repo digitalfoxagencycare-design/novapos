@@ -52,7 +52,7 @@ export const ContactForm: React.FC = () => {
                 <div>
                   <span className="text-[11px] text-slate-500 uppercase font-bold block">Helpline & WhatsApp Orders</span>
                   <a href="https://wa.me/919381563241" target="_blank" rel="noreferrer" className="text-sm font-bold text-slate-900 hover:text-indigo-600">
-                    +91 9381563241 / +91 9701463241
+                    +91 9381563241
                   </a>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+import { priceCounterSale } from '../lib/counterPricing';
+import { itemBarcodes, findCatalogItemByCode } from '../lib/catalog';
 import { useBackHandler } from '../lib/navigation';
 import { setupBarcodeScanner } from '../lib/hardwareBridge';
 import { quantityFromGrams } from '../lib/business';
@@ -47,7 +49,9 @@ export interface CartLine {
   itemId: string;
   name: string;
   category: string;
-  price: number; // in Rupees
+  price: number; // in Rupees, tax-inclusive for local counter sales
+  gstRate?: number;
+  hsnSac?: string;
   quantity: number;
   uom: Uom;
   isVeg: boolean;
@@ -150,7 +154,7 @@ export const BillingScreen: React.FC<Props> = ({
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [orderType, setOrderType] = useState<string>(tableContext?.orderType || 'Parcel');
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'cash' | 'bank' | 'cheque' | 'upi' | 'credit'>('cash');
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
   const [isReceivedChecked, setIsReceivedChecked] = useState(true);
 
   // Draft / Held Bills
@@ -218,7 +222,7 @@ export const BillingScreen: React.FC<Props> = ({
     'Dry Fruit Shop',
     'Electrical',
   ];
-  const allUniqueCategories = Array.from(new Set([...existingCategories, ...defaultCategoryPresets]));
+  const allUniqueCategories = existingCategories.length ? existingCategories : ['General'];
 
   // Count of items in cart per category
   const getCategoryCartCount = (catName: string) => {
@@ -229,28 +233,33 @@ export const BillingScreen: React.FC<Props> = ({
 
   // Filter items based on selected category and search query
   const filteredItems = items.filter((item) => {
-    if (settings.hideOutOfStockItems && (item.stockQty ?? 100) <= 0) return false;
+    if (settings.hideOutOfStockItems && (item.stockQty ?? 0) <= 0) return false;
     if (selectedCategory !== 'all' && selectedCategory !== 'bestseller' && item.categoryName !== selectedCategory) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
       item.name.toLowerCase().includes(q) ||
       item.code.toLowerCase().includes(q) ||
-      (item.barcode && item.barcode.includes(q))
+      itemBarcodes(item).some(code => code.toLowerCase().includes(q))
     );
   });
 
   // Cart Calculations
-  const rawSubtotal = cart.reduce((s, l) => s + lineAmount(l.price, l.quantity), 0);
-  const discountTotal = discountAmount > 0 ? discountAmount : (rawSubtotal * discountPercent) / 100;
-  const afterDiscount = Math.max(0, rawSubtotal - discountTotal);
-
-  const serviceChargePercent = settings.enableServiceCharge ? 5 : 0;
-  const serviceCharge = orderType === 'Dine-In' ? (afterDiscount * serviceChargePercent) / 100 : 0;
-
-  const preRoundTotal = afterDiscount + serviceCharge;
-  const finalTotal = settings.roundOffAmount ? Math.round(preRoundTotal) : Math.round(preRoundTotal * 100) / 100;
-  const roundOffDifference = finalTotal - preRoundTotal;
+  const pricing = (() => {
+    if (!cart.length) return { result: null, error: '' };
+    try {
+      return { result: priceCounterSale(cart, discountPercent, discountAmount, Boolean(settings.roundOffAmount),
+        settings.enableServiceCharge && orderType === 'Dine-In' ? 5 : 0), error: '' };
+    } catch (error) { return { result: null, error: (error as Error).message }; }
+  })();
+  const rawSubtotal = (pricing.result?.subtotalMinor ?? 0) / 100;
+  const discountTotal = (pricing.result?.discountMinor ?? 0) / 100;
+  const afterDiscount = rawSubtotal - discountTotal;
+  const serviceCharge = (pricing.result?.serviceChargeMinor ?? 0) / 100;
+  const finalTotal = (pricing.result?.totalMinor ?? 0) / 100;
+  const roundOffDifference = (pricing.result?.roundingMinor ?? 0) / 100;
+  const cgst = (pricing.result?.taxSnapshot.componentTotals.find(row => row.code === 'CGST')?.amountMinor ?? 0) / 100;
+  const sgst = (pricing.result?.taxSnapshot.componentTotals.find(row => row.code === 'SGST')?.amountMinor ?? 0) / 100;
 
   // Add Item to Cart
   const handleAddItem = (item: CatalogItem, quantity?: number) => {
@@ -258,7 +267,7 @@ export const BillingScreen: React.FC<Props> = ({
     if (isWeight(item.uom) && settings.allowDecimalQuantity && quantity === undefined) { setWeightItem(item); setGrams('250'); return; }
     const amount = quantity ?? 1;
     const current = cart.find(line => line.itemId === item.id)?.quantity || 0;
-    if (!settings.enableNegativeStockBilling && current + amount > (item.stockQty ?? 100)) { setSaleError('Not enough stock for this quantity.'); return; }
+    if (!settings.enableNegativeStockBilling && current + amount > (item.stockQty ?? 0)) { setSaleError('Not enough stock for this quantity.'); return; }
     setSaleError('');
     const existing = cart.find((l) => l.itemId === item.id);
     if (existing) {
@@ -274,6 +283,8 @@ export const BillingScreen: React.FC<Props> = ({
         name: item.name,
         category: item.categoryName,
         price: item.priceMinor / 100,
+        gstRate: item.isGstApplicable === false ? 0 : item.gstRate ?? 0,
+        hsnSac: item.hsnSac,
         quantity: amount,
         uom: item.uom,
         isVeg: item.isVeg,
@@ -293,6 +304,12 @@ export const BillingScreen: React.FC<Props> = ({
   // Update Item Quantity
   const handleSetQuantity = (itemId: string, newQty: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!Number.isFinite(newQty)) return;
+    const item = items.find(value => value.id === itemId);
+    if (newQty > 0 && (!item || (!settings.enableNegativeStockBilling && newQty > (item.stockQty ?? 0)))) {
+      setSaleError('Not enough stock for this quantity.'); return;
+    }
+    setSaleError('');
     if (newQty <= 0) {
       onUpdateCart(cart.filter((l) => l.itemId !== itemId));
     } else {
@@ -331,7 +348,8 @@ export const BillingScreen: React.FC<Props> = ({
     e.preventDefault();
     if (!newItemName.trim() || !newItemPrice) return;
     const priceNum = parseFloat(newItemPrice) || 0;
-    const stockNum = parseInt(newItemStock, 10) || 100;
+    const stockNum = Number(newItemStock);
+    if (!Number.isFinite(priceNum) || priceNum < 0 || !Number.isFinite(stockNum) || stockNum < 0) { setSaleError('Enter valid price and stock.'); return; }
     const codeGen = String(items.length + 1001);
 
     const createdItem: CatalogItem = {
@@ -362,8 +380,10 @@ export const BillingScreen: React.FC<Props> = ({
   };
 
   // Complete & Save Sale
-  const handleCompleteSale = async (mode: 'cash' | 'bank' | 'cheque' | 'upi' | 'credit' = selectedPaymentMode) => {
-    if (saving.current || cart.length === 0 || finalTotal < 0) return;
+  const handleCompleteSale = async (mode: 'cash' | 'card' | 'upi' | 'credit' = selectedPaymentMode) => {
+    if (saving.current || cart.length === 0) return;
+    if (!pricing.result) { setSaleError(pricing.error); return; }
+    if (cart.some(line => !Number.isFinite(line.quantity) || (!settings.enableNegativeStockBilling && line.quantity > (items.find(item => item.id === line.itemId)?.stockQty ?? 0)))) { setSaleError('Stock changed. Review item quantities before settling.'); return; }
 
     saving.current = true;
     setSaleError('');
@@ -392,13 +412,13 @@ export const BillingScreen: React.FC<Props> = ({
         price: l.price,
         total: lineAmount(l.price, l.quantity),
       })),
-      subtotal: rawSubtotal,
-      cgst: 0,
-      sgst: 0,
+      subtotal: pricing.result.taxSnapshot.taxableMinor / 100,
+      cgst,
+      sgst,
       total: finalTotal,
       paymentMode: mode.toUpperCase(),
-      upiVpa: upiVpa || 'merchant@upi',
-      upiPayload: `upi://pay?pa=${encodeURIComponent(upiVpa || 'merchant@upi')}&pn=${encodeURIComponent(profileName || 'Store')}&am=${finalTotal.toFixed(2)}&cu=INR`,
+      upiVpa: upiVpa || undefined,
+      upiPayload: upiVpa ? `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent(profileName || 'Store')}&am=${finalTotal.toFixed(2)}&cu=INR` : undefined,
     };
 
     try {
@@ -406,9 +426,11 @@ export const BillingScreen: React.FC<Props> = ({
         type: 'sale',
         description: `Sale Bill #${billNo} (${effectiveName || 'Walk-in'})`,
         amount: finalTotal,
-        paymentMode: mode === 'bank' || mode === 'cheque' ? 'card' : mode === 'credit' ? 'credit' : mode,
+        paymentMode: mode,
         referenceNo: billNo,
-        lines: cart.map(line => ({ ...line }))
+        taxSnapshot: pricing.result.taxSnapshot,
+        receiptSnapshot: billData,
+        lines: cart.map(line => ({ ...line, netMinor: pricing.result!.lines.find(value => value.clientLineId === line.id)?.lineTotalMinor }))
       });
     } catch (error) {
       setSaleError((error as Error).message);
@@ -462,7 +484,7 @@ export const BillingScreen: React.FC<Props> = ({
   useEffect(() => {
     if (!settings.itemBarcodeScanner || weightItem) return;
     return setupBarcodeScanner(code => {
-      const found = items.find(item => item.barcode === code || item.code.toLowerCase() === code.toLowerCase());
+      const found = findCatalogItemByCode(items, code);
       if (found) { handleAddItem(found); setSearchQuery(''); }
       else setSaleError(`No product found for barcode ${code}.`);
     });
@@ -498,7 +520,7 @@ export const BillingScreen: React.FC<Props> = ({
             onClick={() => {
               const code = prompt('Enter or scan barcode:');
               if (code) {
-                const found = items.find(i => i.barcode === code || i.code.toLowerCase() === code.toLowerCase());
+                const found = findCatalogItemByCode(items, code);
                 if (found) handleAddItem(found);
                 else setSaleError(`No item matching barcode "${code}"`);
               }
@@ -623,16 +645,16 @@ export const BillingScreen: React.FC<Props> = ({
         <aside className="select-items-sidebar">
           {/* Best Seller Items button */}
           <button
-            onClick={() => setSelectedCategory('bestseller')}
-            className={`cat-sidebar-item cat-bestseller ${selectedCategory === 'bestseller' ? 'active' : ''}`}
+            onClick={() => setSelectedCategory('all')}
+            className={`cat-sidebar-item cat-bestseller ${selectedCategory === 'all' ? 'active' : ''}`}
           >
-            <span className="cat-sidebar-name">Best Seller Items</span>
-            <span className="cat-sidebar-count">({getCategoryCartCount('bestseller')})</span>
+            <span className="cat-sidebar-name">All Items</span>
+            <span className="cat-sidebar-count">({items.length})</span>
           </button>
 
           {/* All unique categories */}
           {allUniqueCategories.map((cat) => {
-            const count = getCategoryCartCount(cat);
+            const count = items.filter(item => item.categoryName === cat).length;
             const isSelected = selectedCategory === cat;
             return (
               <button
@@ -651,9 +673,9 @@ export const BillingScreen: React.FC<Props> = ({
         <main className="select-items-grid-container">
           {/* Breadcrumb / Category header */}
           <div className="grid-category-header">
-            <span className="grid-sub-label">BEST SELLER ITEMS</span>
+            <span className="grid-sub-label">CATALOG</span>
             <h2 className="grid-category-title">
-              {selectedCategory === 'all' || selectedCategory === 'bestseller' ? 'AGRI PRODUCTS & POPULAR' : selectedCategory.toUpperCase()}
+              {selectedCategory === 'all' || selectedCategory === 'bestseller' ? 'ALL ITEMS' : selectedCategory.toUpperCase()}
             </h2>
           </div>
 
@@ -661,7 +683,7 @@ export const BillingScreen: React.FC<Props> = ({
             {filteredItems.map((item) => {
               const inCart = cart.find((l) => l.itemId === item.id);
               const qty = inCart ? inCart.quantity : 0;
-              const stock = item.stockQty ?? -85;
+              const stock = item.stockQty ?? 0;
               const imgUrl = item.imageUrl || CATEGORY_IMAGE_PRESETS[item.categoryName] || CATEGORY_IMAGE_PRESETS['Agri Products'];
 
               return (
@@ -700,7 +722,7 @@ export const BillingScreen: React.FC<Props> = ({
                     {/* Stock Indicator */}
                     <div className="item-card-stock">
                       <span className={`stock-text ${stock <= 0 ? 'negative' : 'positive'}`}>
-                        Stock: {stock}
+                        Available: {stock - qty}
                       </span>
                     </div>
                   </div>
@@ -738,7 +760,7 @@ export const BillingScreen: React.FC<Props> = ({
                     </div>
 
                     <div className="item-card-price-box">
-                      <span>{(item.priceMinor / 100).toFixed(0)}</span>
+                      <span>{(item.priceMinor / 100).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -750,11 +772,18 @@ export const BillingScreen: React.FC<Props> = ({
 
       {/* ────────────────── 4. Bottom Fixed Settlement & Billing Bar ────────────────── */}
       <footer className="select-items-bottom-bar">
+        {pricing.error && <p role="alert" className="text-red-700">{pricing.error}</p>}
+        <div className="flex flex-wrap gap-3 p-2 text-xs">
+          <span>Items: {cart.reduce((sum, line) => sum + line.quantity, 0)}</span>
+          <span>Subtotal: ₹{rawSubtotal.toFixed(2)}</span>
+          <span>Discount: {discountPercent}% / ₹{discountTotal.toFixed(2)}</span>
+          <span>CGST: ₹{cgst.toFixed(2)}</span><span>SGST: ₹{sgst.toFixed(2)}</span>
+        </div>
         {/* Row 1: Total & Received Amount */}
         <div className="bottom-total-row">
           <div className="total-amount-display">
             <span className="total-label">Total:</span>
-            <span className="total-num">{finalTotal.toFixed(1)}</span>
+            <span className="total-num">{finalTotal.toFixed(2)}</span>
           </div>
 
           <div
@@ -767,17 +796,17 @@ export const BillingScreen: React.FC<Props> = ({
               <Square className="w-5 h-5 text-slate-400 mr-1.5" />
             )}
             <span className="received-label">Received:</span>
-            <span className="received-num">{finalTotal.toFixed(1)}</span>
+            <span className="received-num">{finalTotal.toFixed(2)}</span>
           </div>
         </div>
 
         {/* Row 2: Payment Mode Toggle Buttons (Bank, Cash, Cheque) */}
         <div className="bottom-payment-modes-row">
           <button
-            onClick={() => setSelectedPaymentMode('bank')}
-            className={`pay-mode-btn ${selectedPaymentMode === 'bank' ? 'active' : ''}`}
+            onClick={() => setSelectedPaymentMode('card')}
+            className={`pay-mode-btn ${selectedPaymentMode === 'card' ? 'active' : ''}`}
           >
-            Bank
+            Card
           </button>
           <button
             onClick={() => setSelectedPaymentMode('cash')}
@@ -786,10 +815,10 @@ export const BillingScreen: React.FC<Props> = ({
             Cash
           </button>
           <button
-            onClick={() => setSelectedPaymentMode('cheque')}
-            className={`pay-mode-btn ${selectedPaymentMode === 'cheque' ? 'active' : ''}`}
+            onClick={() => setSelectedPaymentMode('upi')}
+            className={`pay-mode-btn ${selectedPaymentMode === 'upi' ? 'active' : ''}`}
           >
-            Cheque
+            UPI
           </button>
         </div>
 
@@ -805,7 +834,7 @@ export const BillingScreen: React.FC<Props> = ({
           <button
             onClick={() => {
               if (cart.length === 0) return;
-              alert(`KOT Ticket sent to Kitchen for ${cart.length} items.`);
+              setSaleError('KOT is not connected on this screen. Use the restaurant table workflow to send a kitchen ticket.');
             }}
             disabled={cart.length === 0}
             className="btn-bottom-kot"
@@ -818,7 +847,7 @@ export const BillingScreen: React.FC<Props> = ({
             disabled={cart.length === 0}
             className="btn-bottom-save"
           >
-            SAVE (₹ {finalTotal.toFixed(1)})
+            SAVE (₹ {finalTotal.toFixed(2)})
           </button>
         </div>
       </footer>

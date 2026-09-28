@@ -18,6 +18,7 @@
     "@novapos/escpos": "workspace:*",
     "@novapos/shared": "workspace:*",
     "@novapos/tax-engine": "workspace:*",
+    "@zxing/browser": "0.1.5",
     "dexie": "^4.0.10",
     "firebase": "^12.19.0",
     "lucide-react": "^1.48.0",

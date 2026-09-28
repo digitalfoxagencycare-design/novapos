@@ -27,12 +27,7 @@ export class SmsService {
 
     const key = this.getApiKey();
     if (!key || key === 'CHANGE_ME_FAST2SMS_KEY') {
-      this.logger.warn(`Fast2SMS key not set. Returning demo OTP for +91${cleanPhone}: ${otp}`);
-      return {
-        success: true,
-        message: `Demo OTP: ${otp} (Fast2SMS key not set)`,
-        isMock: true,
-      };
+      return { success: false, message: 'SMS sign-in is unavailable. Contact support or use your existing PIN.' };
     }
 
     try {
@@ -41,6 +36,7 @@ export class SmsService {
       // 1. Try OTP route
       let response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
         method: 'POST',
+        signal: AbortSignal.timeout(15000),
         headers: {
           authorization: key,
           'Content-Type': 'application/json',
@@ -72,6 +68,7 @@ export class SmsService {
       this.logger.warn(`Fast2SMS OTP route response: ${JSON.stringify(data)}. Trying Quick SMS route...`);
       response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
         method: 'POST',
+        signal: AbortSignal.timeout(15000),
         headers: {
           authorization: key,
           'Content-Type': 'application/json',

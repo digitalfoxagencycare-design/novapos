@@ -48,7 +48,7 @@ export const Pricing: React.FC = () => {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Software Plans (45% OFF)
+              Software Plans
             </button>
             <button
               onClick={() => setPricingTab('combos')}
@@ -81,7 +81,7 @@ export const Pricing: React.FC = () => {
                 </div>
 
                 <div className="space-y-3 text-xs text-slate-700">
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>10 Pre-loaded Merchant Test Accounts</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Your own store, verified by SMS OTP</span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Unlimited Sales Invoices & Thermal Slip Print</span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>1-Tap Dynamic UPI QR Generation</span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Barcode Scanning via Mobile Camera</span></div>
@@ -100,11 +100,22 @@ export const Pricing: React.FC = () => {
             </div>
           )}
 
+          {(pricingTab === 'all' || pricingTab === 'software') && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-slate-200 shadow-sm">
+              <div>
+                <h3 className="text-2xl font-black text-slate-900">Starter Monthly</h3>
+                <p className="mt-4 text-4xl font-black text-indigo-600">₹499 <span className="text-sm">/ 30 days</span></p>
+                <p className="mt-4 text-sm text-slate-600">One POS terminal, offline billing and basic reports. Upgrade securely inside the app after your seven-day trial.</p>
+              </div>
+              <a href="#download" className="mt-8 block text-center rounded-xl bg-indigo-600 text-white p-3 font-bold">Get the app · Starter Monthly</a>
+            </div>
+          )}
+
           {/* Plan 2: 1-Year Pro Software SaaS License (Featured) */}
           {(pricingTab === 'all' || pricingTab === 'software') && (
             <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-indigo-600 shadow-xl relative">
               <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                45% OFF · POPULAR CHOICE
+                POPULAR CHOICE
               </span>
 
               <div>
@@ -116,18 +127,18 @@ export const Pricing: React.FC = () => {
 
                 <div className="mt-6 mb-6">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-indigo-600">₹2,999</span>
-                    <span className="text-xs text-slate-400 line-through">₹5,499</span>
+                    <span className="text-4xl font-black text-indigo-600">₹4,999</span>
+                    
                     <span className="text-xs text-slate-500 font-semibold">/ year</span>
                   </div>
-                  <span className="text-[11px] text-emerald-700 font-bold block mt-1">Special Discount: Flat 45% OFF</span>
+                  <span className="text-[11px] text-emerald-700 font-bold block mt-1">Billed annually</span>
                 </div>
 
                 <div className="space-y-3 text-xs text-slate-700">
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span><b>365 Days Uninterrupted Billing</b></span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span><b>Multi-Terminal Real-Time Sync (5 Counters)</b></span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Automatic Daily Cloud Database Backup</span></div>
-                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Complete GSTR-1 Automated Export</span></div>
+                  <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Sales and recorded tax reports</span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>WhatsApp Bill Receipts with UPI Pay Link</span></div>
                   <div className="flex items-center gap-2.5"><Check className="w-4 h-4 text-emerald-600 flex-shrink-0" /><span>Priority 24/7 Telephone & WhatsApp Support</span></div>
                 </div>
@@ -135,13 +146,13 @@ export const Pricing: React.FC = () => {
 
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <a
-                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%201-Year%20Software%20Plan%20(%E2%82%B92999)"
+                  href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%201-Year%20Software%20Plan%20(%E2%82%B94999)"
                   target="_blank"
                   rel="noreferrer"
                   className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition-all active:scale-95"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Activate 1-Year License (₹2,999)</span>
+                  <span>Activate 1-Year License (₹4,999)</span>
                 </a>
               </div>
             </div>

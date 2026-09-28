@@ -68,10 +68,10 @@ export const HardwareShowcase: React.FC = () => {
       category: 'software',
       name: 'NovaPOS 1-Year Cloud SaaS Software Subscription (Recharge)',
       badge: 'SALE',
-      offerTag: 'SPECIAL 45% OFF DISCOUNT',
-      price: '₹2,999.00',
+      offerTag: 'SPECIAL SOFTWARE PLAN DISCOUNT',
+      price: '₹4,999.00',
       originalPrice: '₹5,499.00',
-      discount: '45% OFF',
+      discount: 'SOFTWARE PLAN',
       rating: '5.0',
       reviewsCount: 210,
       desc: 'Complete 365-day license for your Android mobile, tablet, or PC. Unlimited billing, thermal printing, multi-counter sync, and automated GSTR-1 reports.',
@@ -88,7 +88,7 @@ export const HardwareShowcase: React.FC = () => {
             <span className="text-[10px] text-slate-500 font-semibold">Multi-Counter Cloud Sync</span>
           </div>
           <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-            45% OFF
+            SOFTWARE PLAN
           </span>
         </div>
       ),
@@ -96,7 +96,7 @@ export const HardwareShowcase: React.FC = () => {
         '365 Days Uninterrupted Billing & Live Sync',
         '100% Offline-First SQLite Database Engine',
         'Multi-Terminal Real-Time Sync (up to 5 counters)',
-        '18 Comprehensive Reports & Automated GSTR-1',
+        'Sales and Recorded Tax Reports',
         'Dynamic UPI QR Payment Verification',
         'Customer Khata / Udhaar & Supplier Ledger',
       ],

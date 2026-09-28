@@ -21,103 +21,111 @@ export const CameraBarcodeScanner: React.FC<Props> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      stopCamera();
-      return;
-    }
-
-    startCamera();
-
-    return () => {
-      stopCamera();
-    };
-  }, [isOpen]);
-
-  const startCamera = async () => {
-    setHasCameraError(false);
-    setErrorMessage('');
-
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported on this browser/device');
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        startDetection();
-      }
-    } catch (err: any) {
-      // eslint-disable-next-line no-console
-      console.warn('Camera access issue:', err);
-      setHasCameraError(true);
-      setErrorMessage(
-        err.message || 'Camera permission denied or camera device is busy. You can also enter the barcode manually.'
-      );
-    }
-  };
+  const generation = useRef(0);
+  const callbacks = useRef({ onScan, onClose });
+  callbacks.current = { onScan, onClose };
+  const [attempt, setAttempt] = useState(0);
 
   const stopCamera = () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
+    generation.current++;
+    if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = null;
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
 
-  const startDetection = () => {
-    // Check if BarcodeDetector is supported in browser
-    if ('BarcodeDetector' in window) {
-      const barcodeDetector = new (window as any).BarcodeDetector({
-        formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'data_matrix'],
-      });
+  const handleBarcodeFound = (value: string) => {
+    const code = value.trim();
+    if (!code) return;
+    stopCamera();
+    try { navigator.vibrate?.(100); } catch { /* optional feedback */ }
+    callbacks.current.onScan(code);
+    callbacks.current.onClose();
+  };
 
-      const detectFrame = async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2) {
-          animationFrameRef.current = requestAnimationFrame(detectFrame);
-          return;
+  useEffect(() => {
+    if (!isOpen) return;
+    const session = ++generation.current;
+    const active = () => generation.current === session;
+    setHasCameraError(false);
+    setErrorMessage('');
+    setManualCode('');
+    const start = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera is unavailable. Use manual entry.');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+        });
+        if (!active()) { stream.getTracks().forEach(track => track.stop()); return; }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (!video) { stopCamera(); return; }
+        video.srcObject = stream;
+        await video.play();
+        if (!active()) return;
+
+        let native: { detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]> } | null = null;
+        const Detector = (window as any).BarcodeDetector;
+        if (Detector) {
+          try {
+            const formats = typeof Detector.getSupportedFormats === 'function' ? await Detector.getSupportedFormats() : undefined;
+            if (!active()) return;
+            native = formats?.length === 0 ? null : new Detector(formats ? { formats } : undefined);
+          } catch { /* fall back to the bundled decoder */ }
         }
-
-        try {
-          const barcodes = await barcodeDetector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            const raw = barcodes[0].rawValue;
-            if (raw) {
-              handleBarcodeFound(raw);
+        let reader: import('@zxing/browser').BrowserMultiFormatReader | undefined;
+        const canvas = document.createElement('canvas');
+        const fallback = async () => {
+          reader ??= new (await import('@zxing/browser')).BrowserMultiFormatReader();
+          if (!active()) return undefined;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (!ctx) throw new Error('Camera image decoding is unavailable. Use manual entry.');
+          ctx.drawImage(video, 0, 0);
+          try { return reader.decodeFromCanvas(canvas).getText(); }
+          catch (error) {
+            // No readable symbol in this frame is expected while aiming.
+            if (['NotFoundException', 'ChecksumException', 'FormatException'].includes((error as Error).name)) return undefined;
+            throw error;
+          }
+        };
+        let lastFrame = 0;
+        const detect = async (time: number) => {
+          if (!active()) return;
+          if (video.readyState >= 2 && video.videoWidth > 0 && time - lastFrame >= 150) {
+            lastFrame = time;
+            try {
+              let code: string | undefined;
+              if (native) {
+                try { code = (await native.detect(video))[0]?.rawValue; }
+                catch { native = null; }
+              }
+              if (!native) code = await fallback();
+              if (!active()) return;
+              if (code?.trim()) { handleBarcodeFound(code); return; }
+            } catch (error) {
+              if (!active()) return;
+              stopCamera();
+              setHasCameraError(true);
+              setErrorMessage((error as Error).message || 'Unable to scan. Use manual entry.');
               return;
             }
           }
-        } catch {
-          // Detection frame error ignore
-        }
-
-        animationFrameRef.current = requestAnimationFrame(detectFrame);
-      };
-
-      animationFrameRef.current = requestAnimationFrame(detectFrame);
-    }
-  };
-
-  const handleBarcodeFound = (code: string) => {
-    try {
-      if (navigator.vibrate) navigator.vibrate(100);
-    } catch {
-      // ignore
-    }
-    stopCamera();
-    onScan(code);
-    onClose();
-  };
+          if (active()) animationFrameRef.current = requestAnimationFrame(detect);
+        };
+        animationFrameRef.current = requestAnimationFrame(detect);
+      } catch (error) {
+        if (!active()) return;
+        stopCamera();
+        setHasCameraError(true);
+        setErrorMessage((error as Error).message || 'Camera permission denied. Use manual entry.');
+      }
+    };
+    void start();
+    return stopCamera;
+  }, [isOpen, attempt]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +136,7 @@ export const CameraBarcodeScanner: React.FC<Props> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
       <div className="bg-slate-900 text-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-700 flex flex-col">
         {/* Header */}
         <div className="p-3.5 bg-slate-800/90 flex items-center justify-between border-b border-slate-700">
@@ -137,7 +145,7 @@ export const CameraBarcodeScanner: React.FC<Props> = ({
             <h3 className="font-bold text-sm text-white">{title}</h3>
           </div>
           <button
-            onClick={onClose}
+            aria-label="Close scanner" onClick={onClose}
             className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-700"
           >
             <X className="w-5 h-5" />
@@ -146,14 +154,9 @@ export const CameraBarcodeScanner: React.FC<Props> = ({
 
         {/* Video Scanner Area */}
         <div className="relative bg-black h-64 flex items-center justify-center overflow-hidden">
+          <video ref={videoRef} playsInline muted className={hasCameraError ? 'hidden' : 'w-full h-full object-cover'} />
           {!hasCameraError ? (
             <>
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
               {/* Target Aim Box */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-48 h-32 border-2 border-purple-400 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]">
@@ -174,7 +177,7 @@ export const CameraBarcodeScanner: React.FC<Props> = ({
               <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
               <p className="text-xs text-slate-300">{errorMessage}</p>
               <button
-                onClick={startCamera}
+                onClick={() => setAttempt(value => value + 1)}
                 className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />

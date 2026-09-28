@@ -136,8 +136,12 @@ export class AuthService {
   }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
     const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
     const stored = otpStore.get(cleanPhone);
-    const isMasterOtp = input.otp.trim() === '123456' || Boolean(input.isFirebaseVerified);
-    const isStoredOtpMatch = (stored && stored.otp === input.otp.trim() && stored.expiresAt > Date.now()) || isMasterOtp;
+    if (!stored || stored.expiresAt <= Date.now() || stored.attempts >= 5) {
+      otpStore.delete(cleanPhone);
+      throw Errors.unauthorized('Invalid or expired OTP. Request a new code.');
+    }
+    stored.attempts++;
+    const isStoredOtpMatch = stored.otp === input.otp.trim();
 
     if (!isStoredOtpMatch) {
       throw Errors.unauthorized('Invalid or expired OTP. Please enter the OTP sent via SMS.');
@@ -153,11 +157,14 @@ export class AuthService {
 
       if (existingStaff.length > 0) {
         const member = existingStaff[0];
+        if (!member.isActive || member.deletedAt) throw Errors.unauthorized('Invalid credentials.');
         const [tenant] = await db.select().from(tenants)
           .where(eq(tenants.id, member.tenantId)).limit(1);
 
+        if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) throw Errors.unauthorized('Account is not active.');
+
         // If user provided a new PIN, update it
-        if (input.pin && input.pin.length === 4) {
+        if (input.pin && /^\d{4}$/.test(input.pin)) {
           const pinHash = await this.hashSecret(input.pin);
           await db.update(staffTable).set({ pinHash }).where(eq(staffTable.id, member.id));
         }
@@ -262,13 +269,8 @@ export class AuthService {
       }
 
       const member = staffList[0];
+      if (member.deletedAt || (member.lockedUntil && member.lockedUntil > new Date())) throw Errors.unauthorized('Invalid credentials.');
       let isValidPin = member.pinHash ? await argon2.verify(member.pinHash, input.pin).catch(() => false) : false;
-      if (!isValidPin && (input.pin === '1234' || input.pin === '4321')) {
-        isValidPin = true;
-        // Auto-heal hash in background
-        const newHash = await this.hashSecret(input.pin);
-        await db.update(staffTable).set({ pinHash: newHash }).where(eq(staffTable.id, member.id)).catch(() => undefined);
-      }
 
       if (!isValidPin) {
         throw Errors.unauthorized('Incorrect 4-digit PIN. Please try again or login with SMS OTP.');
@@ -276,6 +278,7 @@ export class AuthService {
 
       const [tenant] = await db.select().from(tenants)
         .where(eq(tenants.id, member.tenantId)).limit(1);
+      if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) throw Errors.unauthorized('Account is not active.');
 
       const tokens = await this.issueTokens(
         db,
@@ -325,15 +328,7 @@ export class AuthService {
       let [tenant] = await db.select().from(tenants)
         .where(eq(tenants.slug, input.tenantSlug.trim().toLowerCase())).limit(1);
 
-      if (!tenant) {
-        // Try looking up by name or active tenant
-        const matchingTenants = await db.select().from(tenants)
-          .where(or(
-            eq(tenants.name, input.tenantSlug.trim()),
-            eq(tenants.status, 'ACTIVE')
-          )).limit(1);
-        tenant = matchingTenants[0];
-      }
+
 
       if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) {
         return { kind: 'no-such-account' };
@@ -351,45 +346,19 @@ export class AuthService {
           isNull(staffTable.deletedAt),
         )).limit(1);
 
-      if (!member) {
-        // Fallback: search staff by phone or username globally across active tenants
-        const globalStaff = await db.select().from(staffTable)
-          .where(and(
-            or(
-              eq(staffTable.email, inputId),
-              eq(staffTable.phone, input.email.trim()),
-              eq(staffTable.name, input.email.trim()),
-            ),
-            isNull(staffTable.deletedAt),
-            eq(staffTable.isActive, true),
-          )).limit(1);
-        if (globalStaff.length > 0) {
-          member = globalStaff[0];
-          const [globalTenant] = await db.select().from(tenants).where(eq(tenants.id, member.tenantId)).limit(1);
-          if (globalTenant) tenant = globalTenant;
-        }
-      }
+
 
       if (member?.lockedUntil && member.lockedUntil > new Date()) {
         return { kind: 'locked', until: member.lockedUntil };
       }
 
-      // Check password against passwordHash or pinHash or valid default PIN (1411)
+      // Only stored credential hashes can authenticate an account.
       let ok = false;
       if (member?.passwordHash) {
         ok = await argon2.verify(member.passwordHash, input.password).catch(() => false);
       }
       if (!ok && member?.pinHash) {
         ok = await argon2.verify(member.pinHash, input.password).catch(() => false);
-      }
-      if (!ok && (input.password === '1411' || input.password === '9701463241' || input.password === 'admin123')) {
-        ok = true;
-      }
-
-      if (ok && member && !member.passwordHash) {
-        // Auto-persist password hash
-        const newHash = await this.hashSecret(input.password);
-        await db.update(staffTable).set({ passwordHash: newHash }).where(eq(staffTable.id, member.id)).catch(() => undefined);
       }
 
       if (!member || !member.isActive || !ok) {
@@ -446,11 +415,7 @@ export class AuthService {
     return this.db.system(async (db) => {
       let [tenant] = await db.select().from(tenants)
         .where(eq(tenants.slug, input.tenantSlug.trim().toLowerCase())).limit(1);
-      if (!tenant) {
-        [tenant] = await db.select().from(tenants)
-          .where(eq(tenants.status, 'ACTIVE')).limit(1);
-      }
-      if (!tenant) throw Errors.unauthorized('Invalid credentials.');
+      if (!tenant || tenant.status !== 'ACTIVE' || tenant.deletedAt) throw Errors.unauthorized('Invalid credentials.');
 
       let [outlet] = await db.select().from(outlets)
         .where(and(
@@ -458,13 +423,6 @@ export class AuthService {
           eq(outlets.code, input.outletCode),
           eq(outlets.isActive, true),
         )).limit(1);
-      if (!outlet) {
-        [outlet] = await db.select().from(outlets)
-          .where(and(
-            eq(outlets.tenantId, tenant.id),
-            eq(outlets.isActive, true),
-          )).limit(1);
-      }
       if (!outlet) throw Errors.unauthorized('No active outlet found.');
 
       const candidates = await db.select().from(staffTable)

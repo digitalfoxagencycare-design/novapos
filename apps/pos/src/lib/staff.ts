@@ -166,64 +166,32 @@ export const CASHIER_PERMISSIONS: Record<string, string[]> = {
 const STAFF_STORAGE_KEY = 'novapos:staff_members';
 
 export function loadStaffMembers(): StaffMember[] {
-  try {
-    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {
-    // fallback
-  }
-
-  // Initial seed staff
-  const initial: StaffMember[] = [
-    {
-      id: 'staff-1',
-      name: 'Vijay',
-      phone: '9550249998',
-      accessType: 'Full Access',
-      permissions: FULL_ACCESS_PERMISSIONS,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-  saveStaffMembers(initial);
-  return initial;
+  // The old global cache was never an authenticated staff directory.
+  // Do not expose one tenant's cached names or permissions in another session.
+  return [];
 }
 
-export function saveStaffMembers(staff: StaffMember[]): void {
-  try {
-    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staff.slice(0, 2))); // max 2 staff
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to save staff members', e);
-  }
+export function saveStaffMembers(_staff: StaffMember[]): void {
+  throw new Error('Staff provisioning requires the authenticated staff API.');
 }
 
-export function saveStaffMember(member: StaffMember): { success: boolean; error?: string } {
-  const all = loadStaffMembers();
-  const existingIdx = all.findIndex((s) => s.id === member.id);
-
-  if (existingIdx >= 0) {
-    all[existingIdx] = member;
-    saveStaffMembers(all);
-    return { success: true };
-  }
-
-  if (all.length >= 2) {
-    return {
-      success: false,
-      error: 'Maximum 2 Staff accounts allowed per store subscription. Please edit or delete an existing staff member.',
-    };
-  }
-
-  all.push(member);
-  saveStaffMembers(all);
-  return { success: true };
+export function saveStaffMember(_member: StaffMember): { success: boolean; error?: string } {
+  return { success: false, error: 'Staff provisioning is unavailable until the authenticated staff API is connected. No account was created.' };
 }
 
-export function deleteStaffMember(id: string): void {
-  const all = loadStaffMembers();
-  const filtered = all.filter((s) => s.id !== id);
-  saveStaffMembers(filtered);
+export function deleteStaffMember(_id: string): void {
+  throw new Error('Staff changes require the authenticated staff API.');
+}
+
+/** Remove credential fields without deleting the operator's legacy profile data. */
+export function redactLegacyStaffCredentials(): void {
+  const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+  if (!raw) return;
+  const records = JSON.parse(raw);
+  if (!Array.isArray(records)) return;
+  localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(records.map(record => {
+    if (!record || typeof record !== 'object') return record;
+    const { password: _password, pin: _pin, ...profile } = record;
+    return profile;
+  })));
 }
