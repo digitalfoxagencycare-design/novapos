@@ -464,7 +464,7 @@ export const InventoryScreen: React.FC<Props> = ({
   };
 
   return (
-    <div className="menu-screen-container bg-[#F4F6F9] min-h-screen pb-28">
+    <div className="menu-screen-container bg-[#F4F6F9]">
       {/* ────────────────── 1. Top Header matching Screenshot 2 ────────────────── */}
       <header className="px-4 py-3.5 bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">

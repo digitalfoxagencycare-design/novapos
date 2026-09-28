@@ -12,7 +12,7 @@ import {
   Layers,
 } from 'lucide-react';
 import type { CatalogItem, ItemPortion, ItemExtra, RawMaterialRequirement } from '../screens/InventoryScreen';
-import { getCuratedPhotoForItem } from '../lib/itemPhotos';
+import { getCuratedPhotoForItem, POPULAR_FOOD_SUGGESTIONS } from '../lib/itemPhotos';
 
 interface Props {
   isOpen: boolean;
@@ -112,9 +112,9 @@ export const AddEditMenuItemModal: React.FC<Props> = ({
       prev.map((p, idx) => {
         if (p.id !== id) return p;
         if (field === 'name') return { ...p, name: value };
-        const num = parseFloat(value) || 0;
+        const num = value === '' ? 0 : isNaN(Number(value)) ? p.price : Number(value);
         // If first portion's price changes, update base price as well
-        if (idx === 0) setPrice(value);
+        if (idx === 0) setPrice(value === '' ? '' : String(num));
         return { ...p, price: num };
       })
     );
@@ -139,7 +139,8 @@ export const AddEditMenuItemModal: React.FC<Props> = ({
       prev.map((e) => {
         if (e.id !== id) return e;
         if (field === 'name') return { ...e, name: value };
-        return { ...e, price: parseFloat(value) || 0 };
+        const num = value === '' ? 0 : isNaN(Number(value)) ? e.price : Number(value);
+        return { ...e, price: num };
       })
     );
   };
@@ -344,16 +345,48 @@ export const AddEditMenuItemModal: React.FC<Props> = ({
               )}
             </div>
 
-            <div className="mt-2 flex items-center">
-              <button
-                type="button"
-                onClick={handleGeneratePhoto}
-                disabled={isGenerating}
-                className="text-xs font-bold text-slate-600 hover:text-orange-600 flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-orange-50 transition-colors"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                <span>{isGenerating ? 'Finding photo...' : '✨ Generate Photo'}</span>
-              </button>
+            {/* Photo Action Row & Quick Suggestions */}
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleGeneratePhoto}
+                  disabled={isGenerating}
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+                  <span>{isGenerating ? 'Matching dish photo...' : '✨ Match Dish Photo'}</span>
+                </button>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl('')}
+                    className="text-[11px] font-bold text-rose-500 hover:text-rose-700"
+                  >
+                    Remove Photo
+                  </button>
+                )}
+              </div>
+
+              {/* Quick dish photo suggestions */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">
+                  Quick:
+                </span>
+                {POPULAR_FOOD_SUGGESTIONS.slice(0, 6).map((sug) => (
+                  <button
+                    key={sug.name}
+                    type="button"
+                    onClick={() => {
+                      setPhotoUrl(sug.url);
+                      if (!itemName) setItemName(sug.name.split('/')[0].trim());
+                    }}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 hover:bg-orange-100 text-slate-700 hover:text-orange-700 flex-shrink-0 border border-slate-200 transition-colors"
+                  >
+                    {sug.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -415,37 +448,40 @@ export const AddEditMenuItemModal: React.FC<Props> = ({
 
             {/* List of Portions */}
             {portions.length > 0 && (
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
                 {portions.map((portion, idx) => (
                   <div
                     key={portion.id}
-                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-2"
+                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs"
                   >
-                    <span className="text-[11px] font-bold text-slate-400 w-5">
+                    <span className="text-xs font-black text-slate-400 w-5 flex-shrink-0">
                       #{idx + 1}
                     </span>
-                    <input
-                      type="text"
-                      placeholder="e.g. Half plate"
-                      value={portion.name}
-                      onChange={(e) => handleUpdatePortion(portion.id, 'name', e.target.value)}
-                      className="flex-1 text-xs font-bold text-slate-800 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500"
-                    />
-                    <div className="flex items-center gap-1 w-24">
-                      <span className="text-xs font-bold text-slate-500">₹</span>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
+                        placeholder="e.g. Half plate"
+                        value={portion.name}
+                        onChange={(e) => handleUpdatePortion(portion.id, 'name', e.target.value)}
+                        className="w-full text-xs font-bold text-slate-800 px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500 min-w-0"
+                      />
+                    </div>
+                    <div className="w-28 flex-shrink-0 flex items-center bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                      <span className="text-xs font-extrabold text-slate-500 mr-1 flex-shrink-0">₹</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="any"
                         placeholder="Price"
-                        value={portion.price || ''}
+                        value={portion.price === 0 ? '' : portion.price}
                         onChange={(e) => handleUpdatePortion(portion.id, 'price', e.target.value)}
-                        className="w-full text-xs font-bold text-slate-800 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500"
+                        className="w-full text-xs font-black text-slate-900 outline-none min-w-0 bg-transparent"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => handleRemovePortion(portion.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg flex-shrink-0 transition-colors"
                       title="Remove Portion"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -494,37 +530,40 @@ export const AddEditMenuItemModal: React.FC<Props> = ({
 
             {/* List of Extras */}
             {extras.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {extras.map((extra, idx) => (
                   <div
                     key={extra.id}
-                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-2"
+                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs"
                   >
-                    <span className="text-[11px] font-bold text-slate-400 w-5">
+                    <span className="text-xs font-black text-slate-400 w-5 flex-shrink-0">
                       #{idx + 1}
                     </span>
-                    <input
-                      type="text"
-                      placeholder="e.g. Extra Gravy"
-                      value={extra.name}
-                      onChange={(e) => handleUpdateExtra(extra.id, 'name', e.target.value)}
-                      className="flex-1 text-xs font-bold text-slate-800 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500"
-                    />
-                    <div className="flex items-center gap-1 w-24">
-                      <span className="text-xs font-bold text-slate-500">₹</span>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
+                        placeholder="e.g. Extra Gravy"
+                        value={extra.name}
+                        onChange={(e) => handleUpdateExtra(extra.id, 'name', e.target.value)}
+                        className="w-full text-xs font-bold text-slate-800 px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500 min-w-0"
+                      />
+                    </div>
+                    <div className="w-28 flex-shrink-0 flex items-center bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                      <span className="text-xs font-extrabold text-slate-500 mr-1 flex-shrink-0">₹</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="any"
                         placeholder="Price"
-                        value={extra.price || ''}
+                        value={extra.price === 0 ? '' : extra.price}
                         onChange={(e) => handleUpdateExtra(extra.id, 'price', e.target.value)}
-                        className="w-full text-xs font-bold text-slate-800 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-orange-500"
+                        className="w-full text-xs font-black text-slate-900 outline-none min-w-0 bg-transparent"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => handleRemoveExtra(extra.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg flex-shrink-0 transition-colors"
                       title="Remove Extra"
                     >
                       <Trash2 className="w-4 h-4" />

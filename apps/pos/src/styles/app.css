@@ -68,8 +68,8 @@ html, body, #root {
   background: #ECEEF5;
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 1.45;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -5479,6 +5479,11 @@ button:disabled { cursor: not-allowed; }
 .menu-screen-container {
   max-width: 768px;
   margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 /* Unbreakable round center New Bill button */
@@ -5525,7 +5530,7 @@ button:disabled { cursor: not-allowed; }
 }
 
 .ezo-dash-scroll-body {
-  padding-bottom: 160px !important;
+  padding-bottom: 100px !important;
 }
 
 

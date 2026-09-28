@@ -12,8 +12,42 @@ import {
   Sparkles,
   ArrowLeft,
   Plus,
+  Trash2,
+  Check,
 } from 'lucide-react';
 import type { CatalogItem, ItemPortion, ItemExtra } from '../screens/InventoryScreen';
+
+export interface ScannedMenuItem {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  selected: boolean;
+}
+
+const FULL_MENU_SCAN_ITEMS: Omit<ScannedMenuItem, 'id' | 'selected'>[] = [
+  { name: 'Veg Sweet Corn Soup', price: 90, category: 'Starter Demo' },
+  { name: 'Chicken Hot & Sour Soup', price: 120, category: 'Starter Demo' },
+  { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starter Demo' },
+  { name: 'Paneer Tikka (6 Pcs)', price: 180, category: 'Starter Demo' },
+  { name: 'Chicken Kabab (6 Pcs)', price: 200, category: 'Starter Demo' },
+  { name: 'Fish Fry (Boneless)', price: 250, category: 'Starter Demo' },
+  { name: 'Chicken 65', price: 190, category: 'Starter Demo' },
+  { name: 'Paneer Butter Masala', price: 190, category: 'Main Course Demo' },
+  { name: 'Kadai Chicken Curry', price: 220, category: 'Main Course Demo' },
+  { name: 'Special Chicken Biryani', price: 260, category: 'Main Course Demo' },
+  { name: 'Mutton Biryani', price: 340, category: 'Main Course Demo' },
+  { name: 'Veg Dum Biryani', price: 160, category: 'Main Course Demo' },
+  { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Main Course Demo' },
+  { name: 'Butter Naan', price: 50, category: 'Main Course Demo' },
+  { name: 'Tandoori Roti', price: 30, category: 'Main Course Demo' },
+  { name: 'Veg Fried Rice', price: 140, category: 'Chinese Demo' },
+  { name: 'Chicken Hakka Noodles', price: 170, category: 'Chinese Demo' },
+  { name: 'Gobi Manchurian', price: 130, category: 'Chinese Demo' },
+  { name: 'Fresh Lime Soda', price: 50, category: 'Beverage Demo' },
+  { name: 'Sweet Lassi', price: 60, category: 'Beverage Demo' },
+  { name: 'Packaged Drinking Water (1L)', price: 20, category: 'Beverage Demo' },
+];
 
 interface Props {
   isOpen: boolean;
@@ -40,7 +74,7 @@ export const BulkUploadModal: React.FC<Props> = ({
 
   // Photo states
   const [photoPreview, setPhotoPreview] = useState<string>('');
-  const [parsedPhotoItems, setParsedPhotoItems] = useState<{ name: string; price: number; category: string }[]>([]);
+  const [parsedPhotoItems, setParsedPhotoItems] = useState<ScannedMenuItem[]>([]);
 
   // File states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -287,12 +321,11 @@ export const BulkUploadModal: React.FC<Props> = ({
 
       setTimeout(() => {
         setIsProcessing(false);
-        const detected = [
-          { name: 'Special Chicken Biryani', price: 260, category: 'Main Course Demo' },
-          { name: 'Paneer Butter Masala', price: 190, category: 'Main Course Demo' },
-          { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Main Course Demo' },
-          { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starter Demo' },
-        ];
+        const detected: ScannedMenuItem[] = FULL_MENU_SCAN_ITEMS.map((item, idx) => ({
+          ...item,
+          id: `scan-${Date.now()}-${idx}`,
+          selected: true,
+        }));
         setParsedPhotoItems(detected);
         setStatusMessage(`Found ${detected.length} dishes from menu photo!`);
       }, 1000);
@@ -306,27 +339,66 @@ export const BulkUploadModal: React.FC<Props> = ({
     setStatusMessage('Scanning sample restaurant menu...');
     setTimeout(() => {
       setIsProcessing(false);
-      const detected = [
-        { name: 'Special Chicken Biryani', price: 260, category: 'Main Course Demo' },
-        { name: 'Paneer Butter Masala', price: 190, category: 'Main Course Demo' },
-        { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Main Course Demo' },
-        { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starter Demo' },
-      ];
+      const detected: ScannedMenuItem[] = FULL_MENU_SCAN_ITEMS.map((item, idx) => ({
+        ...item,
+        id: `scan-${Date.now()}-${idx}`,
+        selected: true,
+      }));
       setParsedPhotoItems(detected);
       setStatusMessage(`Detected ${detected.length} items from menu card!`);
     }, 800);
   };
 
+  const handleToggleSelectPhotoItem = (id: string) => {
+    setParsedPhotoItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item))
+    );
+  };
+
+  const handleSelectAllPhotoItems = (select: boolean) => {
+    setParsedPhotoItems((prev) => prev.map((item) => ({ ...item, selected: select })));
+  };
+
+  const handleUpdatePhotoItem = (
+    id: string,
+    field: 'name' | 'price' | 'category',
+    val: string | number
+  ) => {
+    setParsedPhotoItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (field === 'price') return { ...item, price: Number(val) || 0 };
+        return { ...item, [field]: val };
+      })
+    );
+  };
+
+  const handleRemovePhotoItem = (id: string) => {
+    setParsedPhotoItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleAddScannedItem = () => {
+    const newItem: ScannedMenuItem = {
+      id: `scan-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      name: '',
+      price: 100,
+      category: categories[0] || 'Main Course Demo',
+      selected: true,
+    };
+    setParsedPhotoItems((prev) => [newItem, ...prev]);
+  };
+
   const handleSavePhotoItems = () => {
-    if (parsedPhotoItems.length === 0) return;
-    const itemsToAdd: Partial<CatalogItem>[] = parsedPhotoItems.map((item) => ({
-      name: item.name,
+    const selectedItems = parsedPhotoItems.filter((item) => item.selected);
+    if (selectedItems.length === 0) return;
+    const itemsToAdd: Partial<CatalogItem>[] = selectedItems.map((item) => ({
+      name: item.name || 'Dish',
       categoryName: item.category,
       categoryId: `cat-${item.category.toLowerCase().replace(/\s+/g, '-')}`,
       priceMinor: Math.round(item.price * 100),
       inStock: true,
       uom: 'pcs',
-      isVeg: true,
+      isVeg: !item.name.toLowerCase().includes('chicken') && !item.name.toLowerCase().includes('mutton') && !item.name.toLowerCase().includes('fish'),
     }));
     onImportItems(itemsToAdd);
     onClose();
@@ -549,25 +621,93 @@ export const BulkUploadModal: React.FC<Props> = ({
                   )}
 
                   {parsedPhotoItems.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-xs font-bold text-slate-800 block">
-                        Dishes Recognized from Photo ({parsedPhotoItems.length}):
-                      </span>
-                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                        {parsedPhotoItems.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <b className="text-xs font-black text-slate-800 block">
+                            Dishes Recognized ({parsedPhotoItems.filter((i) => i.selected).length}/{parsedPhotoItems.length}):
+                          </b>
+                          <span className="text-[11px] text-slate-500">
+                            Tap to edit price, name or category before adding
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allSel = parsedPhotoItems.every((i) => i.selected);
+                              handleSelectAllPhotoItems(!allSel);
+                            }}
+                            className="text-[11px] font-bold text-orange-600 hover:underline"
                           >
-                            <div>
-                              <b className="text-slate-900 block">{item.name}</b>
-                              <span className="text-[10px] text-slate-500 font-medium">
-                                {item.category}
-                              </span>
+                            {parsedPhotoItems.every((i) => i.selected) ? 'Deselect All' : 'Select All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddScannedItem}
+                            className="py-1 px-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[11px] rounded-lg flex items-center gap-1 border border-orange-200"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Dish</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                        {parsedPhotoItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`p-2.5 rounded-xl border flex items-center gap-2 transition-colors ${
+                              item.selected
+                                ? 'bg-white border-orange-200 shadow-2xs'
+                                : 'bg-slate-50 border-slate-200 opacity-60'
+                            }`}
+                          >
+                            {/* Selection Checkbox */}
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={() => handleToggleSelectPhotoItem(item.id)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer flex-shrink-0"
+                            />
+
+                            {/* Item Name & Category */}
+                            <div className="flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={item.name}
+                                placeholder="Dish name"
+                                onChange={(e) => handleUpdatePhotoItem(item.id, 'name', e.target.value)}
+                                className="w-full text-xs font-bold text-slate-800 p-1 bg-transparent border-b border-transparent focus:border-orange-500 outline-none min-w-0"
+                              />
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[10px] font-semibold text-slate-500 uppercase px-1.5 py-0.2 bg-slate-100 rounded">
+                                  {item.category}
+                                </span>
+                              </div>
                             </div>
-                            <span className="font-black text-orange-600 text-sm">
-                              ₹{item.price}
-                            </span>
+
+                            {/* Price Input */}
+                            <div className="w-24 flex-shrink-0 flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus-within:border-orange-500 focus-within:bg-white">
+                              <span className="text-xs font-bold text-slate-500 mr-1">₹</span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                value={item.price === 0 ? '' : item.price}
+                                onChange={(e) => handleUpdatePhotoItem(item.id, 'price', e.target.value)}
+                                className="w-full text-xs font-black text-slate-900 outline-none bg-transparent min-w-0"
+                              />
+                            </div>
+
+                            {/* Delete Item */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhotoItem(item.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg flex-shrink-0"
+                              title="Delete Dish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -575,9 +715,10 @@ export const BulkUploadModal: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={handleSavePhotoItems}
-                        className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-full shadow-md mt-2"
+                        disabled={parsedPhotoItems.filter((i) => i.selected).length === 0}
+                        className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-full shadow-md mt-2 transition-all active:scale-[0.99]"
                       >
-                        Add {parsedPhotoItems.length} Dishes to Catalog
+                        Add {parsedPhotoItems.filter((i) => i.selected).length} Dishes to Catalog
                       </button>
                     </div>
                   )}

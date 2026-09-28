@@ -204,7 +204,7 @@ export const DashboardScreen: React.FC<Props> = ({
   };
 
   return (
-    <div className="ezo-dashboard-container pb-36">
+    <div className="ezo-dashboard-container">
       {/* 1. Warm Orange Top Header */}
       <header
         className="ezo-dash-header shadow-md"
@@ -258,7 +258,7 @@ export const DashboardScreen: React.FC<Props> = ({
       )}
 
       {/* Main Scroll Content */}
-      <div className="ezo-dash-scroll-body space-y-3.5 px-3.5 pt-3 pb-40">
+      <div className="ezo-dash-scroll-body space-y-3.5 px-3.5 pt-3 pb-24">
         {/* 2. Date & Time Bar */}
         {!hideDateBanner && (
           <div className="flex items-center justify-between bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs text-xs">
@@ -410,11 +410,11 @@ export const DashboardScreen: React.FC<Props> = ({
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <b className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+              <b className="text-sm font-extrabold text-slate-800 uppercase tracking-wider block">
                 Recent Sale Transactions
               </b>
-              <span className="text-[11px] text-slate-400">
-                {todaySales.length} total bills today • Tap to View / Print / Edit
+              <span className="text-xs text-slate-500">
+                {todaySales.length} {todaySales.length === 1 ? 'bill' : 'bills'} recorded today • Tap to View / Print / Edit
               </span>
             </div>
             <button
@@ -432,27 +432,27 @@ export const DashboardScreen: React.FC<Props> = ({
             </div>
           ) : (
             <div className="space-y-2">
-              {todaySales.slice(0, 5).map((sale) => (
+              {todaySales.slice(0, 20).map((sale) => (
                 <div
                   key={sale.id}
                   onClick={() => setSelectedSale(sale)}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:bg-orange-50/70 transition-colors cursor-pointer active:scale-[0.99]"
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:bg-orange-50/70 transition-colors cursor-pointer active:scale-[0.99]"
                 >
                   <div className="min-w-0">
-                    <b className="text-xs font-bold text-slate-800 block truncate">
+                    <b className="text-sm font-bold text-slate-800 block truncate">
                       {sale.referenceNo || sale.id}
                     </b>
-                    <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                       <span>{new Date(sale.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                       <span>•</span>
-                      <span className="font-semibold uppercase text-orange-700 bg-orange-100/70 px-1.5 py-0.2 rounded text-[10px]">
+                      <span className="font-bold uppercase text-orange-700 bg-orange-100/80 px-2 py-0.5 rounded text-[11px]">
                         {sale.paymentMode}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <b className="text-sm font-extrabold text-slate-900">
+                  <div className="flex items-center gap-2.5">
+                    <b className="text-base font-black text-slate-900">
                       ₹{sale.amount.toFixed(2)}
                     </b>
                     <button
@@ -461,10 +461,10 @@ export const DashboardScreen: React.FC<Props> = ({
                         e.stopPropagation();
                         handleShareWhatsApp(sale);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50"
+                      className="p-2 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
                       title="Share Bill via WhatsApp"
                     >
-                      <Share2 className="w-3.5 h-3.5" />
+                      <Share2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -472,7 +472,7 @@ export const DashboardScreen: React.FC<Props> = ({
             </div>
           )}
         </div>
-        <div className="h-28" />
+        <div className="h-8" />
       </div>
 
       {/* Saved Bill Details Modal (Clicking any bill opens print & edit options) */}
