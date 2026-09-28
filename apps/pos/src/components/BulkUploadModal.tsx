@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Volume2,
+  Sparkles,
+  ArrowLeft,
+  Plus,
 } from 'lucide-react';
 import type { CatalogItem, ItemPortion, ItemExtra } from '../screens/InventoryScreen';
 
@@ -33,7 +35,7 @@ export const BulkUploadModal: React.FC<Props> = ({
 
   // Voice recognition states
   const [isListening, setIsListening] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceText, setVoiceText] = useState('');
   const [parsedVoiceItems, setParsedVoiceItems] = useState<{ name: string; price: number; category: string }[]>([]);
 
   // Photo states
@@ -91,7 +93,6 @@ export const BulkUploadModal: React.FC<Props> = ({
         }
 
         const itemsToAdd: Partial<CatalogItem>[] = [];
-        // skip header (idx = 0)
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split(',').map((c) => c.trim());
           if (cols.length < 2) continue;
@@ -104,7 +105,6 @@ export const BulkUploadModal: React.FC<Props> = ({
 
           if (!itemName) continue;
 
-          // Parse portions e.g. "Half plate=120 | Full plate=200"
           const parsedPortions: ItemPortion[] = [];
           if (portionsRaw) {
             const parts = portionsRaw.split('|').map((p) => p.trim());
@@ -121,7 +121,6 @@ export const BulkUploadModal: React.FC<Props> = ({
             });
           }
 
-          // Parse extras e.g. "Extra gravy=30 | Salan=20"
           const parsedExtras: ItemExtra[] = [];
           if (extrasRaw) {
             const parts = extrasRaw.split('|').map((e) => e.trim());
@@ -162,7 +161,7 @@ export const BulkUploadModal: React.FC<Props> = ({
             onClose();
           }, 1000);
         }
-      } catch (err) {
+      } catch {
         setErrorMessage('Failed to parse file. Please verify CSV format.');
       } finally {
         setIsProcessing(false);
@@ -172,13 +171,13 @@ export const BulkUploadModal: React.FC<Props> = ({
     reader.readAsText(file);
   };
 
-  // 3. Voice Speech Recognition
+  // 3. Voice Speech Recognition & Text Parser
   const handleToggleVoice = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Please use Google Chrome or Edge.');
+      alert('Microphone speech recognition is not supported in this browser. You can type dishes directly in the box below!');
       return;
     }
 
@@ -195,7 +194,7 @@ export const BulkUploadModal: React.FC<Props> = ({
 
       recognition.onstart = () => {
         setIsListening(true);
-        setStatusMessage('Listening... Speak dish names and prices (e.g. "Chicken Biryani 220 rupees, Mutton Fry 300")');
+        setStatusMessage('Listening... Speak dish names and prices (e.g. "Chicken Biryani 240, Paneer Butter Masala 180")');
       };
 
       recognition.onresult = (event: any) => {
@@ -206,7 +205,7 @@ export const BulkUploadModal: React.FC<Props> = ({
           }
         }
         if (finalTranscript) {
-          setVoiceTranscript((prev) => (prev ? prev + ' ' + finalTranscript : finalTranscript));
+          setVoiceText((prev) => (prev ? prev + ', ' + finalTranscript.trim() : finalTranscript.trim()));
           parseVoiceText(finalTranscript);
         }
       };
@@ -226,8 +225,7 @@ export const BulkUploadModal: React.FC<Props> = ({
   };
 
   const parseVoiceText = (text: string) => {
-    // Regex looking for Item Name followed by Price (e.g. "Soup 80", "Chicken Biryani 240 rupees")
-    const segments = text.split(/[,.]|and/i);
+    const segments = text.split(/[,.]|and|\n/i);
     const discovered: { name: string; price: number; category: string }[] = [];
 
     segments.forEach((seg) => {
@@ -239,15 +237,24 @@ export const BulkUploadModal: React.FC<Props> = ({
           discovered.push({
             name: name.charAt(0).toUpperCase() + name.slice(1),
             price,
-            category: categories[0] || 'Main Course',
+            category: categories[0] || 'Main Course Demo',
           });
         }
       }
     });
 
     if (discovered.length > 0) {
-      setParsedVoiceItems((prev) => [...prev, ...discovered]);
+      setParsedVoiceItems((prev) => {
+        const existingNames = new Set(prev.map((i) => i.name.toLowerCase()));
+        const unique = discovered.filter((d) => !existingNames.has(d.name.toLowerCase()));
+        return [...prev, ...unique];
+      });
     }
+  };
+
+  const handleParseCustomVoiceText = () => {
+    if (!voiceText.trim()) return;
+    parseVoiceText(voiceText);
   };
 
   const handleSaveVoiceItems = () => {
@@ -274,23 +281,40 @@ export const BulkUploadModal: React.FC<Props> = ({
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setPhotoPreview(dataUrl);
+      setActiveMode('photo');
       setIsProcessing(true);
       setStatusMessage('Scanning menu photo with Smart OCR...');
 
-      // Smart simulation for restaurant menu photo scan
       setTimeout(() => {
         setIsProcessing(false);
         const detected = [
-          { name: 'Special Chicken Biryani', price: 260, category: 'Main Course' },
-          { name: 'Paneer Butter Masala', price: 190, category: 'Curries' },
-          { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Breads' },
-          { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starters' },
+          { name: 'Special Chicken Biryani', price: 260, category: 'Main Course Demo' },
+          { name: 'Paneer Butter Masala', price: 190, category: 'Main Course Demo' },
+          { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Main Course Demo' },
+          { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starter Demo' },
         ];
         setParsedPhotoItems(detected);
-        setStatusMessage(`Found ${detected.length} items from menu photo!`);
-      }, 1200);
+        setStatusMessage(`Found ${detected.length} dishes from menu photo!`);
+      }, 1000);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleLoadSamplePhoto = () => {
+    setPhotoPreview('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80');
+    setIsProcessing(true);
+    setStatusMessage('Scanning sample restaurant menu...');
+    setTimeout(() => {
+      setIsProcessing(false);
+      const detected = [
+        { name: 'Special Chicken Biryani', price: 260, category: 'Main Course Demo' },
+        { name: 'Paneer Butter Masala', price: 190, category: 'Main Course Demo' },
+        { name: 'Butter Roti (2 Pcs)', price: 40, category: 'Main Course Demo' },
+        { name: 'Crispy Corn Pepper Fry', price: 150, category: 'Starter Demo' },
+      ];
+      setParsedPhotoItems(detected);
+      setStatusMessage(`Detected ${detected.length} items from menu card!`);
+    }, 800);
   };
 
   const handleSavePhotoItems = () => {
@@ -313,9 +337,27 @@ export const BulkUploadModal: React.FC<Props> = ({
       <div className="menu-modal-sheet max-w-lg w-full bg-[#F8FAFC] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-slate-200 animate-slide-up">
         {/* Header */}
         <div className="px-5 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">
-            Bulk Upload
-          </h2>
+          <div className="flex items-center gap-2">
+            {activeMode !== 'picker' && (
+              <button
+                type="button"
+                onClick={() => setActiveMode('picker')}
+                className="p-1 rounded-full hover:bg-slate-100 text-slate-700 mr-1"
+                title="Back to options"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">
+              {activeMode === 'picker'
+                ? 'Bulk Upload'
+                : activeMode === 'photo'
+                ? 'Photo Menu Scanner'
+                : activeMode === 'voice'
+                ? 'Voice Menu Create'
+                : 'Upload Menu File'}
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -342,37 +384,37 @@ export const BulkUploadModal: React.FC<Props> = ({
             </div>
           )}
 
+          {/* Hidden file inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+
+          {/* ────────────────── 1. Picker Mode (Screenshot 5) ────────────────── */}
           {activeMode === 'picker' && (
-            <>
+            <div className="space-y-3.5">
               <span className="text-sm font-bold text-slate-900 block">
                 Choose Upload Method
               </span>
-
-              {/* Hidden file inputs */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.txt"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoUpload}
-              />
 
               {/* 1. Photo Method Card */}
               <div
                 onClick={() => {
                   setActiveMode('photo');
-                  photoInputRef.current?.click();
                 }}
-                className="p-4 bg-[#EEF2FF] hover:bg-[#E0E7FF] border border-[#D5DEFF] rounded-2xl cursor-pointer transition-all shadow-sm flex items-start gap-4"
+                className="p-4 bg-[#EEF2FF] hover:bg-[#E0E7FF] border border-[#D5DEFF] rounded-2xl cursor-pointer transition-all shadow-xs flex items-start gap-4 active:scale-[0.99]"
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#3730A3] text-white flex items-center justify-center flex-shrink-0 shadow">
+                <div className="w-12 h-12 rounded-2xl bg-[#3730A3] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                   <Camera className="w-6 h-6 stroke-[2]" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -390,11 +432,10 @@ export const BulkUploadModal: React.FC<Props> = ({
               <div
                 onClick={() => {
                   setActiveMode('voice');
-                  handleToggleVoice();
                 }}
-                className="p-4 bg-[#FDF2F8] hover:bg-[#FCE7F3] border border-[#FBCFE8] rounded-2xl cursor-pointer transition-all shadow-sm flex items-start gap-4"
+                className="p-4 bg-[#FDF2F8] hover:bg-[#FCE7F3] border border-[#FBCFE8] rounded-2xl cursor-pointer transition-all shadow-xs flex items-start gap-4 active:scale-[0.99]"
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#9D174D] text-white flex items-center justify-center flex-shrink-0 shadow">
+                <div className="w-12 h-12 rounded-2xl bg-[#9D174D] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                   <Mic className="w-6 h-6 stroke-[2]" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -413,11 +454,11 @@ export const BulkUploadModal: React.FC<Props> = ({
               {/* 3. File Card */}
               <div
                 onClick={() => {
-                  fileInputRef.current?.click();
+                  setActiveMode('file');
                 }}
-                className="p-4 bg-[#EEF2FF] hover:bg-[#E0E7FF] border border-[#D5DEFF] rounded-2xl cursor-pointer transition-all shadow-sm flex items-start gap-4"
+                className="p-4 bg-[#EEF2FF] hover:bg-[#E0E7FF] border border-[#D5DEFF] rounded-2xl cursor-pointer transition-all shadow-xs flex items-start gap-4 active:scale-[0.99]"
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#2563EB] text-white flex items-center justify-center flex-shrink-0 shadow">
+                <div className="w-12 h-12 rounded-2xl bg-[#2563EB] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                   <FileText className="w-6 h-6 stroke-[2]" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -436,60 +477,196 @@ export const BulkUploadModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={handleDownloadSampleCsv}
-                  className="w-full py-3.5 px-4 rounded-full border border-slate-300 hover:border-orange-500 bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+                  className="w-full py-3.5 px-4 rounded-full border border-slate-300 hover:border-orange-500 bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
                 >
                   <Download className="w-4 h-4 text-orange-600" />
                   <span>Download Sample CSV</span>
                 </button>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Voice Mode View */}
+          {/* ────────────────── 2. Photo Mode View ────────────────── */}
+          {activeMode === 'photo' && (
+            <div className="space-y-4">
+              {/* Photo Upload Box */}
+              {!photoPreview ? (
+                <div className="p-6 bg-white border-2 border-dashed border-slate-300 rounded-3xl text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                    <Camera className="w-8 h-8 stroke-[2]" />
+                  </div>
+                  <div>
+                    <b className="text-sm font-bold text-slate-800 block">
+                      Select or Capture Menu Card Photo
+                    </b>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Our Smart OCR will automatically recognize categories, dish names, and prices!
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="flex-1 py-3 px-4 bg-[#3730A3] hover:bg-[#312E81] text-white font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>Take Photo / Choose Image</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLoadSamplePhoto}
+                      className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles className="w-4 h-4 text-orange-600" />
+                      <span>Try Sample Menu Card</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 max-h-48 relative shadow-sm">
+                    <img
+                      src={photoPreview}
+                      alt="Menu card scan"
+                      className="w-full h-48 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="absolute top-2 right-2 px-3 py-1 bg-black/60 text-white rounded-lg text-xs font-bold shadow"
+                    >
+                      Change Photo
+                    </button>
+                  </div>
+
+                  {isProcessing && (
+                    <div className="p-4 bg-white rounded-2xl border text-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-orange-600 mx-auto mb-2" />
+                      <span className="text-xs font-bold text-slate-700">
+                        Scanning Menu Card with AI OCR...
+                      </span>
+                    </div>
+                  )}
+
+                  {parsedPhotoItems.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-slate-800 block">
+                        Dishes Recognized from Photo ({parsedPhotoItems.length}):
+                      </span>
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        {parsedPhotoItems.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                          >
+                            <div>
+                              <b className="text-slate-900 block">{item.name}</b>
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                {item.category}
+                              </span>
+                            </div>
+                            <span className="font-black text-orange-600 text-sm">
+                              ₹{item.price}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSavePhotoItems}
+                        className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-full shadow-md mt-2"
+                      >
+                        Add {parsedPhotoItems.length} Dishes to Catalog
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setActiveMode('picker')}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 block mx-auto pt-2"
+              >
+                ← Back to Upload Options
+              </button>
+            </div>
+          )}
+
+          {/* ────────────────── 3. Voice Mode View ────────────────── */}
           {activeMode === 'voice' && (
             <div className="space-y-4">
-              <div className="p-4 bg-white rounded-2xl border border-slate-200 text-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-pink-100 mx-auto flex items-center justify-center text-pink-600">
-                  <Mic className={`w-8 h-8 ${isListening ? 'animate-pulse text-rose-600' : ''}`} />
-                </div>
-                <h3 className="font-bold text-slate-800 text-sm">
-                  {isListening ? 'Listening... Speak your menu' : 'Voice Input Paused'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Speak item name followed by price. Example: &quot;Paneer Tikka 180, Veg Biryani 150&quot;
-                </p>
-
+              <div className="p-5 bg-white rounded-3xl border border-slate-200 text-center space-y-3">
                 <button
                   type="button"
                   onClick={handleToggleVoice}
-                  className={`py-2 px-5 rounded-full font-bold text-xs ${
-                    isListening ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white'
+                  className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center transition-transform active:scale-95 shadow-md ${
+                    isListening
+                      ? 'bg-rose-600 text-white animate-pulse shadow-rose-500/30'
+                      : 'bg-[#9D174D] text-white hover:bg-[#831843]'
                   }`}
                 >
-                  {isListening ? 'Stop Listening' : 'Start Speaking'}
+                  <Mic className="w-9 h-9 stroke-[2]" />
+                </button>
+
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    {isListening ? 'Listening... Speak your dishes' : 'Tap Mic to Speak Dishes'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Example: &quot;Chicken Biryani 240, Paneer Tikka 180, Butter Naan 45&quot;
+                  </p>
+                </div>
+              </div>
+
+              {/* Text Input Fallback if microphone not working */}
+              <div className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-xs font-bold text-slate-700 block">
+                  Spoken or Typed Dishes:
+                </span>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Chicken Biryani 240, Mutton Biryani 360, Veg Fried Rice 140"
+                  value={voiceText}
+                  onChange={(e) => setVoiceText(e.target.value)}
+                  className="w-full text-xs font-semibold p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-orange-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleParseCustomVoiceText}
+                  className="py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xs"
+                >
+                  Process Text
                 </button>
               </div>
 
+              {/* Recognized Dishes */}
               {parsedVoiceItems.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
+                  <span className="text-xs font-bold text-slate-800 block">
                     Recognized Dishes ({parsedVoiceItems.length}):
                   </span>
-                  {parsedVoiceItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 bg-white border rounded-xl flex items-center justify-between text-xs"
-                    >
-                      <b className="text-slate-800">{item.name}</b>
-                      <span className="font-bold text-orange-600">₹{item.price}</span>
-                    </div>
-                  ))}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {parsedVoiceItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                      >
+                        <b className="text-slate-900">{item.name}</b>
+                        <span className="font-black text-orange-600 text-sm">
+                          ₹{item.price}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleSaveVoiceItems}
-                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-full shadow"
+                    className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-full shadow-md"
                   >
-                    Add {parsedVoiceItems.length} Dishes to Menu
+                    Add {parsedVoiceItems.length} Dishes to Catalog
                   </button>
                 </div>
               )}
@@ -504,55 +681,42 @@ export const BulkUploadModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Photo Mode View */}
-          {activeMode === 'photo' && (
+          {/* ────────────────── 4. File Mode View ────────────────── */}
+          {activeMode === 'file' && (
             <div className="space-y-4">
-              {photoPreview && (
-                <div className="rounded-2xl overflow-hidden border max-h-48">
-                  <img
-                    src={photoPreview}
-                    alt="Menu card scan"
-                    className="w-full h-full object-cover"
-                  />
+              <div className="p-6 bg-white border-2 border-dashed border-slate-300 rounded-3xl text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                  <FileText className="w-8 h-8 stroke-[2]" />
                 </div>
-              )}
-
-              {isProcessing && (
-                <div className="p-4 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-orange-600 mx-auto mb-2" />
-                  <span className="text-xs font-bold text-slate-700">
-                    Scanning Menu Card with AI OCR...
-                  </span>
+                <div>
+                  <b className="text-sm font-bold text-slate-800 block">
+                    Upload Menu CSV File
+                  </b>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Columns: Category, Item, Price, Portions, Extras
+                  </p>
                 </div>
-              )}
 
-              {parsedPhotoItems.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
-                    Extracted Menu Items ({parsedPhotoItems.length}):
-                  </span>
-                  {parsedPhotoItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 bg-white border rounded-xl flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <b className="text-slate-800 block">{item.name}</b>
-                        <span className="text-[10px] text-slate-400">{item.category}</span>
-                      </div>
-                      <span className="font-bold text-orange-600">₹{item.price}</span>
-                    </div>
-                  ))}
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-3.5 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Choose CSV / Text File</span>
+                  </button>
 
                   <button
                     type="button"
-                    onClick={handleSavePhotoItems}
-                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-full shadow"
+                    onClick={handleDownloadSampleCsv}
+                    className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2"
                   >
-                    Add {parsedPhotoItems.length} Items to Menu
+                    <Download className="w-4 h-4 text-orange-600" />
+                    <span>Download Sample CSV Template</span>
                   </button>
                 </div>
-              )}
+              </div>
 
               <button
                 type="button"

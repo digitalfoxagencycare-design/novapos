@@ -30,7 +30,7 @@ import { type BusinessProfile, PROFILES } from '../lib/business';
 import { loadDayBookEntries, filterEntriesByPeriod, type DayBookEntry } from '../lib/dayBook';
 import { useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
-import { printBillDirect, type BillData, type BillItem } from '../lib/thermalPrinter';
+import { printBillDirect, getActiveNativePrinter, type BillData, type BillItem } from '../lib/thermalPrinter';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 
 interface Props {
@@ -61,7 +61,25 @@ export const DashboardScreen: React.FC<Props> = ({
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState(false);
-  const [printerBannerDismissed, setPrinterBannerDismissed] = useState(false);
+  const [printerConnected, setPrinterConnected] = useState<boolean>(() => {
+    return localStorage.getItem('novapos_printer_connected') === 'true';
+  });
+  const [printerName, setPrinterName] = useState<string>(() => {
+    return localStorage.getItem('novapos_printer_name') || '';
+  });
+  const [printerBannerDismissed, setPrinterBannerDismissed] = useState<boolean>(() => {
+    return localStorage.getItem('novapos_dismiss_printer_banner') === 'true';
+  });
+
+  useEffect(() => {
+    void getActiveNativePrinter().then((dev) => {
+      if (dev) {
+        setPrinterConnected(true);
+        setPrinterName(dev.name || '');
+        localStorage.setItem('novapos_printer_connected', 'true');
+      }
+    });
+  }, []);
   const subDetails = useSubscriptionDetails();
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
 
@@ -240,7 +258,7 @@ export const DashboardScreen: React.FC<Props> = ({
       )}
 
       {/* Main Scroll Content */}
-      <div className="ezo-dash-scroll-body space-y-3.5 px-3.5 py-3">
+      <div className="ezo-dash-scroll-body space-y-3.5 px-3.5 pt-3 pb-40">
         {/* 2. Date & Time Bar */}
         {!hideDateBanner && (
           <div className="flex items-center justify-between bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs text-xs">
@@ -352,24 +370,33 @@ export const DashboardScreen: React.FC<Props> = ({
         {/* 6. Smart Dismissible Printer Status Card */}
         {!printerBannerDismissed && (
           <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-2.5" onClick={onOpenPrinterModal}>
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <Printer className="w-4 h-4 text-orange-400" />
+            <div className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0" onClick={onOpenPrinterModal}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${printerConnected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-orange-400'}`}>
+                <Printer className="w-4 h-4" />
               </div>
-              <div className="cursor-pointer">
-                <b className="text-xs font-bold block">Connect Thermal Printer</b>
-                <span className="text-[10px] text-slate-300">Bluetooth / USB 58mm & 80mm</span>
+              <div className="min-w-0 pr-2">
+                <b className="text-xs font-bold block truncate">
+                  {printerConnected ? `Printer: ${printerName || 'Connected'}` : 'Connect Thermal Printer'}
+                </b>
+                <span className="text-[10px] text-slate-300 block">
+                  {printerConnected ? 'Ready for printing 58mm & 80mm' : 'Bluetooth / USB 58mm & 80mm'}
+                </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
+                type="button"
                 onClick={onOpenPrinterModal}
-                className="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white font-bold text-[11px] rounded-lg shadow-xs"
+                className={`px-3 py-1 text-white font-bold text-[11px] rounded-lg shadow-xs ${printerConnected ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-orange-600 hover:bg-orange-500'}`}
               >
-                Connect
+                {printerConnected ? 'Settings' : 'Connect'}
               </button>
               <button
-                onClick={() => setPrinterBannerDismissed(true)}
+                type="button"
+                onClick={() => {
+                  setPrinterBannerDismissed(true);
+                  localStorage.setItem('novapos_dismiss_printer_banner', 'true');
+                }}
                 className="p-1 text-slate-400 hover:text-white rounded-md"
                 title="Dismiss banner"
               >
@@ -445,7 +472,7 @@ export const DashboardScreen: React.FC<Props> = ({
             </div>
           )}
         </div>
-        <div className="h-12" />
+        <div className="h-28" />
       </div>
 
       {/* Saved Bill Details Modal (Clicking any bill opens print & edit options) */}

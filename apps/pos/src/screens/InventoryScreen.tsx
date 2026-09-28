@@ -584,7 +584,7 @@ export const InventoryScreen: React.FC<Props> = ({
       </div>
 
       {/* ────────────────── 3. Category Sections & Item Cards (Screenshot 2) ────────────────── */}
-      <main className="px-4 py-2 space-y-4">
+      <main className="px-4 py-2 space-y-4 pb-60">
         {categoriesToDisplay.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm mt-4">
             <div className="w-16 h-16 rounded-full bg-orange-50 mx-auto flex items-center justify-center text-orange-500 mb-3">
@@ -704,7 +704,7 @@ export const InventoryScreen: React.FC<Props> = ({
 
       {/* ────────────────── 4. Bottom Action Bar matching Screenshot 2 ────────────────── */}
       {/* 3 buttons: [📤 Upload], [📁 Category], [+ Add Item] */}
-      <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom,22px))] left-0 right-0 z-30 bg-[#3B4D80] text-white shadow-xl px-4 py-2.5 flex items-center justify-around border-t border-slate-700/30">
+      <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom,22px))] left-0 right-0 z-30 bg-[#253252] text-white shadow-2xl px-4 py-2 flex items-center justify-around border-t border-slate-700/50">
         {/* 1. Upload */}
         <button
           type="button"

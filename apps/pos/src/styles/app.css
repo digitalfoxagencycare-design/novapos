@@ -5481,3 +5481,51 @@ button:disabled { cursor: not-allowed; }
   margin: 0 auto;
 }
 
+/* Unbreakable round center New Bill button */
+.ezo-nav-center-bill {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  margin-top: -12px !important;
+  z-index: 45 !important;
+  flex: 0 0 72px !important;
+  flex-shrink: 0 !important;
+}
+
+.ezo-center-bill-bubble {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 9999px !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  border: 3px solid #FFFFFF !important;
+}
+
+.ezo-center-bill-bubble svg {
+  width: 24px !important;
+  height: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Dashboard screen full height scroll fix */
+.dashboard-screen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ezo-dash-scroll-body {
+  padding-bottom: 160px !important;
+}
+
+
