@@ -128,7 +128,14 @@ export const DashboardScreen: React.FC<Props> = ({
   return (
     <div className="ezo-dashboard-container pb-28">
       {/* 1. Warm Orange Top Header */}
-      <header className="ezo-dash-header bg-gradient-to-r from-orange-600 to-orange-500 shadow-md">
+      <header
+        className="ezo-dash-header shadow-md"
+        style={{
+          background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+          backgroundColor: '#EA580C',
+          color: '#FFFFFF',
+        }}
+      >
         <div className="ezo-dash-header-left">
           <button
             onClick={onOpenMenu}
@@ -139,8 +146,8 @@ export const DashboardScreen: React.FC<Props> = ({
             <Menu className="w-6 h-6 text-white stroke-[2.5]" />
           </button>
           <div className="ezo-dash-title-wrap">
-            <h1 className="ezo-dash-store-name">{profileName || 'My Store'}</h1>
-            <span className="ezo-dash-store-sub">FAST v39.31 · Cloud Sync Online</span>
+            <h1 className="ezo-dash-store-name text-white font-extrabold text-lg">{profileName || 'My Store'}</h1>
+            <span className="ezo-dash-store-sub text-white/90 font-medium text-xs">FAST v39.31 · Cloud Sync Online</span>
           </div>
         </div>
 

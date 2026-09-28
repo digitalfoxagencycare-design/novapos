@@ -88,7 +88,7 @@ export const SideDrawer: React.FC<Props> = ({
       id: 'inventory',
       label: 'Items & Products',
       subtitle: 'Products, prices, stock & barcodes',
-      icon: <Package className="w-5 h-5 text-purple-600" />,
+      icon: <Package className="w-5 h-5 text-orange-600" />,
       forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
     },
     {
@@ -109,7 +109,7 @@ export const SideDrawer: React.FC<Props> = ({
       id: 'staff',
       label: 'Staff Management (2 Logins)',
       subtitle: 'Staff credentials & permissions',
-      icon: <Users className="w-5 h-5 text-purple-600" />,
+      icon: <Users className="w-5 h-5 text-orange-600" />,
       forProfiles: ['kirana', 'bakery', 'restaurant', 'retail'],
     },
     {
@@ -130,17 +130,24 @@ export const SideDrawer: React.FC<Props> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="ezo-drawer-header">
+        <div
+          className="ezo-drawer-header shadow-sm"
+          style={{
+            background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+            backgroundColor: '#EA580C',
+            color: '#FFFFFF',
+          }}
+        >
           <div className="ezo-drawer-brand">
             <div className="ezo-drawer-logo">
               <Store className="w-6 h-6 text-white" />
             </div>
             <div className="ezo-drawer-brand-text">
-              <h2 className="ezo-drawer-store-name">{profileName || 'kirana'}</h2>
-              <span className="ezo-drawer-store-meta">
+              <h2 className="ezo-drawer-store-name text-white font-extrabold text-base">{profileName || 'kirana'}</h2>
+              <span className="ezo-drawer-store-meta text-white/90 font-medium">
                 +91 {phone} · {PROFILES[profile]}
               </span>
-              <span className="ezo-drawer-badge">
+              <span className="ezo-drawer-badge font-bold">
                 <ShieldCheck className="w-3 h-3 mr-1 inline" />
                 Cloud POS · FAST v39.31
               </span>

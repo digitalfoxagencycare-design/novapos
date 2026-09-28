@@ -18,7 +18,12 @@ import {
   X,
 } from 'lucide-react';
 import { TRANSLATIONS, type SupportedLanguage } from '../lib/translations';
-import { printReceiptViaBrowser, type BillData } from '../lib/thermalPrinter';
+import {
+  printBillDirect,
+  printReceiptViaBrowser,
+  type BillData,
+  type PaperWidth,
+} from '../lib/thermalPrinter';
 import { addDayBookEntry } from '../lib/dayBook';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 import { loadParties, upsertParty, recordKhataSale, type Party } from '../lib/khata';
@@ -271,7 +276,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
 
     // 2. Thermal receipt printing
     try {
-      printReceiptViaBrowser(billData, '58mm');
+      void printBillDirect(billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
     } catch {
       // print fallback
     }
@@ -303,7 +308,7 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
   const handleReprintLastBill = () => {
     if (!lastBilled) return;
     try {
-      printReceiptViaBrowser(lastBilled.billData, '58mm');
+      void printBillDirect(lastBilled.billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
     } catch {
       // ignore
     }

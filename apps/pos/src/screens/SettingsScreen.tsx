@@ -14,6 +14,10 @@ import {
   ShieldCheck,
   Check,
   Scale,
+  RefreshCw,
+  X,
+  Smartphone,
+  Radio,
 } from 'lucide-react';
 import {
   EZO_34_SETTINGS,
@@ -27,6 +31,12 @@ import {
   printTestSlipViaBrowser,
   connectBluetoothPrinter,
   isBluetoothSupported,
+  listPairedBluetoothPrinters,
+  connectNativeBluetoothPrinter,
+  disconnectNativeBluetoothPrinter,
+  getActiveNativePrinter,
+  buildTestSlipBytes,
+  writeEscPosBytes,
 } from '../lib/thermalPrinter';
 import { refreshSubscription, useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
@@ -77,13 +87,63 @@ export const SettingsScreen: React.FC<Props> = ({
   const [complianceModalOpen, setComplianceModalOpen] = useState(false);
   useEffect(() => { void refreshSubscription().catch(() => undefined); }, []);
 
+  // Ezo-style Printer States
+  const [paperWidth, setPaperWidth] = useState<PaperWidth>(() => {
+    return (localStorage.getItem('novapos_printer_paper_width') as PaperWidth) || '58mm';
+  });
+  const [printerType, setPrinterType] = useState<'bluetooth' | 'usb'>(() => {
+    return (localStorage.getItem('novapos_printer_type') as 'bluetooth' | 'usb') || 'bluetooth';
+  });
+  const [primaryPrinterEnabled, setPrimaryPrinterEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('novapos_primary_printer_enabled') !== 'false';
+  });
+  const [secondaryKotEnabled, setSecondaryKotEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('novapos_secondary_kot_enabled') === 'true';
+  });
+  const [autoPrintSale, setAutoPrintSale] = useState<boolean>(() => {
+    return localStorage.getItem('novapos_auto_print_sale') === 'true';
+  });
 
-  // Printer States
-  const [paperWidth, setPaperWidth] = useState<PaperWidth>('58mm');
+  const [charsPerLine, setCharsPerLine] = useState<number>(() => {
+    const val = localStorage.getItem('novapos_printer_cpl');
+    return val ? parseInt(val, 10) : 32;
+  });
+  const [col2Chars, setCol2Chars] = useState<number>(() => {
+    const val = localStorage.getItem('novapos_printer_col2');
+    return val ? parseInt(val, 10) : 4;
+  });
+  const [col3Chars, setCol3Chars] = useState<number>(() => {
+    const val = localStorage.getItem('novapos_printer_col3');
+    return val ? parseInt(val, 10) : 6;
+  });
+  const [col4Chars, setCol4Chars] = useState<number>(() => {
+    const val = localStorage.getItem('novapos_printer_col4');
+    return val ? parseInt(val, 10) : 6;
+  });
+  const [dotsPerLine, setDotsPerLine] = useState<number>(() => {
+    const val = localStorage.getItem('novapos_printer_dpl');
+    return val ? parseInt(val, 10) : 384;
+  });
+
+  const [connectedPrinter, setConnectedPrinter] = useState<PrinterDevice | null>(null);
+  const [connecting, setConnecting] = useState(false);
   const [printerError, setPrinterError] = useState<string | null>(null);
+
+  // Modals
+  const [pairedDevicesModalOpen, setPairedDevicesModalOpen] = useState(false);
+  const [pairedDevicesList, setPairedDevicesList] = useState<Array<{ name: string; address: string }>>([]);
+  const [testPrintAlertOpen, setTestPrintAlertOpen] = useState(false);
+
+  // Load saved printer on boot
+  useEffect(() => {
+    void getActiveNativePrinter().then((dev) => {
+      if (dev) setConnectedPrinter(dev);
+    });
+  }, []);
 
   const categories = [
     { id: 'all', label: 'All (34 Settings)' },
+    { id: 'printer', label: '🖨️ Thermal Printer' },
     { id: 'billing', label: 'Billing & Sales' },
     { id: 'selector', label: 'Item Selector & Grid' },
     { id: 'inventory', label: 'Stock & Inventory' },
@@ -122,6 +182,78 @@ export const SettingsScreen: React.FC<Props> = ({
     setTimeout(() => setSavedBadge(false), 2000);
   };
 
+  const handleScanPairedDevices = async () => {
+    setConnecting(true);
+    setPrinterError(null);
+    try {
+      const devices = await listPairedBluetoothPrinters();
+      setPairedDevicesList(devices);
+      setPairedDevicesModalOpen(true);
+    } catch (err: any) {
+      // If Web Bluetooth or not Android, fallback to standard connect
+      try {
+        const dev = await connectBluetoothPrinter();
+        setConnectedPrinter(dev);
+        showSavedNotification();
+      } catch (e: any) {
+        setPrinterError(err.message || e.message || 'No paired Bluetooth printers found.');
+      }
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleSelectPairedDevice = async (device: { name: string; address: string }) => {
+    setConnecting(true);
+    setPrinterError(null);
+    try {
+      const dev = await connectNativeBluetoothPrinter(device.address);
+      setConnectedPrinter(dev);
+      setPairedDevicesModalOpen(false);
+      showSavedNotification();
+    } catch (err: any) {
+      setPrinterError(err.message || 'Failed to connect to printer');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    await disconnectNativeBluetoothPrinter();
+    setConnectedPrinter(null);
+    showSavedNotification();
+  };
+
+  const handleTestPrint = async () => {
+    setPrinterError(null);
+    try {
+      const testBytes = buildTestSlipBytes(paperWidth, profileName || 'NovaPOS Store');
+      const printed = await writeEscPosBytes(testBytes);
+      if (!printed) {
+        printTestSlipViaBrowser(paperWidth, profileName || 'NovaPOS Store');
+      }
+      setTestPrintAlertOpen(true);
+    } catch (err: any) {
+      setPrinterError(err.message || 'Test print failed');
+      printTestSlipViaBrowser(paperWidth, profileName || 'NovaPOS Store');
+      setTestPrintAlertOpen(true);
+    }
+  };
+
+  const handleSavePrinterSettings = () => {
+    localStorage.setItem('novapos_printer_paper_width', paperWidth);
+    localStorage.setItem('novapos_printer_type', printerType);
+    localStorage.setItem('novapos_primary_printer_enabled', String(primaryPrinterEnabled));
+    localStorage.setItem('novapos_secondary_kot_enabled', String(secondaryKotEnabled));
+    localStorage.setItem('novapos_auto_print_sale', String(autoPrintSale));
+    localStorage.setItem('novapos_printer_cpl', String(charsPerLine));
+    localStorage.setItem('novapos_printer_col2', String(col2Chars));
+    localStorage.setItem('novapos_printer_col3', String(col3Chars));
+    localStorage.setItem('novapos_printer_col4', String(col4Chars));
+    localStorage.setItem('novapos_printer_dpl', String(dotsPerLine));
+    showSavedNotification();
+  };
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateProfile({
@@ -135,335 +267,454 @@ export const SettingsScreen: React.FC<Props> = ({
     showSavedNotification();
   };
 
-  const [connectedPrinter, setConnectedPrinter] = useState<PrinterDevice | null>(null);
-  const [connecting, setConnecting] = useState(false);
-
-  const handleConnectBluetooth = async () => {
-    setConnecting(true);
-    setPrinterError(null);
-    try {
-      if (!isBluetoothSupported()) {
-        // Native Android app / WebView fallback
-        setConnectedPrinter({
-          connected: true,
-          type: 'browser',
-          name: 'Android Paired Thermal Printer',
-        });
-        showSavedNotification();
-        return;
-      }
-      const dev = await connectBluetoothPrinter();
-      setConnectedPrinter(dev);
-      showSavedNotification();
-    } catch (err: any) {
-      // If user cancelled or not supported, provide friendly tip
-      if (err.name === 'NotFoundError') {
-        setPrinterError(null);
-      } else {
-        setConnectedPrinter({
-          connected: true,
-          type: 'browser',
-          name: 'Android ESC/POS System Printer',
-        });
-        showSavedNotification();
-      }
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-
-  const handleTestPrint = () => {
-    try {
-      setPrinterError(null);
-      printTestSlipViaBrowser(paperWidth, profileName);
-    } catch (err: any) {
-      setPrinterError(err.message || 'Test print failed');
-    }
-  };
-
   return (
-    <div className="ezo-screen-container">
-      {/* Top Purple App Bar */}
-      <div className="ezo-app-bar">
-        <button className="ezo-back-btn" onClick={onBack} title="Back">
-          <ArrowLeft className="w-6 h-6 text-white" /><span>Back</span></button>
-        <div className="ezo-title-group">
-          <h1 className="ezo-bar-title">Settings</h1>
-          <span className="ezo-bar-sub">FAST v39.31 {phone ? `| +91 ${phone}` : ''}</span>
+    <div className="ezo-screen-container bg-slate-100 flex flex-col h-full w-full">
+      {/* 1. Top Warm Orange Header Bar */}
+      <header
+        className="ezo-app-bar shadow-md flex-shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+          backgroundColor: '#EA580C',
+          color: '#FFFFFF',
+        }}
+      >
+        <button
+          className="ezo-back-btn flex items-center gap-1.5 font-bold text-sm bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl border border-white/30"
+          onClick={onBack}
+          title="Back to Dashboard"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+          <span>Back</span>
+        </button>
+        <div className="ezo-title-group ml-2">
+          <h1 className="ezo-bar-title text-white font-extrabold text-lg">Settings & Hardware</h1>
+          <span className="ezo-bar-sub text-white/90 text-xs font-medium">FAST v39.31 · Cloud POS</span>
         </div>
-      </div>
+      </header>
 
-      <div className="ezo-screen-scroll">
-        <div className="p-4 max-w-4xl mx-auto space-y-5">
-          {savedBadge && (
-            <div className="ezo-success-toast">
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              <span>Settings Saved Successfully!</span>
+      {/* 2. Scrollable Body */}
+      <div className="flex-1 overflow-y-auto p-4 pb-28 space-y-4 max-w-4xl mx-auto w-full">
+        {savedBadge && (
+          <div className="bg-emerald-600 text-white p-3 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Settings Saved Successfully!</span>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 🖨️ EZO-STYLE 3. PRIMARY PRINTER SETTINGS SECTION */}
+        {/* ========================================================================= */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Printer Status Banner (Matching Ezo Header) */}
+          <div className={`p-3.5 text-center border-b ${
+            connectedPrinter?.connected
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}>
+            <b className={`font-mono text-sm tracking-wider block ${
+              connectedPrinter?.connected ? 'text-emerald-700 font-extrabold' : 'text-slate-800 font-bold'
+            }`}>
+              {connectedPrinter?.address || (connectedPrinter?.connected ? 'CONNECTED' : 'DISCONNECTED')}
+            </b>
+            <span className="text-[10px] font-extrabold tracking-widest uppercase text-emerald-700 block mt-0.5">
+              PERMISSION | BLUETOOTH | LOCATION
+            </span>
+          </div>
+
+          <div className="p-4 space-y-4 text-xs">
+            {/* 3. PRIMARY PRINTER SETTINGS Header */}
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-orange-700 uppercase tracking-wide text-xs">
+                3. PRIMARY PRINTER SETTINGS
+              </span>
+              {connectedPrinter?.connected && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  {connectedPrinter.name}
+                </span>
+              )}
             </div>
-          )}
 
-          {/* Quick Hardware Bar */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <Printer className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <b className="text-sm text-slate-800">Thermal Printer</b>
-                    {connectedPrinter ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                        {connectedPrinter.name}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-slate-100 text-slate-600">
-                        Ready
-                      </span>
-                    )}
+            {/* 3.1 Primary Printer (Prints Bill and KOT) Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div>
+                <b className="text-slate-900 text-xs block font-bold">3.1 Primary Printer (Prints Bill and KOT)</b>
+                <span className="text-slate-500 text-[11px]">{primaryPrinterEnabled ? 'Enabled' : 'Disabled'}</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={primaryPrinterEnabled}
+                onClick={() => {
+                  setPrimaryPrinterEnabled(!primaryPrinterEnabled);
+                  handleSavePrinterSettings();
+                }}
+                className={`ezo-modern-switch ${primaryPrinterEnabled ? 'active' : ''}`}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+
+            {/* 3.2 Printer Type Selection */}
+            <div className="space-y-2">
+              <b className="text-slate-900 text-xs font-bold block">3.2 Printer Type</b>
+
+              {/* Bluetooth Printer Card */}
+              <div
+                onClick={() => {
+                  setPrinterType('bluetooth');
+                  handleSavePrinterSettings();
+                }}
+                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  printerType === 'bluetooth'
+                    ? 'border-orange-500 bg-orange-50/50 shadow-xs ring-1 ring-orange-500'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="printerType"
+                    checked={printerType === 'bluetooth'}
+                    onChange={() => {
+                      setPrinterType('bluetooth');
+                      handleSavePrinterSettings();
+                    }}
+                    className="mt-0.5 text-orange-600 focus:ring-orange-500"
+                  />
+                  <div className="flex-1">
+                    <b className="text-xs font-bold text-slate-900 block">Bluetooth Printer</b>
+                    <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
+                      80% POS Machines are Bluetooth Printers (Thermal Printers, Z91, F1 are Bluetooth Printers)
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500">58mm (2") / 80mm (3") ESC/POS Support</p>
                 </div>
+
+                {/* TEST PRINT & SETTINGS Buttons */}
+                {printerType === 'bluetooth' && (
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-orange-200">
+                    <button
+                      type="button"
+                      onClick={handleTestPrint}
+                      className="py-2.5 px-3 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>TEST PRINT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleScanPairedDevices}
+                      disabled={connecting}
+                      className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      <Wifi className="w-4 h-4 text-orange-400" />
+                      <span>{connecting ? 'Scanning...' : 'PAIR / SCAN'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <select
-                  value={paperWidth}
-                  onChange={(e) => setPaperWidth(e.target.value as PaperWidth)}
-                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-700 font-semibold"
-                >
-                  <option value="58mm">58mm (2 Inch)</option>
-                  <option value="80mm">80mm (3 Inch)</option>
-                </select>
+              {/* USB / System Printer Card */}
+              <div
+                onClick={() => {
+                  setPrinterType('usb');
+                  handleSavePrinterSettings();
+                }}
+                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  printerType === 'usb'
+                    ? 'border-orange-500 bg-orange-50/50 shadow-xs ring-1 ring-orange-500'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="printerType"
+                    checked={printerType === 'usb'}
+                    onChange={() => {
+                      setPrinterType('usb');
+                      handleSavePrinterSettings();
+                    }}
+                    className="mt-0.5 text-orange-600 focus:ring-orange-500"
+                  />
+                  <div>
+                    <b className="text-xs font-bold text-slate-900 block">USB Printer / System Spooler</b>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Direct USB ESC/POS & Android System Print Dialog
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3.3 to 3.7 Character & Column Specs */}
+            <div className="space-y-2.5 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">3.3 Characters Per Line</b>
+                  <span className="text-[10px] text-slate-500">For Printing Lines and Columns (32 for 58mm / 48 for 80mm)</span>
+                </div>
+                <input
+                  type="number"
+                  value={charsPerLine}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10) || 32;
+                    setCharsPerLine(v);
+                    setPaperWidth(v <= 32 ? '58mm' : '80mm');
+                  }}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">3.4 Characters in Column 2</b>
+                  <span className="text-[10px] text-slate-500">Qty | Tax</span>
+                </div>
+                <input
+                  type="number"
+                  value={col2Chars}
+                  onChange={(e) => setCol2Chars(parseInt(e.target.value, 10) || 4)}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">3.5 Characters in Column 3</b>
+                  <span className="text-[10px] text-slate-500">Rate | MRP</span>
+                </div>
+                <input
+                  type="number"
+                  value={col3Chars}
+                  onChange={(e) => setCol3Chars(parseInt(e.target.value, 10) || 6)}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">3.6 Characters in Column 4</b>
+                  <span className="text-[10px] text-slate-500">Total | HSN</span>
+                </div>
+                <input
+                  type="number"
+                  value={col4Chars}
+                  onChange={(e) => setCol4Chars(parseInt(e.target.value, 10) || 6)}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">3.7 Dots Per Line</b>
+                  <span className="text-[10px] text-slate-500">For Regional Printing (384 for 58mm / 576 for 80mm)</span>
+                </div>
+                <input
+                  type="number"
+                  value={dotsPerLine}
+                  onChange={(e) => setDotsPerLine(parseInt(e.target.value, 10) || 384)}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center text-slate-900"
+                />
+              </div>
+            </div>
+
+            {/* 4. SECONDARY PRINTER SETTINGS (KOT) */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <span className="font-extrabold text-orange-700 uppercase tracking-wide text-xs block">
+                4. SECONDARY PRINTER SETTINGS
+              </span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="pr-3">
+                  <b className="text-xs font-bold text-slate-800 block">4.1 Secondary Printer (Prints KOT)</b>
+                  <span className="text-[10px] text-slate-500">
+                    You can use this to connect 2 printers to single phone. You can print Bill on counter and KOT in kitchen.
+                  </span>
+                </div>
                 <button
                   type="button"
-                  onClick={handleConnectBluetooth}
-                  disabled={connecting}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                  role="switch"
+                  aria-checked={secondaryKotEnabled}
+                  onClick={() => {
+                    setSecondaryKotEnabled(!secondaryKotEnabled);
+                    handleSavePrinterSettings();
+                  }}
+                  className={`ezo-modern-switch flex-shrink-0 ${secondaryKotEnabled ? 'active' : ''}`}
                 >
-                  <Wifi className="w-3.5 h-3.5" />
-                  <span>{connecting ? 'Connecting...' : connectedPrinter ? 'Re-pair' : 'Pair Bluetooth'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleTestPrint}
-                  className="ezo-btn-primary text-xs py-1.5 px-3 shadow-xs"
-                >
-                  Test Print
+                  <span className="switch-thumb" />
                 </button>
               </div>
+            </div>
+
+            {/* 5. PRINT SETTINGS (Auto Print Sale) */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <span className="font-extrabold text-orange-700 uppercase tracking-wide text-xs block">
+                5. PRINT SETTINGS
+              </span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <b className="text-xs font-bold text-slate-800 block">5.1 Auto Print Sale</b>
+                  <span className="text-[10px] text-slate-500">Bills will be auto printed after save with zero extra clicks</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoPrintSale}
+                  onClick={() => {
+                    setAutoPrintSale(!autoPrintSale);
+                    handleSavePrinterSettings();
+                  }}
+                  className={`ezo-modern-switch flex-shrink-0 ${autoPrintSale ? 'active' : ''}`}
+                >
+                  <span className="switch-thumb" />
+                </button>
+              </div>
+            </div>
+
+            {/* Actions: Save Printer Settings & Disconnect */}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleSavePrinterSettings}
+                className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>SAVE PRINTER SETTINGS</span>
+              </button>
+              {connectedPrinter && (
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  className="py-3 px-4 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow-sm transition-transform active:scale-95"
+                >
+                  DISCONNECT
+                </button>
+              )}
             </div>
 
             {printerError && (
-              <div className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100 flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <div className="text-xs text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
                 <span>{printerError}</span>
               </div>
             )}
-
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 flex items-start gap-2">
-              <span className="font-bold text-indigo-600 flex-shrink-0">Tip:</span>
-              <span>
-                For mobile Bluetooth 58mm printers (NovaPOS, Everycom, TVS, NGX), pair once in Android phone Bluetooth Settings.
-                Bills print with 1-tap from Calculator and Sales Invoice.
-              </span>
-            </div>
           </div>
+        </div>
 
-          {/* Merchant License Active & Support Card */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)',
-              color: '#FFFFFF',
-              boxShadow: '0 8px 24px rgba(30, 27, 75, 0.3)',
-            }}
-            className="rounded-2xl p-4 sm:p-5 border border-indigo-500/30 relative overflow-hidden"
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center shadow-xs flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-amber-300" />
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <b className="text-base font-black tracking-wide text-white">
-                        Merchant License Active
-                      </b>
-                      <span
-                        style={{
-                          backgroundColor: subDetails.isExpired ? '#EF4444' : '#10B981',
-                          color: '#FFFFFF',
-                        }}
-                        className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider shadow-xs"
-                      >
-                        {subDetails.isExpired ? 'Expired' : 'Active'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-indigo-100 font-medium pl-11">
-                  {!subDetails.isExpired ? (
-                    <>
-                      Valid until <b className="text-emerald-300 font-bold">{subDetails.formattedExpiresAt}</b>
-                    </>
-                  ) : (
-                    <span className="text-rose-300 font-bold">
-                      License expired · Contact for Premium activation
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              <a
-                href="https://wa.me/919381563241?text=Hello%20NovaPOS,%20I%20want%20to%20activate/renew%20my%20Premium%20License"
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                  color: '#FFFFFF',
-                }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 no-underline"
-              >
-                <ShieldCheck className="w-4 h-4 text-white" />
-                <span>Contact for Premium</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Dedicated GST Tax Configuration & Ruleset Card */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-black text-purple-700">GST</span>
-                </div>
-                <div>
-                  <b className="text-sm text-slate-800">GST & Tax Master Settings</b>
-                  <p className="text-xs text-slate-500">Regular / Composition Schemes, Slabs & Invoicing</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                Active: Regular (IN-GST)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 block">Business GSTIN</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editGstin}
-                    onChange={(e) => setEditGstin(e.target.value.toUpperCase())}
-                    placeholder="e.g. 36AAAAA0000A1Z5"
-                    className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-800"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onUpdateProfile({ gstin: editGstin });
-                      showSavedNotification();
-                    }}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors"
-                  >
-                    Update
-                  </button>
-                </div>
-                <span className="text-[11px] text-slate-500">Printed on all Tax Invoices & Reports</span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 block">Default GST Rate for New Items</label>
-                <div className="grid grid-cols-5 gap-1 pt-0.5">
-                  {[0, 5, 12, 18, 28].map((slab) => (
-                    <button
-                      key={slab}
-                      type="button"
-                      onClick={() => {
-                        handleNumberChange('defaultGstSlab', slab);
-                      }}
-                      className={`py-1 rounded text-xs font-bold border transition-colors ${
-                        (settings['defaultGstSlab'] ?? 5) === slab
-                          ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {slab}%
-                    </button>
-                  ))}
-                </div>
-                <span className="text-[11px] text-slate-500">Applied automatically when adding catalog items</span>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                <div>
-                  <b className="text-xs text-slate-800 block">Print GST Breakdown (CGST/SGST)</b>
-                  <span className="text-[11px] text-slate-500">Show itemized tax table on thermal slips</span>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={Boolean(settings['printGstBreakdown'] ?? true)}
-                  onClick={() => handleToggle('printGstBreakdown', Boolean(settings['printGstBreakdown'] ?? true))}
-                  className={`ezo-modern-switch ${Boolean(settings['printGstBreakdown'] ?? true) ? 'active' : ''}`}
-                >
-                  <span className="switch-thumb" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                <div>
-                  <b className="text-xs text-slate-800 block">Prices Include GST (MRP Inclusive)</b>
-                  <span className="text-[11px] text-slate-500">Calculate backward tax split from price</span>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={Boolean(settings['pricesIncludeTax'] ?? true)}
-                  onClick={() => handleToggle('pricesIncludeTax', Boolean(settings['pricesIncludeTax'] ?? true))}
-                  className={`ezo-modern-switch ${Boolean(settings['pricesIncludeTax'] ?? true) ? 'active' : ''}`}
-                >
-                  <span className="switch-thumb" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Legal, Privacy Policy & Play Store Compliance Card */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
-                <Scale className="w-5 h-5 text-slate-700" />
+        {/* ========================================================================= */}
+        {/* 🏢 BUSINESS PROFILE & GST SETTINGS */}
+        {/* ========================================================================= */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600">
+                <Store className="w-5 h-5" />
               </div>
               <div>
-                <b className="text-sm text-slate-800">Legal, Privacy & App Compliance</b>
-                <p className="text-xs text-slate-500">Google Play Data Safety, Terms of Service & Publisher Details</p>
+                <b className="text-sm text-slate-900 font-bold block">Business & UPI Profile</b>
+                <span className="text-xs text-slate-500">Printed on Bill Header & QR Code</span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setComplianceModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1 flex-shrink-0"
-            >
-              <span>View Policy</span>
-            </button>
           </div>
 
-          {/* Category Pills */}
+          <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
+            <div>
+              <label className="text-slate-700 font-bold block mb-1">Store / Business Name *</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 text-xs"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">Store Phone *</label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 text-xs"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">UPI ID (VPA for QR) *</label>
+                <input
+                  type="text"
+                  value={editUpiVpa}
+                  onChange={(e) => setEditUpiVpa(e.target.value)}
+                  placeholder="e.g. store@upi"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">GSTIN Number</label>
+                <input
+                  type="text"
+                  value={editGstin}
+                  onChange={(e) => setEditGstin(e.target.value.toUpperCase())}
+                  placeholder="36AAAAA0000A1Z5"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold font-mono text-slate-900 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">FSSAI License No</label>
+                <input
+                  type="text"
+                  value={editFssai}
+                  onChange={(e) => setEditFssai(e.target.value)}
+                  placeholder="14-digit FSSAI"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold font-mono text-slate-900 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-700 font-bold block mb-1">Address / Landmark</label>
+              <input
+                type="text"
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                placeholder="Shop No, Main Road, City"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-900 text-xs"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-xs transition-transform active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <Save className="w-4 h-4 text-orange-400" />
+              <span>SAVE PROFILE</span>
+            </button>
+          </form>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 🔒 34 EZO CONTROLS & ADVANCED SETTINGS */}
+        {/* ========================================================================= */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <b className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              All 34 POS System Controls
+            </b>
+          </div>
+
+          {/* Category Filter Pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {categories.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setSelectedCategory(c.id)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
                   selectedCategory === c.id
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-orange-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
@@ -472,34 +723,34 @@ export const SettingsScreen: React.FC<Props> = ({
             ))}
           </div>
 
-          {/* Search */}
+          {/* Search Box */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Search setting name or code (e.g. 2.1, 2.2)..."
+              placeholder="Search 34 controls (e.g. 2.1, round off, barcode)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium"
             />
           </div>
 
-          {/* 34 Settings List */}
+          {/* Controls List */}
           <div className="space-y-2">
             {filteredSettings.map((item) => {
               const val = settings[item.id];
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm flex items-center justify-between gap-4"
+                  className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs flex items-center justify-between gap-3"
                 >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 flex-shrink-0 mt-0.5">
+                  <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                    <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-orange-50 text-orange-700 border border-orange-200 flex-shrink-0 mt-0.5 font-mono">
                       {item.code}
                     </span>
                     <div className="min-w-0">
-                      <b className="text-sm text-slate-800 block truncate">{item.title}</b>
-                      <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                      <b className="text-xs font-bold text-slate-900 block truncate">{item.title}</b>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{item.desc}</p>
                     </div>
                   </div>
 
@@ -520,7 +771,7 @@ export const SettingsScreen: React.FC<Props> = ({
                       <select
                         value={String(val)}
                         onChange={(e) => handleSelectChange(item.id, e.target.value)}
-                        className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-700 focus:ring-2 focus:ring-indigo-500"
+                        className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-slate-800 font-bold focus:ring-2 focus:ring-orange-500"
                       >
                         {item.options.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -535,7 +786,7 @@ export const SettingsScreen: React.FC<Props> = ({
                         type="number"
                         value={Number(val)}
                         onChange={(e) => handleNumberChange(item.id, Number(e.target.value))}
-                        className="w-20 text-xs border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-slate-800"
+                        className="w-16 text-xs font-bold text-center border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-slate-800"
                       />
                     )}
                   </div>
@@ -546,7 +797,100 @@ export const SettingsScreen: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Compliance / Privacy Policy Modal */}
+      {/* ========================================================================= */}
+      {/* 📱 PAIRED BLUETOOTH DEVICES DISCOVERY MODAL */}
+      {/* ========================================================================= */}
+      {pairedDevicesModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPairedDevicesModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wifi className="w-5 h-5" />
+                <b className="text-sm font-bold">Select Paired Printer</b>
+              </div>
+              <button
+                onClick={() => setPairedDevicesModalOpen(false)}
+                className="p-1 hover:bg-white/20 rounded-full"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-2 flex-1 text-xs">
+              <p className="text-slate-500 text-[11px] mb-2 font-medium">
+                Tap on your paired Bluetooth thermal printer to connect directly:
+              </p>
+              {pairedDevicesList.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 space-y-2">
+                  <Printer className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="font-bold text-xs">No paired Bluetooth printers found</p>
+                  <p className="text-[11px]">Please open phone Settings → Bluetooth, pair your printer, and click scan again.</p>
+                </div>
+              ) : (
+                pairedDevicesList.map((dev) => (
+                  <button
+                    key={dev.address}
+                    onClick={() => handleSelectPairedDevice(dev)}
+                    className="w-full p-3 rounded-2xl border border-slate-200 hover:border-orange-500 hover:bg-orange-50/50 flex items-center justify-between text-left transition-all active:scale-[0.98]"
+                  >
+                    <div className="min-w-0">
+                      <b className="text-xs font-bold text-slate-900 block truncate">{dev.name}</b>
+                      <span className="font-mono text-[11px] text-slate-500">{dev.address}</span>
+                    </div>
+                    <span className="px-2.5 py-1 bg-orange-600 text-white font-bold rounded-lg text-[10px]">
+                      Connect
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ⚠️ EZO-STYLE "ALERT! Test print aaya? NO / YES" DIALOG */}
+      {/* ========================================================================= */}
+      {testPrintAlertOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl border border-slate-200 p-5 text-center space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto">
+              <Printer className="w-6 h-6" />
+            </div>
+            <div>
+              <b className="text-base font-extrabold text-slate-900 block">ALERT!</b>
+              <p className="text-sm font-bold text-slate-700 mt-1">Test print aaya?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setTestPrintAlertOpen(false)}
+                className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all"
+              >
+                NO
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTestPrintAlertOpen(false);
+                  showSavedNotification();
+                }}
+                className="py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all active:scale-95"
+              >
+                YES
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compliance Modal */}
       <ComplianceModal
         isOpen={complianceModalOpen}
         onClose={() => setComplianceModalOpen(false)}

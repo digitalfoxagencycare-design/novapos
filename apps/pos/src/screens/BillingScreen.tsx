@@ -36,8 +36,10 @@ import { TRANSLATIONS, type SupportedLanguage } from '../lib/translations';
 import { loadEzoSettings } from '../lib/ezoSettings';
 import { findPartyByPhone, loadParties, upsertParty, recordKhataSale, buildWhatsAppBillUrl, type Party } from '../lib/khata';
 import {
+  printBillDirect,
   printReceiptViaBrowser,
   type BillData,
+  type PaperWidth,
 } from '../lib/thermalPrinter';
 import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
@@ -441,7 +443,7 @@ export const BillingScreen: React.FC<Props> = ({
     onSold?.(cart);
     speakPaymentAlert(finalTotal, mode === 'credit' ? 'Khata' : mode);
     if (!settings.askToPrintBill || window.confirm('Print receipt bill?')) {
-      printReceiptViaBrowser(billData, localStorage.getItem('novapos:paper_width') === '80mm' ? '80mm' : '58mm');
+      void printBillDirect(billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
     }
 
     if (mode === 'credit' && matchedParty) {

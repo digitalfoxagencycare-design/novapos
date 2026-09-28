@@ -1,12 +1,15 @@
+import { registerPlugin, Capacitor } from '@capacitor/core';
 import { showPrintPreview } from '../components/PrintPreview';
+
 /**
- * Thermal Printer Driver for 58mm & 80mm ESC/POS Printers.
+ * Thermal Printer Driver for 58mm (2-inch / 32 cols) & 80mm (3-inch / 48 cols) ESC/POS Printers.
  *
  * Supports:
- * - Web Bluetooth API (Android / Mobile Chrome / Tablets)
- * - Web Serial API & WebUSB API (TVS RP 3200, Epson, Everycom USB printers)
- * - Browser Formatted Thermal Print Dialog fallback
- * - Full Indian Restaurant Bill & KOT Formatting with GST & UPI
+ * - Native Android Classic Bluetooth SPP (Ezo, TVS, Everycom, Z91, POS-58, NGX, MPT-II)
+ * - Web Bluetooth GATT Fallback (Chrome)
+ * - Web Serial & WebUSB APIs
+ * - High-speed ESC/POS byte streaming
+ * - Formatted HTML Print preview
  */
 
 export type PaperWidth = '58mm' | '80mm';
@@ -15,6 +18,7 @@ export interface PrinterDevice {
   connected: boolean;
   type: 'bluetooth' | 'usb' | 'serial' | 'browser';
   name: string;
+  address?: string;
 }
 
 export interface BillItem {
@@ -62,6 +66,17 @@ export interface KotData {
   items: { name: string; quantity: number; notes?: string }[];
 }
 
+export interface NovaPrintPluginType {
+  listPairedDevices(): Promise<{ devices: Array<{ name: string; address: string }> }>;
+  connectBluetooth(options: { address: string }): Promise<{ connected: boolean; address: string; name: string }>;
+  disconnectBluetooth(): Promise<{ connected: boolean }>;
+  isBluetoothConnected(): Promise<{ connected: boolean; address?: string; name?: string }>;
+  printRawEscPos(options: { data: string }): Promise<{ success: boolean; bytesPrinted: number }>;
+  printHtml(options: { html: string; title?: string }): Promise<void>;
+}
+
+export const NovaPrint = registerPlugin<NovaPrintPluginType>('NovaPrint');
+
 let activeBluetoothDevice: any = null;
 let activeBluetoothCharacteristic: any = null;
 let activeSerialWriter: any = null;
@@ -72,12 +87,108 @@ export const isBluetoothSupported = () => typeof navigator !== 'undefined' && 'b
 export const isSerialSupported = () => typeof navigator !== 'undefined' && 'serial' in navigator;
 export const isUsbSupported = () => typeof navigator !== 'undefined' && 'usb' in navigator;
 
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
 /**
- * Connect to 58mm or 80mm Bluetooth Thermal Printer
+ * List paired Bluetooth devices on Android
+ */
+export async function listPairedBluetoothPrinters(): Promise<Array<{ name: string; address: string }>> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await NovaPrint.listPairedDevices();
+      return res?.devices || [];
+    } catch (e: any) {
+      console.warn('Native listPairedDevices error:', e);
+      throw new Error(e?.message || 'Failed to list paired Bluetooth devices.');
+    }
+  }
+  return [];
+}
+
+/**
+ * Connect to Bluetooth printer by MAC address (Native Android SPP)
+ */
+export async function connectNativeBluetoothPrinter(macAddress: string): Promise<PrinterDevice> {
+  if (Capacitor.isNativePlatform()) {
+    const res = await NovaPrint.connectBluetooth({ address: macAddress });
+    if (res.connected) {
+      localStorage.setItem('novapos_printer_mac', res.address);
+      localStorage.setItem('novapos_printer_name', res.name);
+      return {
+        connected: true,
+        type: 'bluetooth',
+        name: res.name,
+        address: res.address,
+      };
+    }
+  }
+  throw new Error('Native Bluetooth SPP is only available on Android app.');
+}
+
+/**
+ * Disconnect native Bluetooth printer
+ */
+export async function disconnectNativeBluetoothPrinter(): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    await NovaPrint.disconnectBluetooth().catch(() => undefined);
+    localStorage.removeItem('novapos_printer_mac');
+    localStorage.removeItem('novapos_printer_name');
+  }
+}
+
+/**
+ * Get active native printer connection state
+ */
+export async function getActiveNativePrinter(): Promise<PrinterDevice | null> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const status = await NovaPrint.isBluetoothConnected();
+      if (status.connected && status.address) {
+        return {
+          connected: true,
+          type: 'bluetooth',
+          name: status.name || 'Bluetooth Thermal Printer',
+          address: status.address,
+        };
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const savedMac = localStorage.getItem('novapos_printer_mac');
+  const savedName = localStorage.getItem('novapos_printer_name');
+  if (savedMac) {
+    return {
+      connected: false,
+      type: 'bluetooth',
+      name: savedName || 'Paired Bluetooth Printer',
+      address: savedMac,
+    };
+  }
+  return null;
+}
+
+/**
+ * Connect to 58mm or 80mm Bluetooth Thermal Printer via Web Bluetooth
  */
 export async function connectBluetoothPrinter(): Promise<PrinterDevice> {
+  if (Capacitor.isNativePlatform()) {
+    const paired = await listPairedBluetoothPrinters();
+    if (paired.length > 0) {
+      return await connectNativeBluetoothPrinter(paired[0].address);
+    }
+    throw new Error('No paired Bluetooth printers found in Android Settings. Please pair your printer in Phone Bluetooth Settings first.');
+  }
+
   if (!isBluetoothSupported()) {
-    throw new Error('Web Bluetooth is not supported on this browser. Use Google Chrome on Android or PC.');
+    throw new Error('Web Bluetooth is not supported on this browser. Use Chrome on Android or PC.');
   }
 
   const nav = navigator as any;
@@ -122,7 +233,7 @@ export async function connectBluetoothPrinter(): Promise<PrinterDevice> {
 }
 
 /**
- * Connect to USB / Serial Thermal Printer (e.g. TVS RP 3200)
+ * Connect to USB / Serial Thermal Printer
  */
 export async function connectUsbOrSerialPrinter(): Promise<PrinterDevice> {
   const nav = navigator as any;
@@ -138,7 +249,6 @@ export async function connectUsbOrSerialPrinter(): Promise<PrinterDevice> {
       };
     } catch (err: any) {
       if (err.name === 'NotFoundError') throw new Error('No printer selected.');
-      // If serial fails, fallback to USB
     }
   }
 
@@ -167,10 +277,21 @@ export async function connectUsbOrSerialPrinter(): Promise<PrinterDevice> {
 }
 
 /**
- * Write raw ESC/POS bytes with chunking
+ * Write raw ESC/POS bytes with chunking / Native SPP
  */
 export async function writeEscPosBytes(data: Uint8Array): Promise<boolean> {
-  // 1. Bluetooth
+  // 1. Native Android Classic Bluetooth SPP (Ezo / TVS / POS-58 / Z91)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const b64 = uint8ArrayToBase64(data);
+      const res = await NovaPrint.printRawEscPos({ data: b64 });
+      if (res && res.success) return true;
+    } catch (e) {
+      console.warn('Native SPP write failed, falling back to other transports:', e);
+    }
+  }
+
+  // 2. Web Bluetooth GATT
   if (activeBluetoothCharacteristic) {
     const CHUNK_SIZE = 128;
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
@@ -185,13 +306,13 @@ export async function writeEscPosBytes(data: Uint8Array): Promise<boolean> {
     return true;
   }
 
-  // 2. Serial
+  // 3. Serial
   if (activeSerialWriter) {
     await activeSerialWriter.write(data);
     return true;
   }
 
-  // 3. USB
+  // 4. USB
   if (activeUsbDevice && activeUsbEndpoint !== null) {
     await activeUsbDevice.transferOut(activeUsbEndpoint, data);
     return true;
@@ -228,6 +349,11 @@ export class ThermalBuilder {
     return this;
   }
 
+  underline(enable = true) {
+    this.buffer.push(0x1b, 0x2d, enable ? 1 : 0);
+    return this;
+  }
+
   size(doubleWidth = false, doubleHeight = false) {
     let n = 0;
     if (doubleWidth) n |= 0x20;
@@ -237,106 +363,80 @@ export class ThermalBuilder {
   }
 
   text(str: string) {
-    const folded = str.replace(/[₹]/g, 'Rs.').replace(/[^\x20-\x7e\n]/g, '');
-    for (let i = 0; i < folded.length; i++) {
-      this.buffer.push(folded.charCodeAt(i));
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      this.buffer.push(code < 128 ? code : 0x20); // ASCII fallback
     }
     return this;
   }
 
   line(str = '') {
-    this.text(str + '\n');
+    this.text(str);
+    this.buffer.push(0x0a); // LF
+    return this;
+  }
+
+  feed(lines = 1) {
+    for (let i = 0; i < lines; i++) this.buffer.push(0x0a);
     return this;
   }
 
   divider(char = '-') {
-    this.text(char.repeat(this.cols) + '\n');
+    this.line(char.repeat(this.cols));
     return this;
   }
 
   doubleDivider() {
-    this.divider('=');
+    this.line('='.repeat(this.cols));
     return this;
   }
 
   twoColumn(left: string, right: string) {
-    const cleanLeft = left.replace(/[₹]/g, 'Rs.');
-    const cleanRight = right.replace(/[₹]/g, 'Rs.');
-    const space = this.cols - cleanLeft.length - cleanRight.length;
-    if (space >= 0) {
-      this.text(cleanLeft + ' '.repeat(space) + cleanRight + '\n');
-    } else {
-      this.text(cleanLeft + '\n' + ' '.repeat(Math.max(0, this.cols - cleanRight.length)) + cleanRight + '\n');
-    }
+    const maxLeft = this.cols - right.length - 1;
+    const l = left.length > maxLeft ? left.slice(0, maxLeft) : left;
+    const spaces = Math.max(1, this.cols - l.length - right.length);
+    this.line(l + ' '.repeat(spaces) + right);
     return this;
   }
 
-  itemRow(name: string, qty: number, rate: number, total: number) {
-    const qtyStr = `${qty}x`;
-    const rateStr = rate.toFixed(2);
-    const totalStr = `${total.toFixed(2)}`;
+  threeColumn(col1: string, col2: string, col3: string, col1Width = 16, col2Width = 6) {
+    const c3Width = this.cols - col1Width - col2Width;
+    const c1 = (col1.length > col1Width ? col1.slice(0, col1Width) : col1).padEnd(col1Width);
+    const c2 = (col2.length > col2Width ? col2.slice(0, col2Width) : col2).padStart(col2Width);
+    const c3 = (col3.length > c3Width ? col3.slice(0, c3Width) : col3).padStart(c3Width);
+    this.line(c1 + c2 + c3);
+    return this;
+  }
 
+  fourColumn(col1: string, col2: string, col3: string, col4: string) {
     if (this.cols === 32) {
-      // 58mm compact
-      // Line 1: Item Name
-      this.bold(true).line(name).bold(false);
-      // Line 2: Qty x Rate ........ Total
-      const detail = `  ${qtyStr} @ ${rateStr}`;
-      const space = this.cols - detail.length - totalStr.length;
-      this.line(detail + ' '.repeat(Math.max(1, space)) + totalStr);
+      // 58mm: Item (13) Qty(5) Rate(6) Total(8) = 32
+      const c2 = (col2.length > 5 ? col2.slice(0, 5) : col2).padStart(5);
+      const c3 = (col3.length > 6 ? col3.slice(0, 6) : col3).padStart(6);
+      const c4 = (col4.length > 8 ? col4.slice(0, 8) : col4).padStart(8);
+      const c1Width = 32 - c2.length - c3.length - c4.length;
+      const c1 = (col1.length > c1Width ? col1.slice(0, c1Width) : col1).padEnd(c1Width);
+      this.line(c1 + c2 + c3 + c4);
     } else {
-      // 80mm wide
-      // Name (26 chars) | Qty (5) | Rate (7) | Total (10)
-      const qtyWidth = Math.max(4, String(qty).length);
-      const rateWidth = Math.max(7, rateStr.length);
-      const totalWidth = Math.max(9, totalStr.length);
-      const maxNameLen = Math.max(1, this.cols - qtyWidth - rateWidth - totalWidth - 3);
-      const truncName = name.length > maxNameLen ? name.substring(0, maxNameLen - 1) + '.' : name;
-      const nameCol = truncName.padEnd(maxNameLen, ' ');
-      const qtyCol = String(qty).padStart(qtyWidth, ' ');
-      const rateCol = rateStr.padStart(rateWidth, ' ');
-      const totalCol = totalStr.padStart(totalWidth, ' ');
-      this.line(`${nameCol} ${qtyCol} ${rateCol} ${totalCol}`);
+      // 80mm: Item (22) Qty(6) Rate(9) Total(11) = 48
+      const c2 = (col2.length > 6 ? col2.slice(0, 6) : col2).padStart(6);
+      const c3 = (col3.length > 9 ? col3.slice(0, 9) : col3).padStart(9);
+      const c4 = (col4.length > 11 ? col4.slice(0, 11) : col4).padStart(11);
+      const c1Width = 48 - c2.length - c3.length - c4.length;
+      const c1 = (col1.length > c1Width ? col1.slice(0, c1Width) : col1).padEnd(c1Width);
+      this.line(c1 + c2 + c3 + c4);
     }
-    return this;
-  }
-
-  feed(lines = 3) {
-    for (let i = 0; i < lines; i++) this.buffer.push(0x0a);
     return this;
   }
 
   cut() {
     this.feed(3);
-    this.buffer.push(0x1d, 0x56, 0x42, 0x00); // GS V 66 0 (Full Cut)
+    this.buffer.push(0x1d, 0x56, 0x41, 0x10); // GS V A 16 (Full cut)
     return this;
   }
 
   kickDrawer() {
     this.buffer.push(0x1b, 0x70, 0x00, 0x19, 0xfa); // ESC p 0 25 250
-    return this;
-  }
-
-  qr(payload: string) {
-    const raw = payload.replace(/[^\x20-\x7e]/g, '');
-    const len = raw.length + 3;
-    const pL = len & 0xff;
-    const pH = (len >> 8) & 0xff;
-    const modSize = this.cols === 32 ? 5 : 7; // 5 for 58mm, 7 for 80mm
-
-    // Model 2
-    this.buffer.push(0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);
-    // Module size
-    this.buffer.push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, modSize);
-    // Error correction M
-    this.buffer.push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31);
-    // Store data in symbol
-    this.buffer.push(0x1d, 0x28, 0x6b, pL, pH, 0x31, 0x50, 0x30);
-    for (let i = 0; i < raw.length; i++) {
-      this.buffer.push(raw.charCodeAt(i));
-    }
-    // Print symbol
-    this.buffer.push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30);
     return this;
   }
 
@@ -346,77 +446,103 @@ export class ThermalBuilder {
 }
 
 /**
- * Generate full receipt ESC/POS payload
+ * Generate standard Indian GST / Restaurant ESC/POS Receipt Bytes
  */
-export function buildReceiptBytes(data: BillData, paperWidth: PaperWidth = '80mm'): Uint8Array {
+export function buildEscPosBill(data: BillData, paperWidth: PaperWidth = '80mm'): Uint8Array {
   const b = new ThermalBuilder(paperWidth);
 
-  // Duplicate / Reprint Notice
+  // Duplicate / Reprint Header
   if (data.isDuplicate) {
-    b.align('center').bold(true).line(`*** DUPLICATE COPY #${data.reprintCount || 1} ***`).bold(false);
+    b.align('center').bold(true).line(`*** DUPLICATE BILL #${data.reprintCount || 1} ***`).bold(false);
   }
 
-  // Header
-  b.align('center').bold(true).size(true, true).line(data.restaurantName).size(false, false);
-  b.bold(false).line(data.address).line(`Phone: ${data.phone}`);
+  // Restaurant Header
+  b.align('center');
+  b.bold(true).size(true, true).line(data.restaurantName.toUpperCase()).size(false, false);
+  if (data.address) b.bold(false).line(data.address);
+  if (data.phone) b.line(`Phone: ${data.phone}`);
 
+  // Tax Info
   if (data.isCompositionScheme) {
     b.bold(true).line('BILL OF SUPPLY').bold(false);
-    b.line('Composition taxable person, not eligible to collect tax on supplies');
+    b.line('Composition Dealer - Not for Tax Collection');
   } else {
-    b.line('TAX INVOICE');
+    b.bold(true).line('TAX INVOICE').bold(false);
     if (data.gstin) b.line(`GSTIN: ${data.gstin}`);
     if (data.fssai) b.line(`FSSAI: ${data.fssai}`);
   }
   b.divider();
 
-  // Meta
+  // Invoice Meta
   b.align('left');
-  b.twoColumn(`Bill: ${data.billNo}`, `${data.date} ${data.time}`);
-  b.twoColumn(`Type: ${data.orderType.toUpperCase()}`, data.tableNo ? `Table: ${data.tableNo}` : '');
+  if (paperWidth === '58mm') {
+    b.line(`Bill: #${data.billNo}`);
+    b.twoColumn(data.date, data.time);
+  } else {
+    b.twoColumn(`Bill: #${data.billNo}`, `${data.date} ${data.time}`);
+  }
+  if (data.tableNo) {
+    b.twoColumn(`Table: ${data.tableNo}`, `Type: ${data.orderType.toUpperCase()}`);
+  } else {
+    b.line(`Type: ${data.orderType.toUpperCase()}`);
+  }
+
   if (data.customerName && data.customerName !== 'Walk-in Guest') {
-    b.twoColumn(`Customer: ${data.customerName}`, data.customerPhone || '');
+    b.twoColumn(`Guest: ${data.customerName}`, data.customerPhone || '');
   }
   b.doubleDivider();
 
-  // Column header
-  if (paperWidth === '80mm') {
-    const maxNameLen = 48 - 23;
-    b.bold(true).line(`${'ITEM'.padEnd(maxNameLen, ' ')} ${'QTY'.padStart(4, ' ')} ${'RATE'.padStart(7, ' ')} ${'AMOUNT'.padStart(9, ' ')}`).bold(false);
-    b.divider();
+  // Table Header
+  b.bold(true);
+  b.fourColumn('Item', 'Qty', 'Rate', 'Total');
+  b.divider();
+  b.bold(false);
+
+  // Item Rows
+  for (const item of data.items) {
+    const rateStr = item.price < 1 || !Number.isInteger(item.price) ? item.price.toFixed(2) : item.price.toFixed(0);
+    b.fourColumn(
+      item.name,
+      item.quantity.toString(),
+      rateStr,
+      item.total.toFixed(2)
+    );
   }
 
-  // Items
-  for (const it of data.items) {
-    b.itemRow(it.name, it.quantity, it.price, it.total);
-  }
   b.divider();
 
-  // Totals
-  b.align('right');
-  b.twoColumn('Subtotal:', `Rs. ${data.subtotal.toFixed(2)}`);
+  // Totals Breakdown
+  b.align('left');
+  b.twoColumn('Subtotal:', `Rs.${data.subtotal.toFixed(2)}`);
+
   if (!data.isCompositionScheme) {
-    if (data.cgst > 0) b.twoColumn('CGST (2.5%):', `Rs. ${data.cgst.toFixed(2)}`);
-    if (data.sgst > 0) b.twoColumn('SGST (2.5%):', `Rs. ${data.sgst.toFixed(2)}`);
+    if (data.cgst > 0) b.twoColumn('CGST (2.5%):', `Rs.${data.cgst.toFixed(2)}`);
+    if (data.sgst > 0) b.twoColumn('SGST (2.5%):', `Rs.${data.sgst.toFixed(2)}`);
   }
-  b.doubleDivider();
-  b.bold(true).size(false, true).twoColumn('NET PAYABLE:', `Rs. ${data.total.toFixed(2)}`).size(false, false).bold(false);
+
   b.doubleDivider();
 
-  // Payment
+  // NET TOTAL
+  b.bold(true).size(true, false);
+  b.twoColumn('NET TOTAL:', `Rs.${data.total.toFixed(2)}`);
+  b.size(false, false).bold(false);
+  b.doubleDivider();
+
+  // Payment Mode
   b.twoColumn('Payment Mode:', data.paymentMode.toUpperCase());
   if (data.cashTendered && data.cashTendered > 0) {
-    b.twoColumn('Cash Tendered:', `Rs. ${data.cashTendered.toFixed(2)}`);
-    b.twoColumn('Change Due:', `Rs. ${(data.change || 0).toFixed(2)}`);
+    b.twoColumn('Cash Tendered:', `Rs.${data.cashTendered.toFixed(2)}`);
+    if (data.change && data.change > 0) {
+      b.twoColumn('Change Returned:', `Rs.${data.change.toFixed(2)}`);
+    }
   }
-  b.divider();
 
-  // Dynamic UPI QR Code (Crisp ESC/POS native print)
-  const upiPayload = data.upiPayload || (data.upiVpa ? `upi://pay?pa=${data.upiVpa}&pn=${encodeURIComponent(data.restaurantName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&tn=Bill-${data.billNo}&cu=INR` : null);
-  if (upiPayload) {
+  // Dynamic UPI Payment Section
+  if (data.upiVpa || data.upiPayload) {
+    b.divider();
     b.align('center');
-    b.bold(true).line('SCAN TO PAY VIA ANY UPI APP').bold(false);
-    b.qr(upiPayload);
+    b.bold(true).line('SCAN & PAY VIA ANY UPI APP').bold(false);
+    if (data.upiVpa) b.line(`UPI ID: ${data.upiVpa}`);
     b.line('GPay / PhonePe / Paytm / BHIM');
     b.divider();
   }
@@ -430,6 +556,8 @@ export function buildReceiptBytes(data: BillData, paperWidth: PaperWidth = '80mm
 
   return b.getBytes();
 }
+
+export const buildReceiptBytes = buildEscPosBill;
 
 /**
  * Generate KOT ESC/POS payload
@@ -462,9 +590,9 @@ export function buildKotBytes(data: KotData, paperWidth: PaperWidth = '80mm'): U
 /**
  * Test Print Slip
  */
-export function buildTestSlipBytes(paperWidth: PaperWidth = '80mm'): Uint8Array {
+export function buildTestSlipBytes(paperWidth: PaperWidth = '58mm', storeName: string = 'NovaPOS Store'): Uint8Array {
   const b = new ThermalBuilder(paperWidth);
-  b.align('center').bold(true).size(true, true).line('VELPULA MESS').size(false, false);
+  b.align('center').bold(true).size(true, true).line(storeName.toUpperCase()).size(false, false);
   b.line('Thermal Printer Connection Test');
   b.divider();
   b.line(`Paper Width: ${paperWidth}`);
@@ -472,9 +600,27 @@ export function buildTestSlipBytes(paperWidth: PaperWidth = '80mm'): Uint8Array 
   b.line(`Time: ${new Date().toLocaleTimeString('en-IN')}`);
   b.doubleDivider();
   b.bold(true).line('PRINTER IS READY!').bold(false);
-  b.line('Fast 1-Tap Billing Enabled');
+  b.line('Fast 1-Tap Mobile Billing Enabled');
+  b.divider();
+  b.line('ESC/POS Bluetooth & USB Supported');
   b.cut();
   return b.getBytes();
+}
+
+/**
+ * 1-Click Direct Print for Bill via Native Bluetooth SPP or Browser
+ */
+export async function printBillDirect(data: BillData, paperWidth: PaperWidth = '58mm'): Promise<boolean> {
+  try {
+    const bytes = buildEscPosBill(data, paperWidth);
+    const printed = await writeEscPosBytes(bytes);
+    if (printed) return true;
+  } catch (err) {
+    console.warn('Direct ESC/POS print error:', err);
+  }
+  // Fallback to browser receipt dialog
+  printReceiptViaBrowser(data, paperWidth);
+  return true;
 }
 
 /**
@@ -548,30 +694,29 @@ export function printReceiptViaBrowser(data: BillData, paperWidth: PaperWidth = 
           <div class="divider"></div>
           <div class="text-center" style="margin: 8px 0;">
             <div class="bold" style="font-size:11px; margin-bottom:4px;">SCAN & PAY VIA ANY UPI APP</div>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(data.upiPayload || `upi://pay?pa=${data.upiVpa}&pn=${encodeURIComponent(data.restaurantName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&tn=Bill-${data.billNo}&cu=INR`)}" width="130" height="130" style="margin:0 auto; display:block;" />
-            <div style="font-size:10px; margin-top:2px;">GPay | PhonePe | Paytm | BHIM</div>
+            ${data.upiVpa ? `<div style="font-family:monospace; font-size:12px;">${data.upiVpa}</div>` : ''}
           </div>
         ` : ''}
         <div class="divider"></div>
         <div class="text-center bold" style="margin-top: 10px;">THANK YOU! VISIT AGAIN</div>
-        <div class="text-center" style="font-size: 11px;">Taste of Authentic Food</div>
       </body>
     </html>
   `);
 }
 
 /**
- * Browser fallback print for Kitchen Order Ticket (KOT)
+ * Browser fallback KOT print
  */
 export function printKotViaBrowser(data: KotData, paperWidth: PaperWidth = '80mm') {
   const widthMm = paperWidth === '58mm' ? '58mm' : '80mm';
   const widthPx = paperWidth === '58mm' ? '240px' : '320px';
 
   const itemsHtml = data.items.map((it) => `
-    <div style="display:flex; justify-content:space-between; margin: 8px 0; font-size: 15px; font-weight: bold;">
+    <div style="display:flex; justify-content:space-between; margin: 4px 0; font-size:14px; font-weight:bold;">
       <span>${it.name}</span>
-      <span style="font-size: 17px;">x ${it.quantity}</span>
+      <span>[ ${it.quantity} ]</span>
     </div>
+    ${it.notes ? `<div style="font-size:11px; font-style:italic; padding-left:8px;">* ${it.notes}</div>` : ''}
   `).join('');
 
   showPrintPreview(`
@@ -611,6 +756,21 @@ export function printKotViaBrowser(data: KotData, paperWidth: PaperWidth = '80mm
       </body>
     </html>
   `);
+}
+
+/**
+ * 1-Click Direct Print for KOT via Native Bluetooth SPP or Browser
+ */
+export async function printKotDirect(data: KotData, paperWidth: PaperWidth = '80mm'): Promise<boolean> {
+  try {
+    const bytes = buildKotBytes(data, paperWidth);
+    const printed = await writeEscPosBytes(bytes);
+    if (printed) return true;
+  } catch (err) {
+    console.warn('Direct KOT print error:', err);
+  }
+  printKotViaBrowser(data, paperWidth);
+  return true;
 }
 
 /**
@@ -657,3 +817,4 @@ export function printTestSlipViaBrowser(paperWidth: PaperWidth = '58mm', storeNa
     </html>
   `);
 }
+
