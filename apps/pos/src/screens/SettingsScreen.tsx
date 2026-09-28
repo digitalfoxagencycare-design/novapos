@@ -460,6 +460,62 @@ export const SettingsScreen: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Paper Roll Width Selector (58mm vs 80mm) */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <b className="text-slate-900 text-xs font-bold block">Paper Roll Width</b>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaperWidth('58mm');
+                    setCharsPerLine(32);
+                    setDotsPerLine(384);
+                    localStorage.setItem('novapos_printer_paper_width', '58mm');
+                    localStorage.setItem('novapos:paper_width', '58mm');
+                    localStorage.setItem('novapos_printer_cpl', '32');
+                    localStorage.setItem('novapos_printer_dpl', '384');
+                    showSavedNotification();
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    paperWidth === '58mm'
+                      ? 'border-orange-500 bg-orange-50/60 shadow-xs ring-2 ring-orange-500'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <b className="text-xs font-black text-slate-900">58 mm (2-Inch)</b>
+                    {paperWidth === '58mm' && <Check className="w-4 h-4 text-orange-600" />}
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-1">32 Cols · Portable Bluetooth</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaperWidth('80mm');
+                    setCharsPerLine(48);
+                    setDotsPerLine(576);
+                    localStorage.setItem('novapos_printer_paper_width', '80mm');
+                    localStorage.setItem('novapos:paper_width', '80mm');
+                    localStorage.setItem('novapos_printer_cpl', '48');
+                    localStorage.setItem('novapos_printer_dpl', '576');
+                    showSavedNotification();
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    paperWidth === '80mm'
+                      ? 'border-orange-500 bg-orange-50/60 shadow-xs ring-2 ring-orange-500'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <b className="text-xs font-black text-slate-900">80 mm (3-Inch)</b>
+                    {paperWidth === '80mm' && <Check className="w-4 h-4 text-orange-600" />}
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-1">48 Cols · Desktop Counter POS</span>
+                </button>
+              </div>
+            </div>
+
             {/* 3.3 to 3.7 Character & Column Specs */}
             <div className="space-y-2.5 pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">

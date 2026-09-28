@@ -374,8 +374,8 @@ export class ThermalBuilder {
 
   size(doubleWidth = false, doubleHeight = false) {
     let n = 0;
-    if (doubleWidth) n |= 0x20;
-    if (doubleHeight) n |= 0x01;
+    if (doubleWidth) n |= 0x10; // Standard ESC/POS 2x width (0x10)
+    if (doubleHeight) n |= 0x01; // Standard ESC/POS 2x height (0x01)
     this.buffer.push(0x1d, 0x21, n);
     return this;
   }
@@ -474,20 +474,36 @@ export function buildEscPosBill(data: BillData, paperWidth: PaperWidth = '80mm')
     b.align('center').bold(true).line(`*** DUPLICATE BILL #${data.reprintCount || 1} ***`).bold(false);
   }
 
-  // Restaurant Header
+  // Restaurant Header - Standard Size to prevent wrapping on 58mm / 80mm
   b.align('center');
-  b.bold(true).size(true, true).line(data.restaurantName.toUpperCase()).size(false, false);
-  if (data.address) b.bold(false).line(data.address);
-  if (data.phone) b.line(`Phone: ${data.phone}`);
+  const storeName = (data.restaurantName || 'NOVAPOS STORE').trim().toUpperCase();
+  if (paperWidth === '58mm') {
+    if (storeName.length <= 15) {
+      b.bold(true).size(true, false).line(storeName).size(false, false);
+    } else {
+      // Clean, professional single line standard font with bold
+      b.bold(true).size(false, false).line(storeName);
+    }
+  } else {
+    // 80mm
+    if (storeName.length <= 22) {
+      b.bold(true).size(true, true).line(storeName).size(false, false);
+    } else {
+      b.bold(true).size(false, true).line(storeName).size(false, false);
+    }
+  }
+
+  if (data.address) b.bold(false).line(data.address.trim());
+  if (data.phone) b.bold(false).line(`Phone: ${data.phone.trim()}`);
 
   // Tax Info
   if (data.isCompositionScheme) {
     b.bold(true).line('BILL OF SUPPLY').bold(false);
-    b.line('Composition Dealer - Not for Tax Collection');
+    b.line('Composition Scheme - Not for Tax');
   } else {
     b.bold(true).line('TAX INVOICE').bold(false);
-    if (data.gstin) b.line(`GSTIN: ${data.gstin}`);
-    if (data.fssai) b.line(`FSSAI: ${data.fssai}`);
+    if (data.gstin) b.line(`GSTIN: ${data.gstin.trim()}`);
+    if (data.fssai) b.line(`FSSAI: ${data.fssai.trim()}`);
   }
   b.divider();
 
@@ -495,14 +511,15 @@ export function buildEscPosBill(data: BillData, paperWidth: PaperWidth = '80mm')
   b.align('left');
   if (paperWidth === '58mm') {
     b.line(`Bill: #${data.billNo}`);
-    b.twoColumn(data.date, data.time);
+    b.twoColumn(`${data.date}`, `${data.time}`);
+    b.twoColumn(`Type: ${data.orderType.toUpperCase()}`, data.tableNo ? `Table: ${data.tableNo}` : '');
   } else {
     b.twoColumn(`Bill: #${data.billNo}`, `${data.date} ${data.time}`);
+    b.twoColumn(`Type: ${data.orderType.toUpperCase()}`, data.tableNo ? `Table: ${data.tableNo}` : '');
   }
-  if (data.tableNo) {
-    b.twoColumn(`Table: ${data.tableNo}`, `Type: ${data.orderType.toUpperCase()}`);
-  } else {
-    b.line(`Type: ${data.orderType.toUpperCase()}`);
+
+  if (data.tableNo && paperWidth === '58mm') {
+    b.line(`Table: ${data.tableNo}`);
   }
 
   if (data.customerName && data.customerName !== 'Walk-in Guest') {
@@ -540,10 +557,18 @@ export function buildEscPosBill(data: BillData, paperWidth: PaperWidth = '80mm')
 
   b.doubleDivider();
 
-  // NET TOTAL
-  b.bold(true).size(true, false);
-  b.twoColumn('NET TOTAL:', `Rs.${data.total.toFixed(2)}`);
-  b.size(false, false).bold(false);
+  // NET TOTAL - Proportional single-line clean fit
+  b.bold(true);
+  if (paperWidth === '58mm') {
+    // Standard bold font with clear visibility on 58mm
+    b.twoColumn('NET TOTAL:', `Rs.${data.total.toFixed(2)}`);
+  } else {
+    // 80mm - Double width & height
+    b.size(true, true);
+    b.twoColumn('NET TOTAL:', `Rs.${data.total.toFixed(2)}`);
+    b.size(false, false);
+  }
+  b.bold(false);
   b.doubleDivider();
 
   // Payment Mode
@@ -610,17 +635,28 @@ export function buildKotBytes(data: KotData, paperWidth: PaperWidth = '80mm'): U
  */
 export function buildTestSlipBytes(paperWidth: PaperWidth = '58mm', storeName: string = 'NovaPOS Store'): Uint8Array {
   const b = new ThermalBuilder(paperWidth);
-  b.align('center').bold(true).size(true, true).line(storeName.toUpperCase()).size(false, false);
-  b.line('Thermal Printer Connection Test');
+  b.align('center');
+  const name = storeName.trim().toUpperCase();
+  if (paperWidth === '58mm') {
+    if (name.length <= 15) {
+      b.bold(true).size(true, false).line(name).size(false, false);
+    } else {
+      b.bold(true).line(name);
+    }
+  } else {
+    b.bold(true).size(true, true).line(name).size(false, false);
+  }
+  b.bold(false).line('Thermal Printer Connection Test');
   b.divider();
-  b.line(`Paper Width: ${paperWidth}`);
-  b.line(`Date: ${new Date().toLocaleDateString('en-IN')}`);
-  b.line(`Time: ${new Date().toLocaleTimeString('en-IN')}`);
+  b.align('left');
+  b.twoColumn(`Paper Width: ${paperWidth}`, paperWidth === '58mm' ? '2-Inch (32 Col)' : '3-Inch (48 Col)');
+  b.twoColumn(`Date: ${new Date().toLocaleDateString('en-IN')}`, `${new Date().toLocaleTimeString('en-IN')}`);
   b.doubleDivider();
+  b.align('center');
   b.bold(true).line('PRINTER IS READY!').bold(false);
-  b.line('Fast 1-Tap Mobile Billing Enabled');
+  b.line('NovaPOS Mobile Billing System');
   b.divider();
-  b.line('ESC/POS Bluetooth & USB Supported');
+  b.line('ESC/POS Direct Hardware Bridge');
   b.cut();
   return b.getBytes();
 }
@@ -628,16 +664,21 @@ export function buildTestSlipBytes(paperWidth: PaperWidth = '58mm', storeName: s
 /**
  * 1-Click Direct Print for Bill via Native Bluetooth SPP or Browser
  */
-export async function printBillDirect(data: BillData, paperWidth: PaperWidth = '58mm'): Promise<boolean> {
+export async function printBillDirect(data: BillData, paperWidth?: PaperWidth): Promise<boolean> {
+  const effectiveWidth: PaperWidth =
+    paperWidth ||
+    (localStorage.getItem('novapos_printer_paper_width') as PaperWidth) ||
+    (localStorage.getItem('novapos:paper_width') as PaperWidth) ||
+    '58mm';
   try {
-    const bytes = buildEscPosBill(data, paperWidth);
+    const bytes = buildEscPosBill(data, effectiveWidth);
     const printed = await writeEscPosBytes(bytes);
     if (printed) return true;
   } catch (err) {
     console.warn('Direct ESC/POS print error:', err);
   }
   // Fallback to browser receipt dialog
-  printReceiptViaBrowser(data, paperWidth);
+  printReceiptViaBrowser(data, effectiveWidth);
   return true;
 }
 
