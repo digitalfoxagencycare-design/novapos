@@ -12,7 +12,16 @@ import android.print.PrintManager;
 import android.util.Base64;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import androidx.core.app.ActivityCompat;
+import com.getcapacitor.PermissionState;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -33,65 +42,48 @@ import java.util.UUID;
  * - Raw ESC/POS byte streaming
  * - Android system printing dialog fallback
  */
-@CapacitorPlugin(name = "NovaPrint")
+@CapacitorPlugin(name = "NovaPrint", permissions = {
+    @Permission(alias = "bluetooth", strings = { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN })
+})
 public class NovaPrintPlugin extends Plugin {
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private static BluetoothSocket activeSocket = null;
-    private static String activeAddress = null;
-    private static String activeName = null;
+    private volatile BluetoothSocket activeSocket = null;
+    private volatile String activeAddress = null;
+    private volatile String activeName = null;
     private WebView printView;
+    private final ExecutorService printerWorker = Executors.newSingleThreadExecutor();
+    private final ScheduledExecutorService deadlines = Executors.newSingleThreadScheduledExecutor();
+    private final AtomicInteger connectionVersion = new AtomicInteger();
+    private volatile BluetoothSocket pendingSocket;
+
+    private boolean bluetoothGranted() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || getPermissionState("bluetooth") == PermissionState.GRANTED;
+    }
+    private boolean requireBluetooth(PluginCall call) {
+        if (bluetoothGranted()) return true;
+        call.reject("Allow Nearby devices permission before using the printer.", "BLUETOOTH_PERMISSION_DENIED");
+        return false;
+    }
 
     @PluginMethod
     public void requestBluetoothPermissions(PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            boolean hasConnect = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
-            boolean hasScan = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
-            if (!hasConnect || !hasScan) {
-                ActivityCompat.requestPermissions(getActivity(), new String[]{
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                }, 101);
-                JSObject ret = new JSObject();
-                ret.put("granted", false);
-                ret.put("requested", true);
-                call.resolve(ret);
-                return;
-            }
-        } else {
-            boolean hasLocation = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-            if (!hasLocation) {
-                ActivityCompat.requestPermissions(getActivity(), new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                }, 101);
-                JSObject ret = new JSObject();
-                ret.put("granted", false);
-                ret.put("requested", true);
-                call.resolve(ret);
-                return;
-            }
-        }
-        JSObject ret = new JSObject();
-        ret.put("granted", true);
-        call.resolve(ret);
+        if (bluetoothGranted()) { resolveBluetoothPermission(call); return; }
+        getActivity().runOnUiThread(() -> requestPermissionForAlias("bluetooth", call, "bluetoothPermissionResult"));
+    }
+
+    @PermissionCallback
+    private void bluetoothPermissionResult(PluginCall call) { resolveBluetoothPermission(call); }
+
+    private void resolveBluetoothPermission(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", bluetoothGranted());
+        call.resolve(result);
     }
 
     @PluginMethod
     public void listPairedDevices(PluginCall call) {
         try {
-            // Check Android 12+ permissions
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(getActivity(), new String[]{
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                        Manifest.permission.BLUETOOTH_SCAN,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    }, 101);
-                    call.reject("Please grant Bluetooth permission in the Android popup prompt, then tap PAIR / SCAN again.");
-                    return;
-                }
-            }
+            if (!requireBluetooth(call)) return;
 
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
             if (adapter == null) {
@@ -131,114 +123,101 @@ public class NovaPrintPlugin extends Plugin {
 
     @PluginMethod
     public void connectBluetooth(PluginCall call) {
+        if (!requireBluetooth(call)) return;
         String address = call.getString("address");
-        if (address == null || address.trim().isEmpty()) {
-            call.reject("Bluetooth MAC address is required");
-            return;
+        if (address == null || !BluetoothAdapter.checkBluetoothAddress(address.trim())) {
+            call.reject("A valid Bluetooth MAC address is required"); return;
         }
-
-        new Thread(() -> {
+        final int version = connectionVersion.incrementAndGet();
+        closeSocket(pendingSocket);
+        printerWorker.execute(() -> {
+            BluetoothSocket socket = null;
+            ScheduledFuture<?> timeout = null;
+            AtomicBoolean finished = new AtomicBoolean(false);
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(getActivity(), new String[]{
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.BLUETOOTH_SCAN
-                        }, 101);
-                        call.reject("Please grant Bluetooth permission in the popup prompt, then tap Connect again.");
-                        return;
-                    }
-                }
-
+                if (connectionVersion.get() != version) { call.reject("Connection cancelled"); return; }
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                if (adapter == null || !adapter.isEnabled()) {
-                    call.reject("Bluetooth is unavailable or disabled");
-                    return;
-                }
-
-                // Close existing connection if any
+                if (adapter == null || !adapter.isEnabled()) { call.reject("Turn on Bluetooth in Android Settings."); return; }
                 closeActiveSocket();
-
                 BluetoothDevice device = adapter.getRemoteDevice(address.trim());
-                BluetoothSocket socket = device.createRfcommSocketToServiceRecord(SPP_UUID);
-                
-                // Cancel discovery before connecting to speed up connection
-                try {
-                    adapter.cancelDiscovery();
-                } catch (SecurityException ignored) {}
-
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID);
+                pendingSocket = socket;
+                final BluetoothSocket connecting = socket;
+                timeout = deadlines.schedule(() -> { if (!finished.get()) closeSocket(connecting); }, 15, TimeUnit.SECONDS);
+                adapter.cancelDiscovery();
                 socket.connect();
+                finished.set(true);
+                if (connectionVersion.get() != version) { closeSocket(socket); call.reject("Connection cancelled"); return; }
                 activeSocket = socket;
                 activeAddress = address.trim();
-                try {
-                    String name = device.getName();
-                    activeName = name != null && !name.isEmpty() ? name : "Bluetooth Printer";
-                } catch (SecurityException se) {
-                    activeName = "Bluetooth Printer";
-                }
-
-                JSObject ret = new JSObject();
-                ret.put("connected", true);
-                ret.put("address", activeAddress);
-                ret.put("name", activeName);
-                call.resolve(ret);
-            } catch (SecurityException se) {
+                activeName = device.getName() == null ? "Bluetooth Printer" : device.getName();
+                JSObject result = new JSObject();
+                result.put("connected", true); result.put("address", activeAddress); result.put("name", activeName);
+                call.resolve(result);
+            } catch (Exception error) {
+                closeSocket(socket);
                 closeActiveSocket();
-                call.reject("Bluetooth permission missing: " + se.getMessage());
-            } catch (Exception ex) {
-                closeActiveSocket();
-                call.reject("Could not connect to printer (" + address + "). Make sure printer is turned on & paired: " + ex.getMessage());
+                call.reject("Printer connection failed or timed out. Check power, pairing and Nearby devices permission.", error);
+            } finally {
+                finished.set(true);
+                if (timeout != null) timeout.cancel(false);
+                pendingSocket = null;
             }
-        }).start();
+        });
     }
 
     @PluginMethod
     public void disconnectBluetooth(PluginCall call) {
+        connectionVersion.incrementAndGet();
+        closeSocket(pendingSocket);
         closeActiveSocket();
-        JSObject ret = new JSObject();
-        ret.put("connected", false);
-        call.resolve(ret);
+        JSObject result = new JSObject(); result.put("connected", false); call.resolve(result);
     }
 
     @PluginMethod
     public void isBluetoothConnected(PluginCall call) {
-        boolean isConnected = activeSocket != null && activeSocket.isConnected();
-        JSObject ret = new JSObject();
-        ret.put("connected", isConnected);
-        ret.put("address", isConnected ? activeAddress : null);
-        ret.put("name", isConnected ? activeName : null);
-        call.resolve(ret);
+        BluetoothSocket socket = activeSocket;
+        boolean connected = bluetoothGranted() && socket != null && socket.isConnected();
+        JSObject result = new JSObject();
+        result.put("connected", connected);
+        result.put("address", connected ? activeAddress : null);
+        result.put("name", connected ? activeName : null);
+        call.resolve(result);
     }
 
     @PluginMethod
     public void printRawEscPos(PluginCall call) {
-        String base64Data = call.getString("data");
-        if (base64Data == null || base64Data.isEmpty()) {
-            call.reject("ESC/POS print data is empty");
-            return;
-        }
-
-        new Thread(() -> {
+        if (!requireBluetooth(call)) return;
+        String data = call.getString("data");
+        if (data == null || data.isEmpty() || data.length() > 2_000_000) { call.reject("Invalid or oversized receipt"); return; }
+        final BluetoothSocket target = activeSocket;
+        printerWorker.execute(() -> {
+            ScheduledFuture<?> timeout = null;
+            AtomicBoolean finished = new AtomicBoolean(false);
             try {
-                if (activeSocket == null || !activeSocket.isConnected()) {
-                    call.reject("Printer is not connected via Bluetooth SPP");
-                    return;
+                if (target == null || target != activeSocket || !target.isConnected()) { call.reject("Printer is disconnected"); return; }
+                byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+                if (bytes.length == 0) { call.reject("Receipt is empty"); return; }
+                timeout = deadlines.schedule(() -> { if (!finished.get()) closeSocket(target); }, 30, TimeUnit.SECONDS);
+                OutputStream output = target.getOutputStream();
+                for (int offset = 0; offset < bytes.length; offset += 256) {
+                    output.write(bytes, offset, Math.min(256, bytes.length - offset));
+                    output.flush();
+                    if (offset + 256 < bytes.length) Thread.sleep(10);
                 }
-
-                byte[] rawBytes = Base64.decode(base64Data, Base64.DEFAULT);
-                OutputStream out = activeSocket.getOutputStream();
-                out.write(rawBytes);
-                out.flush();
-
-                JSObject ret = new JSObject();
-                ret.put("success", true);
-                ret.put("bytesPrinted", rawBytes.length);
-                call.resolve(ret);
-            } catch (Exception ex) {
-                closeActiveSocket();
-                call.reject("Printing failed: " + ex.getMessage());
+                finished.set(true);
+                JSObject result = new JSObject(); result.put("success", true);
+                // Socket delivery is not a physical paper/status acknowledgement.
+                result.put("bytesPrinted", bytes.length); call.resolve(result);
+            } catch (Exception error) {
+                closeSocket(target);
+                if (activeSocket == target) closeActiveSocket();
+                call.reject("Print failed or timed out; some paper may already have printed. Check before reprinting.", error);
+            } finally {
+                finished.set(true);
+                if (timeout != null) timeout.cancel(false);
             }
-        }).start();
+        });
     }
 
     @PluginMethod
@@ -252,6 +231,9 @@ public class NovaPrintPlugin extends Plugin {
             try {
                 printView = new WebView(getActivity());
                 printView.getSettings().setJavaScriptEnabled(false);
+                printView.getSettings().setAllowFileAccess(false);
+                printView.getSettings().setAllowContentAccess(false);
+                printView.getSettings().setBlockNetworkLoads(true);
                 printView.setWebViewClient(new WebViewClient() {
                     private boolean opened = false;
                     @Override
@@ -272,7 +254,7 @@ public class NovaPrintPlugin extends Plugin {
         });
     }
 
-    private static synchronized void closeActiveSocket() {
+    private synchronized void closeActiveSocket() {
         if (activeSocket != null) {
             try {
                 activeSocket.close();
@@ -282,4 +264,18 @@ public class NovaPrintPlugin extends Plugin {
         activeAddress = null;
         activeName = null;
     }
+    private static void closeSocket(BluetoothSocket socket) {
+        if (socket != null) try { socket.close(); } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        connectionVersion.incrementAndGet();
+        closeSocket(pendingSocket);
+        closeActiveSocket();
+        printerWorker.shutdownNow(); deadlines.shutdownNow();
+        if (printView != null) getActivity().runOnUiThread(() -> { printView.destroy(); printView = null; });
+        super.handleOnDestroy();
+    }
+
 }

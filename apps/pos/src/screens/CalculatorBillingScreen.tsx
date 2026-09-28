@@ -1,3 +1,5 @@
+import { shouldPrintSale } from '../lib/printerSettings';
+import { loadEzoSettings } from '../lib/ezoSettings';
 import { useBackHandler } from '../lib/navigation';
 import React, { useState, useEffect } from 'react';
 import {
@@ -24,7 +26,7 @@ import {
   type BillData,
   type PaperWidth,
 } from '../lib/thermalPrinter';
-import { addDayBookEntry } from '../lib/dayBook';
+import { addDayBookEntry, nextInvoiceNumber } from '../lib/dayBook';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
 import { loadParties, upsertParty, recordKhataSale, type Party } from '../lib/khata';
 
@@ -243,13 +245,13 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
     const total = finalLines.reduce((s, l) => s + l.amount, 0);
     if (total <= 0) return;
 
-    const billNo = `CALC-${Date.now().toString().slice(-6)}`;
+    const billNo = nextInvoiceNumber();
     const now = new Date();
 
     const billData: BillData = {
       restaurantName: profileName || 'NovaPOS Store',
-      address: address || 'Hyderabad',
-      phone: phone || '9701463241',
+      address: address || '',
+      phone: phone || '',
       billNo,
       date: now.toLocaleDateString('en-IN'),
       time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
@@ -267,28 +269,19 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
       sgst: 0,
       total,
       paymentMode: mode === 'credit' ? 'CREDIT (KHATA)' : mode.toUpperCase(),
-      upiVpa: upiVpa || 'merchant@upi',
-      upiPayload: `upi://pay?pa=${encodeURIComponent(upiVpa || 'merchant@upi')}&pn=${encodeURIComponent(profileName || 'Store')}&am=${total.toFixed(2)}&cu=INR`,
+      upiVpa: upiVpa || undefined,
+      upiPayload: upiVpa ? `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent(profileName || 'Store')}&am=${total.toFixed(2)}&cu=INR` : undefined,
     };
 
-    // 1. Voice audio alert
-    speakPaymentAlert(total, mode === 'credit' ? 'Khata' : mode);
-
-    // 2. Thermal receipt printing
-    try {
-      void printBillDirect(billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
-    } catch {
-      // print fallback
-    }
-
-    // 3. Log into Day Book
-    addDayBookEntry({
+    // Persist the receipt before starting any hardware side effects.
+    try { addDayBookEntry({
       type: 'sale',
       description: `Fast Calculator Sale #${billNo} (${mode.toUpperCase()})`,
       amount: total,
       paymentMode: mode,
       referenceNo: billNo,
-    });
+      receiptSnapshot: billData,
+    }); } catch (error) { window.alert('Sale was not saved: ' + (error as Error).message); return; }
 
     // 4. If Credit/Khata, update customer ledger
     if (mode === 'credit' && selectedParty) {
@@ -302,13 +295,17 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
     setCurrentNote('');
     setKhataModalOpen(false);
 
+    speakPaymentAlert(total, mode === 'credit' ? 'Khata' : mode);
+    if (shouldPrintSale(Boolean(loadEzoSettings().askToPrintBill))) {
+      void printBillDirect(billData).catch(error => window.alert('Sale saved. Printing failed: ' + error.message + '. Check the receipt before reprinting.'));
+    }
     if (onSaleCompleted) onSaleCompleted(total, mode);
   };
 
   const handleReprintLastBill = () => {
     if (!lastBilled) return;
     try {
-      void printBillDirect(lastBilled.billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
+      void printBillDirect(lastBilled.billData).catch(error => window.alert('Print failed: ' + error.message));
     } catch {
       // ignore
     }
@@ -769,3 +766,5 @@ export const CalculatorBillingScreen: React.FC<Props> = ({
     </div>
   );
 };
+
+

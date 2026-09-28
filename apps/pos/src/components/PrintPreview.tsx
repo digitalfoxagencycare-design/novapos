@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useBackHandler } from '../lib/navigation';
 
-const NativePrint = registerPlugin<{ printHtml(options: { html: string; title: string }): Promise<void> }>('NovaPrint');
+import { NovaPrint as NativePrint } from '../lib/nativePrint';
 
 export function showPrintPreview(html: string) {
   window.dispatchEvent(new CustomEvent('novapos:print', { detail: html }));

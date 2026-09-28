@@ -1,3 +1,4 @@
+import { shouldPrintSale } from '../lib/printerSettings';
 import { priceCounterSale } from '../lib/counterPricing';
 import { itemBarcodes, findCatalogItemByCode } from '../lib/catalog';
 import { useBackHandler } from '../lib/navigation';
@@ -160,7 +161,7 @@ export const BillingScreen: React.FC<Props> = ({
   const [isReceivedChecked, setIsReceivedChecked] = useState(true);
 
   // Draft / Held Bills
-  const [heldBills, setHeldBills] = useState<{ id: string; lines: CartLine[]; customerName: string; customerPhone?: string; time: string }[]>(() => {
+  const [heldBills, setHeldBills] = useState<{ id: string; lines: CartLine[]; customerName: string; customerPhone?: string; time: string; discountPercent?: number; discountAmount?: number; orderType?: string }[]>(() => {
     try { return JSON.parse(localStorage.getItem('novapos:held_bills') || '[]'); } catch { return []; }
   });
   useEffect(() => { localStorage.setItem('novapos:held_bills', JSON.stringify(heldBills)); }, [heldBills]);
@@ -325,13 +326,15 @@ export const BillingScreen: React.FC<Props> = ({
       ...prev,
       {
         id: `held-${Date.now()}`,
-        lines: [...cart],
+        lines: cart.map(line => ({ ...line })),
+        discountPercent, discountAmount, orderType,
         customerName: customerName || 'Customer',
         customerPhone,
         time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
     onClearCart();
+    setDiscountPercent(0); setDiscountAmount(0);
     setCustomerPhone('');
     setCustomerName('');
   };
@@ -339,7 +342,11 @@ export const BillingScreen: React.FC<Props> = ({
   const handleRecallBill = (heldId: string) => {
     const found = heldBills.find((b) => b.id === heldId);
     if (!found) return;
+    if (cart.length > 0) { setSaleError('Hold or finish the current bill before recalling another bill.'); return; }
     onUpdateCart(found.lines);
+    setDiscountPercent(found.discountPercent ?? 0);
+    setDiscountAmount(found.discountAmount ?? 0);
+    setOrderType(found.orderType ?? 'Parcel');
     setCustomerName(found.customerName);
     setCustomerPhone(found.customerPhone || '');
     setHeldBills((prev) => prev.filter((b) => b.id !== heldId));
@@ -397,8 +404,8 @@ export const BillingScreen: React.FC<Props> = ({
 
     const billData: BillData = {
       restaurantName: profileName || 'NovaPOS Store',
-      address: address || 'Hyderabad',
-      phone: phone || '9381563241',
+      address: address || '',
+      phone: phone || '',
       gstin: gstin || undefined,
       fssai: fssai || undefined,
       billNo,
@@ -442,8 +449,8 @@ export const BillingScreen: React.FC<Props> = ({
 
     onSold?.(cart);
     speakPaymentAlert(finalTotal, mode === 'credit' ? 'Khata' : mode);
-    if (!settings.askToPrintBill || window.confirm('Print receipt bill?')) {
-      void printBillDirect(billData, ((localStorage.getItem('novapos_printer_paper_width') || localStorage.getItem('novapos:paper_width')) as PaperWidth) || '58mm');
+    if (shouldPrintSale(Boolean(settings.askToPrintBill))) {
+      void printBillDirect(billData).catch(error => setSaleError(`Sale saved. Printing failed: ${(error as Error).message}. Check the receipt before reprinting.`));
     }
 
     if (mode === 'credit' && matchedParty) {
@@ -460,6 +467,7 @@ export const BillingScreen: React.FC<Props> = ({
     });
 
     onClearCart();
+    setDiscountPercent(0); setDiscountAmount(0);
     setCustomerPhone('');
     setCustomerName('');
     setMatchedParty(null);
@@ -793,7 +801,7 @@ export const BillingScreen: React.FC<Props> = ({
             onClick={() => setIsReceivedChecked(!isReceivedChecked)}
           >
             {isReceivedChecked ? (
-              <CheckSquare className="w-5 h-5 text-indigo-600 mr-1.5" />
+              <CheckSquare className="w-5 h-5 text-orange-600 mr-1.5" />
             ) : (
               <Square className="w-5 h-5 text-slate-400 mr-1.5" />
             )}
@@ -1069,7 +1077,7 @@ export const BillingScreen: React.FC<Props> = ({
             <div className="modal-header">
               <div>
                 <h3 className="text-base font-bold text-slate-900">{weightItem.name}</h3>
-                <span className="text-xs text-indigo-600 font-semibold">
+                <span className="text-xs text-orange-600 font-semibold">
                   Rate: ₹{(weightItem.priceMinor / 100).toFixed(2)} / {weightItem.uom}
                 </span>
               </div>
@@ -1098,8 +1106,8 @@ export const BillingScreen: React.FC<Props> = ({
                     }}
                     className={`py-2 px-1 rounded-lg text-xs font-black text-center ${
                       Number(grams) === preset.val
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        ? 'bg-orange-600 text-white shadow-sm'
+                        : 'bg-orange-50 text-orange-700 border border-orange-200'
                     }`}
                   >
                     {preset.label}
@@ -1134,3 +1142,5 @@ export const BillingScreen: React.FC<Props> = ({
     </div>
   );
 };
+
+

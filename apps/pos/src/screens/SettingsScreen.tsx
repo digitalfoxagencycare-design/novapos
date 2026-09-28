@@ -1,3 +1,4 @@
+import { getPaperWidth, setPaperWidth as persistPaperWidth } from '../lib/printerSettings';
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
@@ -90,7 +91,7 @@ export const SettingsScreen: React.FC<Props> = ({
 
   // Ezo-style Printer States
   const [paperWidth, setPaperWidth] = useState<PaperWidth>(() => {
-    return (localStorage.getItem('novapos_printer_paper_width') as PaperWidth) || '58mm';
+    return getPaperWidth();
   });
   const [printerType, setPrinterType] = useState<'bluetooth' | 'usb'>(() => {
     return (localStorage.getItem('novapos_printer_type') as 'bluetooth' | 'usb') || 'bluetooth';
@@ -188,7 +189,7 @@ export const SettingsScreen: React.FC<Props> = ({
     setPrinterError(null);
     try {
       // First ensure runtime permissions on Android 12+
-      await requestNativeBluetoothPermissions().catch(() => undefined);
+      
       const devices = await listPairedBluetoothPrinters();
       setPairedDevicesList(devices);
       setPairedDevicesModalOpen(true);
@@ -203,6 +204,7 @@ export const SettingsScreen: React.FC<Props> = ({
     setConnecting(true);
     setPrinterError(null);
     try {
+      await connectNativeBluetoothPrinter(device.address);
       localStorage.setItem('novapos_printer_mac', device.address);
       localStorage.setItem('novapos_printer_name', device.name);
       const dev: PrinterDevice = {
@@ -214,11 +216,6 @@ export const SettingsScreen: React.FC<Props> = ({
       setConnectedPrinter(dev);
       setPairedDevicesModalOpen(false);
       showSavedNotification();
-
-      // Connect RFCOMM SPP socket in background
-      await connectNativeBluetoothPrinter(device.address).catch((err) => {
-        console.warn('Socket connect attempt:', err);
-      });
 
       // Prompt test print verification
       setTimeout(() => {
@@ -254,7 +251,7 @@ export const SettingsScreen: React.FC<Props> = ({
   };
 
   const handleSavePrinterSettings = () => {
-    localStorage.setItem('novapos_printer_paper_width', paperWidth);
+    persistPaperWidth(paperWidth);
     localStorage.setItem('novapos_printer_type', printerType);
     localStorage.setItem('novapos_primary_printer_enabled', String(primaryPrinterEnabled));
     localStorage.setItem('novapos_secondary_kot_enabled', String(secondaryKotEnabled));
@@ -968,3 +965,4 @@ export const SettingsScreen: React.FC<Props> = ({
     </div>
   );
 };
+
