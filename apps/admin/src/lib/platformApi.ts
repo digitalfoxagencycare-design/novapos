@@ -1,6 +1,14 @@
+import { resolveApiBase } from './apiBase';
+
 export interface Actor { sub: string; role: 'SUPER_ADMIN' | 'DEALER'; name: string; dealerCode?: string }
+export interface ImpersonationAccess {
+ sessionId: string;
+ accessToken: string;
+ expiresAt: string;
+ tenant: { id: string; name: string; slug: string };
+}
 const key = 'novapos:platform:token';
-const base = `${(import.meta.env.VITE_API_URL || 'https://api.novasaas.net').replace(/\/$/,'')}/api/v1`;
+const base = resolveApiBase();
 export const platformApi = {
  hasSession: () => Boolean(sessionStorage.getItem(key)),
  logout: () => sessionStorage.removeItem(key),
@@ -14,5 +22,9 @@ export const platformApi = {
  async login(identifier: string, password: string): Promise<Actor> {
    const data = await this.request('/admin/auth/login','POST',{identifier,password});
    sessionStorage.setItem(key,data.accessToken); return data.actor;
+ },
+ async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+   const data = await this.request('/admin/auth/password-change','POST',{currentPassword,newPassword});
+   sessionStorage.setItem(key,data.accessToken);
  }
 };

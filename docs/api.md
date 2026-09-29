@@ -222,6 +222,83 @@ GET /reports/shifts/:id
 
 ---
 
+## Platform administration
+
+Platform sessions use the `novapos-platform` JWT audience and are separate from merchant
+sessions. The unified admin portal routes `SUPER_ADMIN` and `DEALER` accounts after login.
+
+```http
+POST  /admin/auth/login                    { identifier, password }
+GET   /admin/auth/me                       platform session required
+POST  /admin/auth/password-change          { currentPassword, newPassword }
+GET   /admin/super/metrics                 super admin
+GET   /admin/super/dealers                 super admin
+GET   /admin/super/dealers/:id/360          super admin
+POST  /admin/super/dealers/:id/allocations { seats, note?, expiresAt? } super admin
+POST  /admin/super/dealers/:id/payouts     { periodMonth: "YYYY-MM" } super admin
+POST  /admin/super/dealers/:id/payouts/:payoutId/settle { utrReference } super admin
+GET   /admin/super/tenants                 super admin
+POST  /admin/super/tenants/:id/subscription super admin
+POST  /admin/super/tenants/:id/impersonate super admin + reason
+POST  /admin/super/impersonation/:sessionId/end revoke support session
+GET   /admin/dealer/stats                  dealer
+GET   /admin/dealer/my-merchants           dealer-owned merchants only
+POST  /admin/dealer/merchants              create a merchant, outlet and owner account
+POST  /public/telemetry/events             rate-limited public funnel event ingestion
+GET   /admin/super/telemetry/overview      super admin; requires from/to, maximum 93 days
+GET   /admin/super/telemetry/timeseries    super admin; requires from/to, maximum 93 days
+GET   /admin/super/store-pulse              super admin
+```
+
+Merchant listing also accepts optional `search`, `status`, `plan`, `health`, `dealerCode`,
+`page`, and `limit` filters. Dealer requests remain restricted to the authenticated dealer
+regardless of the supplied filter values.
+
+Dealer onboarding accepts a 10-digit owner mobile number, a `restaurant` or `retail` profile,
+and either a 14-day trial or a Starter Monthly / Pro Yearly activation. The response includes
+the new store slug and a randomly generated initial owner PIN; it is returned only once, so
+share it with the owner through a secure channel. Dealer access is checked again during the
+creation transaction, and the merchant is always attached to the authenticated dealer. A
+dealer must have an unexpired quota allocation with an available seat; Super Admins can grant
+additional seats from the dealer detail drawer. Seat consumption, tenant creation, and dealer
+attribution are part of the same transaction.
+
+Dealer commission entries are append-only references to license activations and preserve
+amounts in INR minor units. A Super Admin can create a monthly payout from accrued entries and
+record its UTR only after confirming the funds were transferred. Activation-based commission is
+an estimate of platform revenue, not proof of collection. Public telemetry accepts only the
+listed funnel event fields, is rate-limited, and must not be sent personal information. Merchant
+health snapshots are refreshed at startup and every 15 minutes, and when the Super Admin views
+the store pulse.
+
+Platform password changes verify the current password, hash the replacement with Argon2id, and
+advance the account's auth version to invalidate older platform access tokens and revoke its
+active support sessions.
+
+Super Admin merchant support is a full owner-level read/write session, limited to 10 minutes.
+Starting one requires a 10–500 character reason and an active merchant with an active owner.
+The generated tenant token is tab-scoped, has no refresh token, and is checked against the
+persisted session on every authenticated tenant API request; revoked, expired, suspended, or
+deleted accounts fail closed. Each authenticated tenant API request is written to platform
+audit logs, and tenant audit entries written by audited services include the support session
+and admin identity. Realtime WebSocket connections are not allowed
+from support sessions. The portal displays a persistent store-specific banner and revokes the
+session on exit. Apply the Drizzle migrations before deploying these endpoints.
+
+`pnpm --filter @novapos/api tsx src/db/seed-platform.ts` seeds the development Super Admin and
+official dealer accounts. The fixed development passwords requested by the initial setup are
+not allowed in production; set unique `PLATFORM_SEED_ADMIN_PASSWORD` and
+`PLATFORM_SEED_DEALER_PASSWORD` values before running a production seed. Change development
+passwords immediately after first sign-in. Re-running the seed resets both seeded passwords
+and invalidates existing platform tokens for those accounts.
+
+The general demo-data seed (`pnpm --filter @novapos/api seed`) is forbidden when
+`NODE_ENV=production`. In development, it also exits without modifying the database unless
+`--force-demo-reset` is passed or `ALLOW_TENANT_RESET=true` is set. This seed deletes all
+tenants in its configured database before recreating demo data.
+
+---
+
 ## Printing
 
 ```http

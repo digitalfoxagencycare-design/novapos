@@ -29,6 +29,9 @@ END $$;
 -- The app role must NOT bypass RLS. Stated explicitly because a role that
 -- inherits BYPASSRLS from somewhere would silently defeat the whole design.
 ALTER ROLE novapos_app NOBYPASSRLS;
+-- The privileged API pool deliberately bypasses tenant RLS for platform-wide
+-- operations; credentials for this role must never be used by public traffic.
+ALTER ROLE novapos_admin BYPASSRLS;
 
 DO $$ BEGIN
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO novapos_app, novapos_admin', current_database());

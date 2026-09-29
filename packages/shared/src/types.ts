@@ -75,6 +75,8 @@ export interface JwtClaims {
   outletId: string | null;
   role: StaffRole;
   perms: Permission[];
+  supportSessionId?: string;
+  platformAdminId?: string;
   iat?: number;
   exp?: number;
 }

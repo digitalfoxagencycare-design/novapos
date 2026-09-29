@@ -1,0 +1,1 @@
+ALTER TYPE "public"."dealer_commission_status" ADD VALUE 'invoiced' BEFORE 'settled';

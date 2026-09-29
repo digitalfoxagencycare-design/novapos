@@ -546,6 +546,7 @@ export class AuthService {
     try {
       const claims = this.jwt.verify<JwtClaims>(token);
       if (!claims.tenantId || !Array.isArray(claims.perms) || !['OWNER','MANAGER','CASHIER','WAITER','KITCHEN'].includes(claims.role)) throw new Error('Invalid tenant token');
+      if (Boolean(claims.supportSessionId) !== Boolean(claims.platformAdminId)) throw new Error('Invalid support token');
       return claims;
     } catch (err) {
       throw Errors.unauthorized(
@@ -661,4 +662,3 @@ function parseSeconds(ttl: string): number {
   const n = Number(m[1]);
   return { d: n * 86400, h: n * 3600, m: n * 60, s: n }[m[2] as 'd' | 'h' | 'm' | 's'];
 }
-

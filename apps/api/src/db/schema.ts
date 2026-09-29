@@ -18,7 +18,7 @@
  */
 
 import {
-  pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb,
+  pgTable, pgEnum, uuid, text, integer, boolean, timestamp, date, jsonb,
   numeric, index, uniqueIndex, primaryKey, check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -45,6 +45,14 @@ export const printJobStatus = pgEnum('print_job_status', ['QUEUED', 'PRINTING', 
 export const stockReason = pgEnum('stock_movement_reason', [
   'SALE', 'VOID_RESTOCK', 'PURCHASE', 'WASTAGE', 'ADJUSTMENT', 'TRANSFER_IN', 'TRANSFER_OUT', 'OPENING',
 ]);
+export const dealerTier = pgEnum('dealer_tier', ['silver', 'gold', 'platinum']);
+export const dealerAllocationStatus = pgEnum('dealer_allocation_status', ['active', 'exhausted', 'revoked']);
+export const dealerCommissionStatus = pgEnum('dealer_commission_status', ['accrued', 'invoiced', 'settled', 'reversed']);
+export const dealerPayoutStatus = pgEnum('dealer_payout_status', ['pending', 'paid', 'failed']);
+export const telemetryEventType = pgEnum('telemetry_event_type', [
+  'landing_visit', 'pricing_view', 'trial_signup', 'trial_converted', 'pos_activated', 'store_churned',
+]);
+export const storeHealthStatus = pgEnum('store_health_status', ['healthy', 'idle', 'at_risk', 'churned']);
 
 /* ────────────────────────  Tenancy & identity  ──────────────────────── */
 
@@ -54,6 +62,14 @@ export const dealers = pgTable('dealers', {
   email: text('email').notNull().unique(), passwordHash: text('password_hash').notNull(),
   dealerCode: text('dealer_code').notNull().unique(),
   commissionPercent: integer('commission_percent').notNull().default(20),
+  commissionRate: numeric('commission_rate', { precision: 5, scale: 4 }).notNull().default('0.2000'),
+  tier: dealerTier('tier').notNull().default('silver'),
+  territory: text('territory'),
+  city: text('city'),
+  country: text('country').notNull().default('IN'),
+  onboardingDate: date('onboarding_date').notNull().default(sql`CURRENT_DATE`),
+  bankAccountMask: text('bank_account_mask'),
+  authVersion: integer('auth_version').notNull().default(0),
   status: text('status').notNull().default('ACTIVE'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -65,6 +81,7 @@ export const platformAdmins = pgTable('platform_admins', {
   id: uuid('id').primaryKey().defaultRandom(), name: text('name').notNull(),
   email: text('email').notNull().unique(), phone: text('phone').notNull().unique(),
   passwordHash: text('password_hash').notNull(), role: text('role').notNull().default('SUPER_ADMIN'),
+  authVersion: integer('auth_version').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => ({ validRole: check('platform_admin_role', sql`${t.role} = 'SUPER_ADMIN'`) }));
 export const tenants = pgTable('tenants', {
@@ -100,6 +117,109 @@ export const licenseActivations = pgTable('license_activations', {
   validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => ({ byDealerMonth: index('license_activations_dealer_month_idx').on(t.dealerId,t.createdAt) }));
+
+export const dealerAllocations = pgTable('dealer_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull().references(() => dealers.id, { onDelete: 'restrict' }),
+  grantedSeats: integer('granted_seats').notNull(),
+  consumedSeats: integer('consumed_seats').notNull().default(0),
+  remainingSeats: integer('remaining_seats').generatedAlwaysAs(sql`granted_seats - consumed_seats`),
+  status: dealerAllocationStatus('status').notNull().default('active'),
+  grantedBy: uuid('granted_by').notNull(),
+  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  note: text('note'),
+}, t => ({
+  byDealer: index('dealer_allocations_dealer_idx').on(t.dealerId, t.status),
+}));
+
+export const dealerStoreAttribution = pgTable('dealer_store_attribution', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull().references(() => dealers.id, { onDelete: 'restrict' }),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  allocationId: uuid('allocation_id').references(() => dealerAllocations.id, { onDelete: 'restrict' }),
+  onboardedAt: timestamp('onboarded_at', { withTimezone: true }).notNull().defaultNow(),
+  trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
+  convertedAt: timestamp('converted_at', { withTimezone: true }),
+  isActivePaid: boolean('is_active_paid').notNull().default(false),
+}, t => ({
+  tenantUnique: uniqueIndex('dealer_store_attribution_tenant_uq').on(t.tenantId),
+  byDealerCohort: index('dealer_store_attribution_cohort_idx').on(t.dealerId, t.onboardedAt),
+}));
+
+export const dealerPayouts = pgTable('dealer_payouts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull().references(() => dealers.id, { onDelete: 'restrict' }),
+  periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+  periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+  grossCommissionMinor: integer('gross_commission_minor').notNull(),
+  adjustmentsMinor: integer('adjustments_minor').notNull().default(0),
+  netPayableMinor: integer('net_payable_minor').notNull(),
+  currency: text('currency').notNull().default('INR'),
+  status: dealerPayoutStatus('status').notNull().default('pending'),
+  utrReference: text('utr_reference'),
+  bankAccountMask: text('bank_account_mask'),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
+  settledBy: uuid('settled_by'),
+  failureReason: text('failure_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  dealerPeriodUnique: uniqueIndex('dealer_payouts_dealer_period_uq').on(t.dealerId, t.periodStart, t.periodEnd),
+  byStatus: index('dealer_payouts_status_idx').on(t.status),
+  utrUnique: uniqueIndex('dealer_payouts_utr_uq').on(t.utrReference),
+}));
+
+export const dealerCommissionEntries = pgTable('dealer_commission_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull().references(() => dealers.id, { onDelete: 'restrict' }),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'restrict' }),
+  activationId: uuid('activation_id').notNull().references(() => licenseActivations.id, { onDelete: 'restrict' }),
+  grossAmountMinor: integer('gross_amount_minor').notNull(),
+  commissionRate: numeric('commission_rate', { precision: 5, scale: 4 }).notNull(),
+  commissionAmountMinor: integer('commission_amount_minor').notNull(),
+  periodMonth: text('period_month').notNull(),
+  status: dealerCommissionStatus('status').notNull().default('accrued'),
+  payoutId: uuid('payout_id').references(() => dealerPayouts.id, { onDelete: 'restrict' }),
+  accruedAt: timestamp('accrued_at', { withTimezone: true }).notNull().defaultNow(),
+  reversedAt: timestamp('reversed_at', { withTimezone: true }),
+  reversalReason: text('reversal_reason'),
+}, t => ({
+  activationUnique: uniqueIndex('dealer_commission_activation_uq').on(t.activationId),
+  byDealerPeriod: index('dealer_commission_dealer_period_idx').on(t.dealerId, t.periodMonth),
+  byPayout: index('dealer_commission_payout_idx').on(t.payoutId),
+}));
+
+export const platformTelemetry = pgTable('platform_telemetry', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventType: telemetryEventType('event_type').notNull(),
+  sessionId: text('session_id'),
+  visitorId: text('visitor_id'),
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  country: text('country'),
+  city: text('city'),
+  referrer: text('referrer'),
+  deviceType: text('device_type'),
+  path: text('path'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  byEventType: index('platform_telemetry_event_idx').on(t.eventType, t.occurredAt),
+  bySource: index('platform_telemetry_source_idx').on(t.utmSource),
+}));
+
+export const storeHealthSnapshots = pgTable('store_health_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  lastBillAt: timestamp('last_bill_at', { withTimezone: true }),
+  billsLast24h: integer('bills_last_24h').notNull().default(0),
+  billsLast72h: integer('bills_last_72h').notNull().default(0),
+  healthStatus: storeHealthStatus('health_status').notNull().default('healthy'),
+  computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  tenantUnique: uniqueIndex('store_health_snapshots_tenant_uq').on(t.tenantId),
+  byStatus: index('store_health_snapshots_status_idx').on(t.healthStatus),
+}));
 
 export const outlets = pgTable('outlets', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -178,6 +298,41 @@ export const refreshTokens = pgTable('refresh_tokens', {
 }, (t) => ({
   byStaff: index('refresh_tokens_staff_idx').on(t.staffId),
   byFamily: index('refresh_tokens_family_idx').on(t.familyId),
+}));
+
+export const impersonationSessions = pgTable('impersonation_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  platformAdminId: uuid('platform_admin_id').notNull().references(() => platformAdmins.id, { onDelete: 'restrict' }),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  targetStaffId: uuid('target_staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  reason: text('reason').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  byAdmin: index('impersonation_sessions_admin_idx').on(t.platformAdminId, t.createdAt),
+  byTenant: index('impersonation_sessions_tenant_idx').on(t.tenantId, t.createdAt),
+}));
+
+export const platformAuditLogs = pgTable('platform_audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  actorAdminId: uuid('actor_admin_id').references(() => platformAdmins.id, { onDelete: 'set null' }),
+  impersonationSessionId: uuid('impersonation_session_id').references(() => impersonationSessions.id, { onDelete: 'set null' }),
+  tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
+  action: text('action').notNull(),
+  requestId: text('request_id'),
+  method: text('method'),
+  path: text('path'),
+  reason: text('reason'),
+  detail: jsonb('detail').notNull().default(sql`'{}'::jsonb`),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  byAdmin: index('platform_audit_logs_admin_idx').on(t.actorAdminId, t.createdAt),
+  byTenant: index('platform_audit_logs_tenant_idx').on(t.tenantId, t.createdAt),
 }));
 
 /* ──────────────────────────────  Menu  ────────────────────────────── */
@@ -916,9 +1071,11 @@ export const TENANT_SCOPED_TABLES = [
   'kots', 'kot_lines', 'payments', 'inventory_items', 'stock_levels',
   'stock_movements', 'recipe_components', 'invoice_sequences', 'print_jobs',
   'audit_logs', 'idempotency_records', 'license_activations',
+  'dealer_store_attribution', 'dealer_commission_entries', 'store_health_snapshots',
+  'impersonation_sessions', 'platform_audit_logs',
 ] as const;
 
 /** The only table without a tenant_id — it *is* the tenant. */
-export const UNSCOPED_TABLES = ['tenants', 'dealers', 'platform_admins'] as const;
-
-
+export const UNSCOPED_TABLES = [
+  'tenants', 'dealers', 'platform_admins', 'dealer_allocations', 'dealer_payouts', 'platform_telemetry',
+] as const;

@@ -7,6 +7,8 @@
  * would just mean stale numbers presented as current.
  */
 
+import { resolveApiBase } from './apiBase';
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -18,21 +20,24 @@ export class ApiError extends Error {
   }
 }
 
-export interface Tokens { accessToken: string; refreshToken: string }
+export interface Tokens { accessToken: string; refreshToken?: string }
 
 export class AdminApi {
   private tokens: Tokens | null = null;
   private refreshing: Promise<void> | null = null;
   private sessionVersion = 0;
+  private supportSession = false;
 
   constructor(
-    private readonly baseUrl = import.meta.env.VITE_API_URL
-      ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
-      : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? '/api/v1'
-          : 'https://api.novasaas.net/api/v1'),
+    private readonly baseUrl = resolveApiBase(),
   ) {
     try {
+      const supportToken = sessionStorage.getItem('novapos:admin:support-token');
+      if (supportToken) {
+        this.tokens = { accessToken: supportToken };
+        this.supportSession = true;
+        return;
+      }
       const raw = localStorage.getItem('novapos:admin:tokens');
       if (raw) this.tokens = JSON.parse(raw);
     } catch { /* ignore */ }
@@ -40,8 +45,27 @@ export class AdminApi {
 
   get isAuthenticated() { return Boolean(this.tokens?.accessToken); }
 
+  beginImpersonation(accessToken: string) {
+    this.sessionVersion++;
+    this.refreshing = null;
+    this.supportSession = true;
+    this.tokens = { accessToken };
+    try {
+      localStorage.removeItem('novapos:admin:tokens');
+      sessionStorage.setItem('novapos:admin:support-token', accessToken);
+    } catch { /* keep the access token in memory for this tab */ }
+  }
+
   private persist(tokens: Tokens | null) {
     this.tokens = tokens;
+    if (this.supportSession) {
+      try {
+        if (tokens) sessionStorage.setItem('novapos:admin:support-token', tokens.accessToken);
+        else sessionStorage.removeItem('novapos:admin:support-token');
+      } catch { /* keep the session in memory when storage is unavailable */ }
+      if (!tokens) this.supportSession = false;
+      return;
+    }
     try {
       if (tokens) localStorage.setItem('novapos:admin:tokens', JSON.stringify(tokens));
       else localStorage.removeItem('novapos:admin:tokens');
@@ -49,6 +73,7 @@ export class AdminApi {
   }
 
   async login(tenantSlug: string, email: string, password: string) {
+    if (this.supportSession) throw new ApiError(403, 'SUPPORT_SESSION', 'Exit the support session before signing in to another merchant account.');
     const version = ++this.sessionVersion;
     const res = await this.raw('POST', '/auth/login', { tenantSlug, email, password });
     if (version !== this.sessionVersion) throw new ApiError(401, 'SESSION_CHANGED', 'The session changed. Please sign in again.');

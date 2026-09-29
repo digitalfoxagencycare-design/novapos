@@ -22,7 +22,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   vi.clearAllMocks();
   mocks.me.mockResolvedValue({ role: 'OWNER', permissions: ['report:read', 'menu:read', 'settings:read'] });
-  mocks.outlets.mockResolvedValue([outlet]); mocks.today.mockResolvedValue({ grossMinor: 12300 }); mocks.sales.mockResolvedValue([]);
+  mocks.outlets.mockResolvedValue([outlet]); mocks.today.mockResolvedValue({ grossMinor: 12300 }); mocks.sales.mockResolvedValue([{ day: '2026-09-29', orders: 1, grossMinor: 12300, netMinor: 12300, taxMinor: 0, discountMinor: 0 }]);
   mocks.items.mockResolvedValue([]); mocks.categories.mockResolvedValue([]); mocks.logout.mockResolvedValue(undefined);
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });

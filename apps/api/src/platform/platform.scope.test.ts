@@ -5,7 +5,7 @@ const actor={sub:'00000000-0000-4000-8000-000000000001',role:'DEALER',name:'Deal
 describe('dealer SQL scope',()=>{
  it('adds the authenticated dealer ID even when another dealer code is supplied',async()=>{
   let predicate:any;
-  const db={system:async(fn:any)=>fn({select:()=>({from:()=>({where:async(p:any)=>{predicate=p;return[];}})})})};
+  const db={system:async(fn:any)=>fn({select:()=>({from:()=>({leftJoin:()=>({where:async(p:any)=>{predicate=p;return[];}})})})})};
   await new PlatformService(db as any,{} as any).merchants(actor,{dealerCode:'OTHER'});
   const query=new PgDialect().sqlToQuery(predicate);
   expect(query.sql).toContain('"tenants"."dealer_id" =');expect(query.params).toContain(actor.sub);

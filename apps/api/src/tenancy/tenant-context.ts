@@ -16,6 +16,8 @@ export interface TenantContext {
   outletId: string | null;
   role: StaffRole | null;
   permissions: Permission[];
+  platformAdminId?: string;
+  impersonationSessionId?: string;
   /** Set for platform-level jobs (migrations, retention) that must span tenants. */
   systemBypass?: boolean;
   requestId?: string;

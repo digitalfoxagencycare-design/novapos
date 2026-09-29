@@ -7,6 +7,7 @@ import { Errors } from '../common/errors';
 import { runWithTenant, type TenantContext } from '../tenancy/tenant-context';
 import type { Permission } from '@novapos/shared';
 import { randomUUID } from 'node:crypto';
+import { PlatformService } from '../platform/platform.service';
 
 /** Mark a route as reachable without a token (login, health, docs). */
 export const PUBLIC_KEY = 'novapos:public';
@@ -29,9 +30,10 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly auth: AuthService,
     private readonly reflector: Reflector,
+    private readonly platform: PlatformService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
       context.getHandler(), context.getClass(),
     ]);
@@ -46,6 +48,14 @@ export class AuthGuard implements CanActivate {
     if (!header?.startsWith('Bearer ')) throw Errors.unauthorized('Missing bearer token.');
 
     const claims = this.auth.verifyAccessToken(header.slice(7));
+    const support = claims.supportSessionId || claims.platformAdminId
+      ? await this.platform.validateImpersonationToken(claims)
+      : null;
+    if (support) {
+      await this.platform.recordImpersonatedRequest({
+        ...support, requestId, ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      }, req.method, req.route?.path ?? req.path);
+    }
 
     // An operator working a specific till can pin the request to an outlet;
     // it must be one they are entitled to.
@@ -60,6 +70,7 @@ export class AuthGuard implements CanActivate {
       outletId: requestedOutlet ?? claims.outletId,
       role: claims.role,
       permissions: claims.perms,
+      ...(support ? { platformAdminId: support.platformAdminId, impersonationSessionId: support.sessionId } : {}),
       requestId,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],

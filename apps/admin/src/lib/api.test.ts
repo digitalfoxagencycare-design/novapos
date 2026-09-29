@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AdminApi } from './api';
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 it('bounds API requests and turns a timeout into a retryable message', async () => {
   const timeout = vi.spyOn(AbortSignal, 'timeout');
@@ -11,6 +11,18 @@ it('bounds API requests and turns a timeout into a retryable message', async () 
   await expect(new AdminApi('/api/v1').outlets()).rejects.toMatchObject({ code: 'TIMEOUT', message: 'The server took too long to respond. Please retry.' });
   expect(fetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   expect(timeout).toHaveBeenCalledWith(30000);
+});
+
+it('keeps support tokens tab-scoped and removes them on exit', async () => {
+  localStorage.setItem('novapos:admin:tokens', JSON.stringify({ accessToken: 'merchant', refreshToken: 'refresh' }));
+  const client = new AdminApi('/api/v1');
+  client.beginImpersonation('support-token');
+  expect(client.isAuthenticated).toBe(true);
+  expect(localStorage.getItem('novapos:admin:tokens')).toBeNull();
+  expect(sessionStorage.getItem('novapos:admin:support-token')).toBe('support-token');
+  await client.logout();
+  expect(client.isAuthenticated).toBe(false);
+  expect(sessionStorage.getItem('novapos:admin:support-token')).toBeNull();
 });
 
 it('does not resurrect a signed-out session when refresh completes late', async () => {

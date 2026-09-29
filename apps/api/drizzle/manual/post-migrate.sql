@@ -83,3 +83,22 @@ CREATE INDEX IF NOT EXISTS orders_live_idx
 CREATE INDEX IF NOT EXISTS kots_live_idx
   ON kots (station_id, created_at)
   WHERE status IN ('PLACED', 'PREPARING', 'READY');
+
+-- ── Platform-only tables ────────────────────────────────────────────────────
+-- Cross-tenant platform records are only accessed through DatabaseService.system().
+-- The ordinary tenant connection must not read or mutate these tables.
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['dealer_allocations', 'dealer_payouts', 'platform_telemetry'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('REVOKE ALL ON %I FROM PUBLIC', t);
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'novapos_app') THEN
+      EXECUTE format('REVOKE ALL ON %I FROM novapos_app', t);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'novapos_admin') THEN
+      EXECUTE format('GRANT ALL ON %I TO novapos_admin', t);
+    END IF;
+  END LOOP;
+END $$;

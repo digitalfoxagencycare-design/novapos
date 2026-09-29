@@ -55,6 +55,7 @@ export class KotGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!token) throw new Error('No token supplied');
 
       const claims = this.auth.verifyAccessToken(token);
+      if (claims.supportSessionId) throw new Error('Support sessions cannot open realtime connections');
       client.data.claims = claims;
 
       const outletId = (client.handshake.query.outletId as string) ?? claims.outletId;

@@ -29,6 +29,41 @@
       "when": 1790640832374,
       "tag": "0003_outgoing_odin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790657479219,
+      "tag": "0004_platform-auth-version",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790658412227,
+      "tag": "0005_audited-impersonation",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790661348110,
+      "tag": "0006_wakeful_george_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790661416895,
+      "tag": "0007_fine_logan",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790661459517,
+      "tag": "0008_parallel_gideon",
+      "breakpoints": true
     }
   ]
 }

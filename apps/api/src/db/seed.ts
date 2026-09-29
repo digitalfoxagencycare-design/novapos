@@ -20,6 +20,16 @@ import {
 } from './schema';
 import { IN_GST } from '@novapos/tax-engine';
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL: Seed script execution is strictly forbidden in production environments.');
+  process.exit(1);
+}
+
+if (!process.argv.includes('--force-demo-reset') && process.env.ALLOW_TENANT_RESET !== 'true') {
+  console.error('Tenant reset not authorized. Re-run with --force-demo-reset or ALLOW_TENANT_RESET=true to reset demo data.');
+  process.exit(1);
+}
+
 const ARGON = { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
 const DEMO_PASSWORD = '9701463241';
@@ -30,7 +40,7 @@ async function main() {
   const pin = await argon2.hash(DEMO_PIN, ARGON);
 
   await withSystemDb(async (db) => {
-    console.log('→ Purging ALL existing tenants & obsolete database data…');
+    console.warn('⚠️  Resetting all tenant data in the configured database.');
     await db.delete(tenants);
 
     /* ─────────────── Velpula Mess / Nova Kitchen (India, Hyderabad) ─────────────── */

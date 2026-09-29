@@ -35,7 +35,15 @@ export class AuditService {
           action: input.action,
           entityType: input.entityType,
           entityId: input.entityId ?? null,
-          detail: input.detail ?? {},
+          detail: {
+            ...input.detail,
+            ...(ctx.impersonationSessionId ? {
+              platformImpersonation: {
+                sessionId: ctx.impersonationSessionId,
+                platformAdminId: ctx.platformAdminId,
+              },
+            } : {}),
+          },
           ipAddress: ctx.ipAddress,
           userAgent: ctx.userAgent?.slice(0, 500),
         });
