@@ -2,7 +2,7 @@
   "name": "novapos",
   "version": "0.1.0",
   "private": true,
-  "description": "NovaPOS \u2014 multi-tenant POS + KOT platform for restaurants and retail",
+  "description": "NovaPOS — multi-tenant POS + KOT platform for restaurants and retail",
   "engines": {
     "node": ">=20"
   },
@@ -19,12 +19,15 @@
     "db:studio": "pnpm --filter @novapos/api db:studio",
     "db:seed": "pnpm --filter @novapos/api seed",
     "lint": "pnpm -r lint",
-    "dev:kds": "echo \"The kitchen screen is served by the POS app at /kds.html \u2014 run pnpm dev:pos\""
+    "deploy:admin": "pnpm --filter @novapos/admin build && wrangler deploy --cwd apps/admin",
+    "deploy:landing": "pnpm --filter @novapos/landing build && wrangler deploy --cwd apps/landing",
+    "dev:kds": "echo \"The kitchen screen is served by the POS app at /kds.html — run pnpm dev:pos\""
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8",
-    "@types/node": "^22.10.2"
+    "wrangler": "^4.143.0"
   },
   "packageManager": "pnpm@10.28.0"
 }

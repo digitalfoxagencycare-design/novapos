@@ -1,15 +1,16 @@
-name: Deploy NovaSaaS Landing to Cloudflare Pages
+name: Deploy NovaPOS Admin Portal to Cloudflare
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'apps/landing/**'
+      - 'apps/admin/**'
+      - 'packages/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/deploy-admin.yml'
   workflow_dispatch:
 
 jobs:
@@ -37,13 +38,16 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Landing Page
-        run: pnpm --filter @novapos/landing build
+      - name: Build Monorepo Packages
+        run: pnpm build:packages
+
+      - name: Build Admin Portal
+        run: pnpm --filter @novapos/admin build
 
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/landing
+          workingDirectory: apps/admin
           command: deploy
