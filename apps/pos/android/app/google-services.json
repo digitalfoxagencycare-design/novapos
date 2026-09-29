@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:882987938160:android:710c831df304e3b5901fb5",
+        "mobilesdk_app_id": "1:882987938160:android:710c821d7304e3b5901fb5",
         "android_client_info": {
           "package_name": "com.novapos.terminal"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCGbRleBCnMQ4DuUy7RX2vLsHxt3BQK2k0"
+          "current_key": "AIzaSyCTLR3hD95eEHMc8ozK3fToad8eeItc0Ho"
         }
       ],
       "services": {
