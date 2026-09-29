@@ -36,6 +36,17 @@ async function main() {
     const rlsSql = rlsStatements().join('\n');
     await pool.query(rlsSql);
 
+    // Ensure roles exist for tenant isolation and admin operations.
+    const rolesPath = join(__dirname, '../../drizzle/manual/roles.sql');
+    if (existsSync(rolesPath)) {
+      console.log('→ Applying roles SQL…');
+      try {
+        await pool.query(readFileSync(rolesPath, 'utf8'));
+      } catch (e) {
+        console.warn('Could not apply roles.sql (non-fatal):', (e as Error).message);
+      }
+    }
+
     // Any extra SQL the schema cannot express — triggers, constraints, the
     // application role — lives here and is re-run idempotently.
     const extraPath = join(__dirname, '../../drizzle/manual/post-migrate.sql');

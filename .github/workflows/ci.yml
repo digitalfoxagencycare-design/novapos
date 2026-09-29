@@ -31,7 +31,7 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/novapos_test
+      DATABASE_URL: postgresql://novapos_app:CHANGE_ME_app@localhost:5432/novapos_test
       DATABASE_ADMIN_URL: postgresql://postgres:postgrespassword@localhost:5432/novapos_test
       JWT_SECRET: test-jwt-secret-key-32-chars-long!!
       PORT: 3001
@@ -61,10 +61,12 @@ jobs:
         run: pnpm lint
 
       - name: Run Database Migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/novapos_test
         run: pnpm db:migrate
 
       - name: Run Test Suites
-        run: pnpm test -- --fileParallelism=false
+        run: pnpm test -- --pool=forks --poolOptions.forks.singleFork=true
 
       - name: Monorepo Build
         run: pnpm build
