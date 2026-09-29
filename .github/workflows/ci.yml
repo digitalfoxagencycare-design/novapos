@@ -66,7 +66,7 @@ jobs:
         run: pnpm db:migrate
 
       - name: Run Test Suites
-        run: pnpm test -- --pool=forks --poolOptions.forks.singleFork=true
+        run: pnpm test
 
       - name: Monorepo Build
         run: pnpm build
