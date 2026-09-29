@@ -38,12 +38,14 @@ export interface MenuItem {
   categoryId: string;
   name: string;
   priceMinor: number;
+  packagingChargeMinor?: number;
   taxSlabId: string;
   hsnSac: string | null;
   isVeg: boolean | null;
   stationId: string | null;
   channelPrices: Record<string, number>;
   variants: { id: string; name: string; priceMinor: number | null; priceDeltaMinor: number; isDefault: boolean }[];
+  modifierGroupIds?: string[];
 }
 
 export function newOrder(outletId: string, channel: OrderChannel, currency: string): LocalOrder {
@@ -197,7 +199,8 @@ export function usePos(api: ApiClient) {
     if (!order || !menu) return;
     const variant = opts.variantId ? item.variants.find((v) => v.id === opts.variantId) : null;
     const base = item.channelPrices?.[order.channel] ?? item.priceMinor;
-    const unitPriceMinor = variant?.priceMinor ?? base + (variant?.priceDeltaMinor ?? 0);
+    const unitPriceMinor = (variant?.priceMinor ?? base + (variant?.priceDeltaMinor ?? 0))
+      + (item.packagingChargeMinor ?? 0);
 
     const line: LocalLine = {
       clientLineId: crypto.randomUUID(),

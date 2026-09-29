@@ -1,7 +1,16 @@
 export interface WorkspaceOutlet { id:string; name:string; code:string; country:string; currency:string|null; locale:string|null; timezone?:string; phone?:string; taxId?:string; addressLines?:string[]; extraIds?:string[] }
 export interface DateRange { preset:'Today'|'Yesterday'|'Last 7 Days'|'This Month'|'Custom Range'; from:string; to:string }
 export interface SaleDay { day:string; orders:number; grossMinor:number; netMinor:number; taxMinor:number; discountMinor:number }
-export interface MenuItem { id:string; name:string; code?:string; description?:string; categoryId:string; priceMinor:number; taxSlabId:string; hsnSac?:string; isActive:boolean; isVeg?:boolean }
+export interface MenuVariant { id:string; name:string; priceMinor:number|null; priceDeltaMinor:number; isDefault:boolean; isActive?:boolean }
+export interface MenuModifier { id:string; name:string; priceMinor:number; isActive:boolean }
+export interface MenuModifierGroup {
+ id:string; groupId?:string; name:string; minSelect:number; maxSelect:number; sortOrder?:number; isActive?:boolean; modifiers:MenuModifier[];
+}
+export interface MenuItem {
+ id:string; name:string; code?:string; description?:string|null; categoryId:string; priceMinor:number;
+ packagingChargeMinor:number; taxSlabId:string; hsnSac?:string|null; isActive:boolean; isVeg?:boolean|null;
+ variants?:MenuVariant[]; modifierGroups?:MenuModifierGroup[];
+}
 export interface Category { id:string; name:string; itemCount?:number }
 export const money=(minor:number,currency='INR')=>new Intl.NumberFormat('en-IN',{style:'currency',currency}).format(minor/100);
 export function dayInZone(now:Date,zone='Asia/Kolkata'){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);return ['year','month','day'].map(k=>parts.find(p=>p.type===k)!.value).join('-');}

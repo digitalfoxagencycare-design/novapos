@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, eq, ilike, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
+import type { Db } from '../db/client';
 import {
-  categories, menuItems, menuItemVariants, modifierGroups, modifiers,
+  categories, menuItems, menuItemVariants, modifierGroups, modifiers, menuItemModifierGroups,
   stations, restaurantTables, tableSections, outlets,
 } from '../db/schema';
 import { AuditService } from '../common/audit.service';
@@ -49,6 +50,13 @@ export class MenuService {
           .where(eq(tableSections.outletId, outletId))
           .orderBy(asc(tableSections.sortOrder)),
       ]);
+      const itemGroupLinks = items.length
+        ? await db.select().from(menuItemModifierGroups)
+          .where(and(
+            eq(menuItemModifierGroups.tenantId, outlet.tenantId),
+            inArray(menuItemModifierGroups.itemId, items.map(item => item.id)),
+          ))
+        : [];
 
       const variantsByItem = new Map<string, typeof variants>();
       for (const v of variants) {
@@ -61,6 +69,12 @@ export class MenuService {
         const list = modsByGroup.get(m.groupId) ?? [];
         list.push(m);
         modsByGroup.set(m.groupId, list);
+      }
+      const groupIdsByItem = new Map<string, string[]>();
+      for (const link of itemGroupLinks) {
+        const list = groupIdsByItem.get(link.itemId) ?? [];
+        list.push(link.groupId);
+        groupIdsByItem.set(link.itemId, list);
       }
 
       /**
@@ -77,7 +91,11 @@ export class MenuService {
         version,
         outlet,
         categories: cats,
-        items: items.map((i) => ({ ...i, variants: variantsByItem.get(i.id) ?? [] })),
+        items: items.map((i) => ({
+          ...i,
+          variants: variantsByItem.get(i.id) ?? [],
+          modifierGroupIds: groupIdsByItem.get(i.id) ?? [],
+        })),
         modifierGroups: groups.map((g) => ({ ...g, modifiers: modsByGroup.get(g.id) ?? [] })),
         stations: stns,
         tables,
@@ -87,11 +105,13 @@ export class MenuService {
   }
 
   async listItems(filter: { categoryId?: string; search?: string } = {}) {
+    const ctx = requireTenantContext();
     return this.db.tx(async (db) => {
-      const conditions = [isNull(menuItems.deletedAt)];
+      const conditions = [eq(menuItems.tenantId, ctx.tenantId), isNull(menuItems.deletedAt)];
       if (filter.categoryId) conditions.push(eq(menuItems.categoryId, filter.categoryId));
       if (filter.search) conditions.push(ilike(menuItems.name, `%${filter.search}%`));
-      return db.select().from(menuItems).where(and(...conditions)).orderBy(asc(menuItems.sortOrder));
+      const rows = await db.select().from(menuItems).where(and(...conditions)).orderBy(asc(menuItems.sortOrder));
+      return this.withEditorData(db, rows);
     });
   }
 
@@ -130,14 +150,178 @@ export class MenuService {
     return item;
   }
 
-  async updateItem(id: string, data: Record<string, unknown>) {
+  async updateItem(id: string, data: {
+    name?: string;
+    description?: string | null;
+    categoryId?: string;
+    priceMinor?: number;
+    packagingChargeMinor?: number;
+    taxSlabId?: string;
+    hsnSac?: string | null;
+    isActive?: boolean;
+    variants?: {
+      id?: string; name: string; priceMinor?: number | null;
+      priceDeltaMinor?: number; isDefault?: boolean;
+    }[];
+    modifierGroups?: {
+      id?: string; name: string; minSelect?: number; maxSelect?: number;
+      modifiers: { id?: string; name: string; priceMinor?: number }[];
+    }[];
+  }) {
+    const ctx = requireTenantContext();
     const result = await this.db.tx(async (db) => {
-      const [before] = await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1);
+      const [before] = await db.select().from(menuItems)
+        .where(and(eq(menuItems.id, id), eq(menuItems.tenantId, ctx.tenantId), isNull(menuItems.deletedAt)))
+        .limit(1);
       if (!before) throw Errors.notFound('Menu item', id);
-      const [after] = await db.update(menuItems)
-        .set(data as never)
-        .where(eq(menuItems.id, id))
+
+      if (data.categoryId) {
+        const [category] = await db.select({ id: categories.id }).from(categories)
+          .where(and(
+            eq(categories.id, data.categoryId),
+            eq(categories.tenantId, ctx.tenantId),
+            isNull(categories.deletedAt),
+          ))
+          .limit(1);
+        if (!category) throw Errors.notFound('Category', data.categoryId);
+      }
+
+      const { variants: variantInputs, modifierGroups: groupInputs, ...itemInput } = data;
+      const patch: Partial<typeof menuItems.$inferInsert> = {
+        ...itemInput,
+        updatedAt: new Date(),
+      };
+      const [updated] = await db.update(menuItems).set(patch)
+        .where(and(eq(menuItems.id, id), eq(menuItems.tenantId, ctx.tenantId)))
         .returning();
+
+      if (variantInputs) {
+        if (variantInputs.filter(variant => variant.isDefault).length > 1) {
+          throw Errors.validation('Only one variant can be the default option.');
+        }
+        const seen = new Set<string>();
+        for (const variant of variantInputs) {
+          if (variant.id && seen.has(variant.id)) throw Errors.validation('A menu variant was submitted more than once.');
+          if (variant.id) seen.add(variant.id);
+        }
+        await db.update(menuItemVariants).set({ isActive: false })
+          .where(and(eq(menuItemVariants.itemId, id), eq(menuItemVariants.tenantId, ctx.tenantId)));
+        for (const [sortOrder, variant] of variantInputs.entries()) {
+          if (variant.id) {
+            const [existing] = await db.select({ id: menuItemVariants.id }).from(menuItemVariants)
+              .where(and(
+                eq(menuItemVariants.id, variant.id),
+                eq(menuItemVariants.itemId, id),
+                eq(menuItemVariants.tenantId, ctx.tenantId),
+              ))
+              .limit(1);
+            if (!existing) throw Errors.notFound('Menu variant', variant.id);
+            await db.update(menuItemVariants).set({
+              name: variant.name,
+              priceMinor: variant.priceMinor ?? null,
+              priceDeltaMinor: variant.priceDeltaMinor ?? 0,
+              isDefault: variant.isDefault ?? false,
+              isActive: true,
+              sortOrder,
+            }).where(and(
+              eq(menuItemVariants.id, variant.id),
+              eq(menuItemVariants.itemId, id),
+              eq(menuItemVariants.tenantId, ctx.tenantId),
+            ));
+          } else {
+            await db.insert(menuItemVariants).values({
+              tenantId: ctx.tenantId,
+              itemId: id,
+              name: variant.name,
+              priceMinor: variant.priceMinor ?? null,
+              priceDeltaMinor: variant.priceDeltaMinor ?? 0,
+              isDefault: variant.isDefault ?? false,
+              sortOrder,
+            });
+          }
+        }
+      }
+
+      if (groupInputs) {
+        await db.delete(menuItemModifierGroups).where(and(
+          eq(menuItemModifierGroups.itemId, id),
+          eq(menuItemModifierGroups.tenantId, ctx.tenantId),
+        ));
+        const seenGroupIds = new Set<string>();
+        for (const [sortOrder, group] of groupInputs.entries()) {
+          const minSelect = group.minSelect ?? 0;
+          const maxSelect = group.maxSelect ?? 1;
+          if (minSelect > maxSelect) {
+            throw Errors.validation(`Modifier group "${group.name}" cannot require more selections than its maximum.`);
+          }
+          if (group.id && seenGroupIds.has(group.id)) throw Errors.validation('A modifier group was submitted more than once.');
+
+          let groupId = group.id;
+          if (groupId) {
+            seenGroupIds.add(groupId);
+            const [existing] = await db.select({ id: modifierGroups.id }).from(modifierGroups)
+              .where(and(eq(modifierGroups.id, groupId), eq(modifierGroups.tenantId, ctx.tenantId)))
+              .limit(1);
+            if (!existing) throw Errors.notFound('Modifier group', groupId);
+            await db.update(modifierGroups).set({
+              name: group.name,
+              minSelect,
+              maxSelect,
+              isActive: true,
+            }).where(and(eq(modifierGroups.id, groupId), eq(modifierGroups.tenantId, ctx.tenantId)));
+          } else {
+            const [created] = await db.insert(modifierGroups).values({
+              tenantId: ctx.tenantId,
+              name: group.name,
+              minSelect,
+              maxSelect,
+            }).returning({ id: modifierGroups.id });
+            groupId = created.id;
+          }
+          const optionIds = new Set<string>();
+          for (const option of group.modifiers) {
+            if (option.id && optionIds.has(option.id)) throw Errors.validation('A modifier was submitted more than once.');
+            if (option.id) optionIds.add(option.id);
+          }
+          await db.update(modifiers).set({ isActive: false })
+            .where(and(eq(modifiers.groupId, groupId), eq(modifiers.tenantId, ctx.tenantId)));
+          for (const [modifierOrder, option] of group.modifiers.entries()) {
+            if (option.id) {
+              const [existing] = await db.select({ id: modifiers.id }).from(modifiers)
+                .where(and(
+                  eq(modifiers.id, option.id),
+                  eq(modifiers.groupId, groupId),
+                  eq(modifiers.tenantId, ctx.tenantId),
+                ))
+                .limit(1);
+              if (!existing) throw Errors.notFound('Modifier', option.id);
+              await db.update(modifiers).set({
+                name: option.name,
+                priceMinor: option.priceMinor ?? 0,
+                sortOrder: modifierOrder,
+                isActive: true,
+              }).where(and(
+                eq(modifiers.id, option.id),
+                eq(modifiers.groupId, groupId),
+                eq(modifiers.tenantId, ctx.tenantId),
+              ));
+            } else {
+              await db.insert(modifiers).values({
+                tenantId: ctx.tenantId,
+                groupId,
+                name: option.name,
+                priceMinor: option.priceMinor ?? 0,
+                sortOrder: modifierOrder,
+              });
+            }
+          }
+          await db.insert(menuItemModifierGroups).values({
+            tenantId: ctx.tenantId, itemId: id, groupId, sortOrder,
+          });
+        }
+      }
+
+      const [after] = await this.withEditorData(db, [updated]);
       return { before, after };
     });
 
@@ -145,7 +329,11 @@ export class MenuService {
       action: 'menu.item.update', entityType: 'MenuItem', entityId: id,
       detail: {
         before: { priceMinor: result.before.priceMinor, taxSlabId: result.before.taxSlabId },
-        after: data,
+        after: {
+          ...data,
+          variants: data.variants?.length,
+          modifierGroups: data.modifierGroups?.length,
+        },
       },
     });
     return result.after;
@@ -157,17 +345,77 @@ export class MenuService {
    * jurisdictions this ships to, that is a records-retention violation.
    */
   async archiveItem(id: string) {
+    const ctx = requireTenantContext();
     const item = await this.db.tx(async (db) => {
-      const [existing] = await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1);
+      const [existing] = await db.select().from(menuItems)
+        .where(and(eq(menuItems.id, id), eq(menuItems.tenantId, ctx.tenantId), isNull(menuItems.deletedAt)))
+        .limit(1);
       if (!existing) throw Errors.notFound('Menu item', id);
       const [updated] = await db.update(menuItems)
         .set({ deletedAt: new Date(), isActive: false })
-        .where(eq(menuItems.id, id))
+        .where(and(eq(menuItems.id, id), eq(menuItems.tenantId, ctx.tenantId)))
         .returning();
       return updated;
     });
     await this.audit.record({ action: 'menu.item.archive', entityType: 'MenuItem', entityId: id });
     return item;
+  }
+
+  private async withEditorData(db: Db, items: (typeof menuItems.$inferSelect)[]) {
+    if (!items.length) return [];
+    const itemIds = items.map(item => item.id);
+    const variants = await db.select().from(menuItemVariants)
+      .where(and(inArray(menuItemVariants.itemId, itemIds), eq(menuItemVariants.tenantId, requireTenantContext().tenantId)))
+      .orderBy(asc(menuItemVariants.sortOrder));
+    const links = await db.select({
+      itemId: menuItemModifierGroups.itemId,
+      id: modifierGroups.id,
+      groupId: modifierGroups.id,
+      sortOrder: menuItemModifierGroups.sortOrder,
+      name: modifierGroups.name,
+      minSelect: modifierGroups.minSelect,
+      maxSelect: modifierGroups.maxSelect,
+      isActive: modifierGroups.isActive,
+    }).from(menuItemModifierGroups)
+      .innerJoin(modifierGroups, eq(menuItemModifierGroups.groupId, modifierGroups.id))
+      .where(and(
+        inArray(menuItemModifierGroups.itemId, itemIds),
+        eq(menuItemModifierGroups.tenantId, requireTenantContext().tenantId),
+        eq(modifierGroups.tenantId, requireTenantContext().tenantId),
+      ))
+      .orderBy(asc(menuItemModifierGroups.sortOrder));
+    const groupIds = [...new Set(links.map(link => link.groupId))];
+    const options = groupIds.length
+      ? await db.select().from(modifiers)
+        .where(and(inArray(modifiers.groupId, groupIds), eq(modifiers.tenantId, requireTenantContext().tenantId)))
+        .orderBy(asc(modifiers.sortOrder))
+      : [];
+    const optionsByGroup = new Map<string, typeof options>();
+    for (const option of options) {
+      const rows = optionsByGroup.get(option.groupId) ?? [];
+      rows.push(option);
+      optionsByGroup.set(option.groupId, rows);
+    }
+    const variantsByItem = new Map<string, typeof variants>();
+    for (const variant of variants) {
+      const rows = variantsByItem.get(variant.itemId) ?? [];
+      rows.push(variant);
+      variantsByItem.set(variant.itemId, rows);
+    }
+    const linksByItem = new Map<string, typeof links>();
+    for (const link of links) {
+      const rows = linksByItem.get(link.itemId) ?? [];
+      rows.push(link);
+      linksByItem.set(link.itemId, rows);
+    }
+    return items.map(item => ({
+      ...item,
+      variants: variantsByItem.get(item.id) ?? [],
+      modifierGroups: (linksByItem.get(item.id) ?? []).map(group => ({
+        ...group,
+        modifiers: optionsByGroup.get(group.groupId) ?? [],
+      })),
+    }));
   }
 
   /**

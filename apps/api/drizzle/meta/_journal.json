@@ -64,6 +64,13 @@
       "when": 1790661459517,
       "tag": "0008_parallel_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790666793398,
+      "tag": "0009_nice_madripoor",
+      "breakpoints": true
     }
   ]
 }

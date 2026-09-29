@@ -1,8 +1,50 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString,
+  IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested,
+} from 'class-validator';
 import { MenuService } from './menu.service';
 import { RequirePermissions } from '../auth/guards';
+
+class MenuVariantDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MinLength(1) @MaxLength(120) @Matches(/\S/) name!: string;
+  @IsOptional() @IsInt() @Min(0) @Max(2147483647) priceMinor?: number | null;
+  @IsOptional() @IsInt() @Min(-2147483648) @Max(2147483647) priceDeltaMinor?: number;
+  @IsOptional() @IsBoolean() isDefault?: boolean;
+}
+
+class ModifierDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MinLength(1) @MaxLength(120) @Matches(/\S/) name!: string;
+  @IsOptional() @IsInt() @Min(0) @Max(2147483647) priceMinor?: number;
+}
+
+class ModifierGroupDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MinLength(1) @MaxLength(120) @Matches(/\S/) name!: string;
+  @IsOptional() @IsInt() @Min(0) @Max(20) minSelect?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(20) maxSelect?: number;
+  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => ModifierDto)
+  modifiers!: ModifierDto[];
+}
+
+class UpdateItemDto {
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(150) @Matches(/\S/) name?: string;
+  @IsOptional() @IsString() @MaxLength(2000) description?: string | null;
+  @IsOptional() @IsUUID() categoryId?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(2147483647) priceMinor?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(2147483647) packagingChargeMinor?: number;
+  @IsOptional() @IsIn(['gst-0', 'gst-5', 'gst-12', 'gst-18']) taxSlabId?: string;
+  @IsOptional() @IsString() @MaxLength(12) hsnSac?: string | null;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => MenuVariantDto)
+  variants?: MenuVariantDto[];
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => ModifierGroupDto)
+  modifierGroups?: ModifierGroupDto[];
+}
 
 class CreateItemDto {
   @IsString() name!: string;
@@ -44,7 +86,7 @@ export class MenuController {
 
   @Patch('items/:id')
   @RequirePermissions('menu:write')
-  updateItem(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+  updateItem(@Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateItemDto) {
     return this.menu.updateItem(id, body);
   }
 

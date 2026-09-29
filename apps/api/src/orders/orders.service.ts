@@ -6,7 +6,7 @@ import { DatabaseService } from '../db/db.service';
 import type { Db } from '../db/client';
 import {
   orders, orderLines, orderLineModifiers, orderTables, restaurantTables,
-  menuItems, menuItemVariants, modifiers as modifiersTable, categories,
+  menuItems, menuItemVariants, modifiers as modifiersTable, menuItemModifierGroups, modifierGroups, categories,
   outlets, tenants, customers, payments, kots, kotLines, staff,
 } from '../db/schema';
 import { PricingService, type PricedLineInput, type PricedLine } from './pricing.service';
@@ -434,6 +434,7 @@ export class OrdersService {
     outlet: Awaited<ReturnType<OrdersService['loadOutlet']>>['outlet'],
     tenant: Awaited<ReturnType<OrdersService['loadOutlet']>>['tenant'],
   ) {
+    const tenantId = tenant.id;
     const itemIds = [...new Set(input.lines.map((l) => l.itemId))];
     if (itemIds.length === 0) throw Errors.validation('An order must have at least one line.');
 
@@ -450,16 +451,46 @@ export class OrdersService {
     }
 
     const [variants, cats] = await Promise.all([
-      db.select().from(menuItemVariants).where(inArray(menuItemVariants.itemId, itemIds)),
+      db.select().from(menuItemVariants).where(and(
+        inArray(menuItemVariants.itemId, itemIds),
+        eq(menuItemVariants.tenantId, tenantId),
+        eq(menuItemVariants.isActive, true),
+      )),
       db.select().from(categories)
         .where(inArray(categories.id, [...new Set(items.map((i) => i.categoryId))])),
     ]);
     const categoryMap = new Map(cats.map((c) => [c.id, c]));
+    const modifierGroupLinks = itemIds.length
+      ? await db.select({
+        itemId: menuItemModifierGroups.itemId,
+        groupId: modifierGroups.id,
+        name: modifierGroups.name,
+        minSelect: modifierGroups.minSelect,
+        maxSelect: modifierGroups.maxSelect,
+      }).from(menuItemModifierGroups)
+        .innerJoin(modifierGroups, eq(menuItemModifierGroups.groupId, modifierGroups.id))
+        .where(and(
+          inArray(menuItemModifierGroups.itemId, itemIds),
+          eq(menuItemModifierGroups.tenantId, tenantId),
+          eq(modifierGroups.tenantId, tenantId),
+          eq(modifierGroups.isActive, true),
+        ))
+      : [];
+    const groupsByItem = new Map<string, typeof modifierGroupLinks>();
+    for (const group of modifierGroupLinks) {
+      const rows = groupsByItem.get(group.itemId) ?? [];
+      rows.push(group);
+      groupsByItem.set(group.itemId, rows);
+    }
 
     const modifierIds = [...new Set(input.lines.flatMap((l) => l.modifierIds ?? []))];
     const mods = modifierIds.length
-      ? await db.select().from(modifiersTable).where(inArray(modifiersTable.id, modifierIds))
-      : [];
+    ? await db.select().from(modifiersTable).where(and(
+      inArray(modifiersTable.id, modifierIds),
+      eq(modifiersTable.tenantId, tenantId),
+      eq(modifiersTable.isActive, true),
+    ))
+    : [];
     const modMap = new Map(mods.map((m) => [m.id, m]));
 
     const pricedInputs: PricedLineInput[] = input.lines.map((l) => {
@@ -474,13 +505,32 @@ export class OrdersService {
       // Channel pricing: a delivery-only price overrides the base price.
       const channelPrices = (item.channelPrices ?? {}) as Record<string, number>;
       const basePrice = channelPrices[input.channel] ?? item.priceMinor;
-      const unitPriceMinor = variant?.priceMinor ?? (basePrice + (variant?.priceDeltaMinor ?? 0));
+      const unitPriceMinor = (variant?.priceMinor ?? (basePrice + (variant?.priceDeltaMinor ?? 0)))
+        + item.packagingChargeMinor;
 
       const lineModifiers = (l.modifierIds ?? []).map((id) => {
         const m = modMap.get(id);
         if (!m) throw Errors.validation(`Modifier ${id} does not exist.`);
         return { id: m.id, name: m.name, priceMinor: m.priceMinor };
       });
+      const itemGroups = groupsByItem.get(item.id) ?? [];
+      if (itemGroups.length) {
+        const allowedGroups = new Map(itemGroups.map(group => [group.groupId, group]));
+        const selectedByGroup = new Map<string, number>();
+        for (const modifier of lineModifiers) {
+          const source = modMap.get(modifier.id)!;
+          if (!allowedGroups.has(source.groupId)) {
+            throw Errors.validation(`Modifier "${source.name}" is not available for "${item.name}".`);
+          }
+          selectedByGroup.set(source.groupId, (selectedByGroup.get(source.groupId) ?? 0) + 1);
+        }
+        for (const group of itemGroups) {
+          const count = selectedByGroup.get(group.groupId) ?? 0;
+          if (count < group.minSelect || count > group.maxSelect) {
+            throw Errors.validation(`Choose between ${group.minSelect} and ${group.maxSelect} options for "${group.name}".`);
+          }
+        }
+      }
 
       return {
         clientLineId: l.clientLineId,

@@ -384,6 +384,7 @@ export const menuItems = pgTable('menu_items', {
   code: text('code'),
   /** Minor units. Whether it includes tax is the rule set's call. */
   priceMinor: integer('price_minor').notNull(),
+  packagingChargeMinor: integer('packaging_charge_minor').notNull().default(0),
   /** Channel overrides: { "DELIVERY": 34000 }. Falls back to priceMinor. */
   channelPrices: jsonb('channel_prices').notNull().default(sql`'{}'::jsonb`),
   /** Slab id within the applicable tax rule set, e.g. "gst-5". */

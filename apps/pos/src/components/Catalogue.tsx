@@ -75,7 +75,9 @@ export function Catalogue({
               )}
               <span className="item__name">{item.name}</span>
             </span>
-            <span className="item__price">{formatMoney(item.priceMinor, currency, locale)}</span>
+            <span className="item__price">
+              {formatMoney(item.priceMinor + (item.packagingChargeMinor ?? 0), currency, locale)}
+            </span>
           </button>
         ))}
         {items.length === 0 && (

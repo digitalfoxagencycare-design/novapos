@@ -1,0 +1,1 @@
+ALTER TABLE "menu_items" ADD COLUMN "packaging_charge_minor" integer DEFAULT 0 NOT NULL;
