@@ -305,7 +305,7 @@ describe('role-based access control', () => {
     const logs = await withTenantDb(fx.tenantId, (db) =>
       db.execute(sql`
         SELECT action, detail, staff_id FROM audit_logs
-        WHERE entity_id = ${created.body.id}::uuid AND action = 'order.void'
+        WHERE entity_id = ${created.body.id} AND action = 'order.void'
       `));
     const rows = (logs as unknown as { rows?: Record<string, unknown>[] }).rows
       ?? (logs as unknown as Record<string, unknown>[]);
