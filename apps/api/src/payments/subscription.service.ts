@@ -52,7 +52,7 @@ export function subscriptionStatus(tenant: { id: string; name: string; createdAt
   const pro = ['pro_yearly', 'enterprise_yearly'].includes(plan);
   return {
     tenantId: tenant.id, tenantName: tenant.name,
-    status: isExpired ? 'EXPIRED' : sub.status,
+    status: sub.status === 'SUSPENDED' || tenant.status === 'SUSPENDED' ? 'SUSPENDED' : isExpired ? 'EXPIRED' : sub.status,
     isTrial: sub.status === 'TRIAL', plan,
     startedAt: new Date(tenant.createdAt).toISOString(),
     validUntil: Number.isFinite(expiry) ? new Date(expiry).toISOString() : new Date(0).toISOString(),
@@ -175,3 +175,4 @@ export class SubscriptionService {
     return { received: true };
   }
 }
+

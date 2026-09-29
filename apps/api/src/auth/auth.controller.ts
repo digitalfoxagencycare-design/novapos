@@ -17,6 +17,7 @@ class VerifyOtpDto {
   @IsOptional() @IsString() profile?: string;
   @IsOptional() @IsString() pin?: string;
   @IsOptional() @IsString() couponCode?: string;
+  @IsOptional() @IsString() @Length(3, 32) dealerCode?: string;
 }
 
 class PhonePinLoginDto {
@@ -142,3 +143,4 @@ export class AuthController {
     };
   }
 }
+

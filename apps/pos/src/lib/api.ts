@@ -74,7 +74,7 @@ export class ApiClient {
 
   sendOtp(phone: string) { return this.raw('POST', '/auth/otp/send', { phone }); }
 
-  async verifyOtp(input: { phone: string; otp: string; isFirebaseVerified?: boolean; storeName?: string; profile?: string; pin?: string; couponCode?: string }) {
+  async verifyOtp(input: { phone: string; otp: string; isFirebaseVerified?: boolean; storeName?: string; profile?: string; pin?: string; couponCode?: string; dealerCode?: string }) {
     const result = await this.raw('POST', '/auth/otp/verify', input);
     this.setTokens(result.tokens);
     return result;
@@ -338,3 +338,4 @@ export function deviceId(): string {
     return 'ephemeral-device';
   }
 }
+

@@ -43,6 +43,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
   const [profile, setProfile] = useState<BusinessProfile>('kirana');
   const [pin, setPin] = useState('');
   const [couponCode, setCouponCode] = useState('');
+  const [dealerCode, setDealerCode] = useState('');
   const [otp, setOtp] = useState('');
 
   // UI Flow States
@@ -159,7 +160,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
       const result = await cloudApi.verifyOtp({
         phone: cleanPhone,
         otp: otp.trim(),
-        ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim() } : {}),
+        ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim(), ...(dealerCode.trim() ? { dealerCode: dealerCode.trim().toUpperCase() } : {}) } : {}),
       });
       await refreshSubscription();
       onLoginSuccess({ phone: cleanPhone, storeName: result.tenant.name, profile, tenantId: result.tenant.id, outletId: result.staff?.outletId });
@@ -298,6 +299,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
               </div>
             </div>
 
+            <div className="ezo-login-field"><label htmlFor="dealer-code">Dealer Code (Optional)</label><input id="dealer-code" className="ezo-login-input" value={dealerCode} maxLength={32} placeholder="e.g. DLR101" onChange={e=>setDealerCode(e.target.value.toUpperCase())}/></div>
             {/* Promo / Coupon Code */}
             <div className="ezo-login-field">
               <label className="flex items-center gap-1">
@@ -503,3 +505,4 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     </div>
   );
 };
+

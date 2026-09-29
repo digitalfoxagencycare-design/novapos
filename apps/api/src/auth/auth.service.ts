@@ -1,3 +1,4 @@
+import { dealers } from '../db/schema';
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
@@ -131,6 +132,7 @@ export class AuthService {
     profile?: string;
     pin?: string;
     couponCode?: string;
+    dealerCode?: string;
     userAgent?: string;
     ipAddress?: string;
   }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
@@ -192,13 +194,18 @@ export class AuthService {
       const trialDays = 7; // 7-days free trial on new store registration
       const validUntil = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
+      const code = input.dealerCode?.trim().toUpperCase();
+      const [dealer] = code ? await db.select().from(dealers).where(and(eq(dealers.dealerCode, code), eq(dealers.status, 'ACTIVE'))).limit(1).for('share') : [];
+      if (code && !dealer) throw Errors.validation('Dealer code is invalid or suspended.');
       const [newTenant] = await db.insert(tenants).values({
+        dealerId: dealer?.id, dealerCode: dealer?.dealerCode,
         name: businessName,
         slug: tenantSlug,
         country: 'IN',
         defaultCurrency: 'INR',
         taxRuleSetKey: 'IN-GST',
         settings: {
+          ownerPhone: cleanPhone,
           profile: input.profile || 'kirana',
           subscription: {
             status: trialDays > 0 ? 'TRIAL' : 'PAYMENT_PENDING',
@@ -531,7 +538,9 @@ export class AuthService {
 
   verifyAccessToken(token: string): JwtClaims {
     try {
-      return this.jwt.verify<JwtClaims>(token);
+      const claims = this.jwt.verify<JwtClaims>(token);
+      if (!claims.tenantId || !Array.isArray(claims.perms) || !['OWNER','MANAGER','CASHIER','WAITER','KITCHEN'].includes(claims.role)) throw new Error('Invalid tenant token');
+      return claims;
     } catch (err) {
       throw Errors.unauthorized(
         (err as Error).name === 'TokenExpiredError' ? 'Access token expired.' : 'Invalid access token.',
@@ -646,3 +655,4 @@ function parseSeconds(ttl: string): number {
   const n = Number(m[1]);
   return { d: n * 86400, h: n * 3600, m: n * 60, s: n }[m[2] as 'd' | 'h' | 'm' | 's'];
 }
+

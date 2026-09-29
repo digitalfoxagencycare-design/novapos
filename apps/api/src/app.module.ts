@@ -1,3 +1,4 @@
+import { PlatformModule } from './platform/platform.module';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -46,7 +47,7 @@ import { OutletsController, OutletsService } from './outlets/outlets.controller'
 @Module({
   imports: [
     DatabaseModule,
-    AuthModule,
+    AuthModule, PlatformModule,
     // Rate limiting protects the login route from credential stuffing and the
     // sync route from a device stuck in a flush loop.
     ThrottlerModule.forRoot([
@@ -90,3 +91,4 @@ import { OutletsController, OutletsService } from './outlets/outlets.controller'
   ],
 })
 export class AppModule {}
+

@@ -19,7 +19,7 @@
 
 import {
   pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb,
-  numeric, index, uniqueIndex, primaryKey,
+  numeric, index, uniqueIndex, primaryKey, check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -48,10 +48,31 @@ export const stockReason = pgEnum('stock_movement_reason', [
 
 /* ────────────────────────  Tenancy & identity  ──────────────────────── */
 
+export const dealers = pgTable('dealers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(), phone: text('phone').notNull().unique(),
+  email: text('email').notNull().unique(), passwordHash: text('password_hash').notNull(),
+  dealerCode: text('dealer_code').notNull().unique(),
+  commissionPercent: integer('commission_percent').notNull().default(20),
+  status: text('status').notNull().default('ACTIVE'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({
+  commissionRange: check('dealers_commission_range', sql`${t.commissionPercent} between 0 and 100`),
+  validStatus: check('dealers_status_valid', sql`${t.status} in ('ACTIVE','SUSPENDED')`),
+}));
+export const platformAdmins = pgTable('platform_admins', {
+  id: uuid('id').primaryKey().defaultRandom(), name: text('name').notNull(),
+  email: text('email').notNull().unique(), phone: text('phone').notNull().unique(),
+  passwordHash: text('password_hash').notNull(), role: text('role').notNull().default('SUPER_ADMIN'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({ validRole: check('platform_admin_role', sql`${t.role} = 'SUPER_ADMIN'`) }));
 export const tenants = pgTable('tenants', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  dealerId: uuid('dealer_id').references(() => dealers.id),
+  dealerCode: text('dealer_code'),
   /** Business tax identifier printed on invoices (GSTIN, VAT no, EIN). */
   taxId: text('tax_id'),
   country: text('country').notNull().default('IN'),
@@ -66,7 +87,19 @@ export const tenants = pgTable('tenants', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, t => ({ byDealerCode: index('tenants_dealer_code_idx').on(t.dealerCode), byDealer: index('tenants_dealer_id_idx').on(t.dealerId) }));
+
+export const licenseActivations = pgTable('license_activations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  dealerId: uuid('dealer_id').references(() => dealers.id),
+  actorId: uuid('actor_id').notNull(), actorRole: text('actor_role').notNull(),
+  action: text('action').notNull(), plan: text('plan').notNull(),
+  amountMinor: integer('amount_minor').notNull().default(0),
+  commissionMinor: integer('commission_minor').notNull().default(0),
+  validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => ({ byDealerMonth: index('license_activations_dealer_month_idx').on(t.dealerId,t.createdAt) }));
 
 export const outlets = pgTable('outlets', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -882,8 +915,10 @@ export const TENANT_SCOPED_TABLES = [
   'shifts', 'orders', 'order_tables', 'order_lines', 'order_line_modifiers',
   'kots', 'kot_lines', 'payments', 'inventory_items', 'stock_levels',
   'stock_movements', 'recipe_components', 'invoice_sequences', 'print_jobs',
-  'audit_logs', 'idempotency_records',
+  'audit_logs', 'idempotency_records', 'license_activations',
 ] as const;
 
 /** The only table without a tenant_id — it *is* the tenant. */
-export const UNSCOPED_TABLES = ['tenants'] as const;
+export const UNSCOPED_TABLES = ['tenants', 'dealers', 'platform_admins'] as const;
+
+

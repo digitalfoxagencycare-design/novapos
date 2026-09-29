@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { loadDayBookEntries, filterEntriesByPeriod, type DayBookEntry } from '../lib/dayBook';
-import { useSubscriptionDetails } from '../lib/subscription';
+import { refreshSubscription, useSubscriptionDetails } from '../lib/subscription';
 import { ComplianceModal } from '../components/ComplianceModal';
 import { printBillDirect, getActiveNativePrinter, type BillData, type BillItem } from '../lib/thermalPrinter';
 import { speakPaymentAlert } from '../lib/hardwareBridge';
@@ -62,6 +62,7 @@ export const DashboardScreen: React.FC<Props> = ({
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState(false);
+  const [syncError,setSyncError] = useState('');
   const [printerConnected, setPrinterConnected] = useState<boolean>(() => {
     return localStorage.getItem('novapos_printer_connected') === 'true';
   });
@@ -146,14 +147,15 @@ export const DashboardScreen: React.FC<Props> = ({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      await syncPendingSales();
-    } catch {
-      // ignore
+      setSyncError('');
+      await Promise.all([refreshSubscription(), syncPendingSales()]);
+      setSyncToast(true);
+      setTimeout(() => setSyncToast(false), 2000);
+    } catch (error) {
+      setSyncError((error as Error).message);
     } finally {
       refreshTodaySales();
       setIsSyncing(false);
-      setSyncToast(true);
-      setTimeout(() => setSyncToast(false), 2000);
     }
   };
 
@@ -211,6 +213,10 @@ export const DashboardScreen: React.FC<Props> = ({
 
   return (
     <div className="ezo-dashboard-container">
+      <div role="status" style={{padding:'12px 16px',fontWeight:700,background:subDetails.isExpired?'#fee2e2':subDetails.isTrial?'#fef3c7':'#d1fae5',color:subDetails.isExpired?'#991b1b':subDetails.isTrial?'#92400e':'#065f46'}}>
+        {subDetails.status === 'SUSPENDED' ? '⚠ Store Suspended - Contact Your Dealer' : subDetails.isExpired ? '⚠ Subscription Expired - Contact Your Dealer to Activate' : subDetails.isTrial ? `Trial Mode: ${subDetails.daysRemaining} Days Left` : `✓ ${subDetails.plan === 'STARTER' ? 'Starter' : 'Pro'} License Active (Valid until ${subDetails.formattedExpiresAt})`}
+      </div>
+      {syncError && <div role="alert" style={{padding:12,color:'#991b1b'}}>License sync failed: {syncError} <button onClick={handleSync}>Retry</button></div>}
       {/* 1. Warm Orange Top Header */}
       <header
         className="ezo-dash-header shadow-md"
@@ -659,3 +665,6 @@ export const DashboardScreen: React.FC<Props> = ({
     </div>
   );
 };
+
+
+

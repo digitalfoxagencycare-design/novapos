@@ -1,10 +1,39 @@
-/** Platform features must not run using a merchant's tenant credentials. */
-export function MerchantsManagement({ onError: _onError }: { onError: (message: string) => void }) {
-  return (
-    <section className="workspace-state" role="status">
-      <h1>Platform administration unavailable</h1>
-      <p>Merchant onboarding, license extensions and suspension require a separate platform administrator session.</p>
-      <p>This portal currently supports store accounts. No merchant changes have been made.</p>
-    </section>
-  );
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { platformApi as api, type Actor } from '../lib/platformApi';
+interface Merchant { id: string; name: string; phone: string; dealerCode: string; businessType: string; status: string; validUntil: string; daysRemaining: number }
+const money = (minor: number) => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(minor/100);
+export function MerchantsManagement({ actor, onLogout }: { actor: Actor; onLogout: () => void }) {
+ const superAdmin = actor.role === 'SUPER_ADMIN';
+ const [tab,setTab] = useState('merchants');
+ const [search,setSearch] = useState(''); const [status,setStatus] = useState(''); const [page,setPage] = useState(1);
+ const [data,setData] = useState<{items:Merchant[];total:number}>({items:[],total:0});
+ const [metrics,setMetrics] = useState<any>(null); const [dealers,setDealers] = useState<any[]>([]);
+ const [error,setError] = useState(''); const [loading,setLoading] = useState(false); const [busy,setBusy] = useState(false); const [creating,setCreating] = useState(false);
+ const [version,setVersion] = useState(0); const generation = useRef(0);
+ const load = useCallback(async () => {
+   const current = ++generation.current; setLoading(true); setError('');
+   try {
+    const q = new URLSearchParams({page:String(page),limit:'25',...(search?{search}:{}),...(status?{status}:{})});
+    const [m,list,ds] = await Promise.all([api.request(superAdmin?'/admin/super/metrics':'/admin/dealer/stats'),api.request(`${superAdmin?'/admin/super/tenants':'/admin/dealer/my-merchants'}?${q}`),superAdmin?api.request('/admin/super/dealers'):Promise.resolve([])]);
+    if (current === generation.current) { setMetrics(m);setData(list);setDealers(ds); }
+   } catch(e) { if (current === generation.current) setError((e as Error).message); }
+   finally { if (current === generation.current) setLoading(false); }
+ },[superAdmin,page,search,status,version]);
+ useEffect(()=>{ const timer=setTimeout(()=>void load(),250); return ()=>{clearTimeout(timer);++generation.current;}; },[load]);
+ const mutate = async (path:string,body:unknown,method='POST') => { if(busy)return;setBusy(true);setError('');try{await api.request(path,method,body);setCreating(false);setVersion(v=>v+1);}catch(e){setError((e as Error).message);}finally{setBusy(false);} };
+ const change = (t:Merchant,action:string,days?:number,plan='pro_yearly') => {
+   if(!window.confirm(`${action === 'ACTIVATE' ? 'Activate '+plan : action} for ${t.name}${days?' by '+days+' days':''}?`))return;
+   void mutate(superAdmin?`/admin/super/tenants/${t.id}/subscription`:'/admin/dealer/activate-merchant',superAdmin?{action,...(action==='ACTIVATE'?{plan}:{}),...(days?{days}:{})}:{tenantId:t.id,plan});
+ };
+ return <div className="platform-shell"><aside className="platform-side"><strong>NovaPOS</strong><p>{superAdmin?'Platform control':'Dealer workspace'}</p><button onClick={()=>setTab('merchants')}>Merchants</button>{superAdmin&&<button onClick={()=>setTab('dealers')}>Dealers</button>}<button onClick={onLogout}>Sign out</button></aside><main className="platform-main">
+ <header><div><small>{actor.role.replace('_',' ')}</small><h1>{actor.name}</h1><p>{actor.dealerCode?`Dealer code · ${actor.dealerCode}`:'Merchant licenses and partner operations'}</p></div><button onClick={()=>setVersion(v=>v+1)} disabled={loading}>Refresh</button></header>
+ {error&&<div className="error-banner" role="alert">{error} <button onClick={()=>setVersion(v=>v+1)}>Retry</button><button onClick={onLogout}>Sign in again</button></div>}
+ {metrics&&<div className="platform-kpis">{[['Total stores',metrics.totalStores],['Active trials',metrics.activeTrials],['Paid-plan licenses',metrics.proTenants],[superAdmin?'Registered dealers':'Monthly activations',superAdmin?metrics.totalDealers:metrics.monthlyActivations],['Expiring in 48h',metrics.expiring48h],[superAdmin?'Contracted MRR':'Estimated commission',money(superAdmin?metrics.mrrMinor:metrics.estimatedCommissionMinor)]].map(([label,value])=><article key={label}><small>{label}</small><strong>{value}</strong></article>)}</div>}
+ <p className="platform-note">License activations are recorded; MRR and commissions are estimates, not confirmation of payment collection.</p>
+ {loading&&<p role="status">Refreshing records…</p>}
+ {tab==='merchants'?<section><div className="platform-filters"><input aria-label="Search merchants" placeholder="Store name, phone or dealer code" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/><select aria-label="License status" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}>{['','TRIAL','ACTIVE','EXPIRED','SUSPENDED'].map(s=><option key={s} value={s}>{s||'All statuses'}</option>)}</select></div>
+ <div className="platform-table"><table><thead><tr><th>Merchant</th><th>Dealer</th><th>License</th><th>Valid until</th><th>Actions</th></tr></thead><tbody>{data.items.map(t=><tr key={t.id}><td><strong>{t.name}</strong><div>{t.phone||'Phone not recorded'} · {t.businessType}</div></td><td>{t.dealerCode||'Direct'}</td><td><span className={`license-tag ${t.status.toLowerCase()}`}>{t.status}</span><div>{t.daysRemaining} days left</div></td><td>{new Date(t.validUntil).toLocaleDateString('en-IN')}</td><td><div className="platform-actions"><button disabled={busy||loading} onClick={()=>change(t,'ACTIVATE')}>Activate 1-Year Pro</button>{!superAdmin&&<button disabled={busy||loading} onClick={()=>change(t,'ACTIVATE',undefined,'starter_monthly')}>Activate Monthly</button>}{superAdmin&&<><button disabled={busy||loading} onClick={()=>change(t,'EXTEND',7)}>+7 Days</button><button disabled={busy||loading} onClick={()=>change(t,'EXTEND',30)}>+30 Days</button><button disabled={busy||loading} onClick={()=>change(t,t.status==='SUSPENDED'?'REACTIVATE':'SUSPEND')}>{t.status==='SUSPENDED'?'Reactivate':'Suspend'}</button></>}</div></td></tr>)}</tbody></table></div>{!loading&&!data.items.length&&<p>No merchants match this filter.</p>}<div className="platform-actions"><button disabled={page===1||loading} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page} · {data.total} stores</span><button disabled={page*25>=data.total||loading} onClick={()=>setPage(p=>p+1)}>Next</button></div></section>
+ :<section><button onClick={()=>setCreating(true)}>+ New Dealer</button><div className="platform-table"><table><thead><tr><th>Dealer</th><th>Code</th><th>Stores</th><th>Activations</th><th>Commission</th><th>Status</th></tr></thead><tbody>{dealers.map(d=><tr key={d.id}><td>{d.name}<div>{d.email} · {d.phone}</div></td><td>{d.dealerCode}</td><td>{d.merchantCount}</td><td>{d.activationVolume}</td><td>{d.commissionPercent}% <button disabled={busy} onClick={()=>{const value=window.prompt('Commission percentage (0–100)',String(d.commissionPercent));if(value!==null&&value.trim()&&Number.isInteger(Number(value))&&Number(value)>=0&&Number(value)<=100)void mutate(`/admin/super/dealers/${d.id}`,{commissionPercent:Number(value)},'PATCH');}}>Edit</button></td><td><button disabled={busy} onClick={()=>void mutate(`/admin/super/dealers/${d.id}`,{status:d.status==='ACTIVE'?'SUSPENDED':'ACTIVE'},'PATCH')}>{d.status==='ACTIVE'?'Suspend':'Reactivate'}</button></td></tr>)}</tbody></table></div></section>}
+ {creating&&<div className="platform-modal" role="dialog" aria-modal="true" aria-label="Create dealer"><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void mutate('/admin/super/dealers',{name:f.get('name'),phone:f.get('phone'),email:f.get('email'),password:f.get('password'),dealerCode:f.get('dealerCode'),commissionPercent:Number(f.get('commissionPercent'))});}}><h2>New dealer</h2>{[['name','Name','text'],['phone','Phone','tel'],['email','Email','email'],['password','Password','password'],['dealerCode','Dealer code','text'],['commissionPercent','Commission %','number']].map(([name,label,type])=><label key={name}>{label}<input required name={name} type={type} min={type==='number'?0:undefined} max={type==='number'?100:undefined} minLength={name==='password'?8:undefined} defaultValue={name==='commissionPercent'?20:undefined}/></label>)}{error&&<p role="alert">{error}</p>}<button disabled={busy}>Create dealer</button><button type="button" disabled={busy} onClick={()=>setCreating(false)}>Cancel</button></form></div>}
+ </main></div>;
 }

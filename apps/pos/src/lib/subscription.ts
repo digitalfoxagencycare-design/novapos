@@ -12,6 +12,7 @@ export interface SubscriptionState {
   receivedAt: number;
   lastSeenAt: number;
   active: boolean;
+  status?: 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED';
 }
 const EVENT = 'novapos:subscription-changed';
 const keyFor = (tenantId: string) => `novapos:entitlement:v2:${tenantId}`;
@@ -42,6 +43,7 @@ export function getSubscriptionDetails() {
     try { localStorage.setItem(keyFor(state.tenantId), JSON.stringify({ ...state, lastSeenAt: now })); } catch { /* storage unavailable */ }
   }
   return {
+    status: state.status === 'SUSPENDED' ? 'SUSPENDED' : remainingMs <= 0 ? 'EXPIRED' : state.plan === 'TRIAL' ? 'TRIAL' : 'ACTIVE',
     plan: state.plan,
     isTrial: state.plan === 'TRIAL',
     isExpired: remainingMs <= 0,
@@ -50,7 +52,7 @@ export function getSubscriptionDetails() {
     clockRollback,
     countdown: `${Math.floor(remainingMs / 3600000)}h ${Math.floor(remainingMs / 60000) % 60}m`,
     formattedExpiresAt: state.expiresAt
-      ? new Date(state.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      ? new Date(state.expiresAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : 'Connect to verify',
   };
 }
@@ -61,7 +63,7 @@ export async function refreshSubscription(): Promise<void> {
   const status = await cloudApi.subscriptionStatus();
   if (cloudApi.sessionScope?.tenantId !== tenantId || status.tenantId !== tenantId) return;
   const state: SubscriptionState = {
-    tenantId, plan: status.isTrial ? 'TRIAL' : status.plan === 'pro_yearly' ? 'PRO' : status.plan === 'enterprise_yearly' ? 'ENTERPRISE' : 'STARTER',
+    tenantId, status: status.status, plan: status.isTrial ? 'TRIAL' : status.plan === 'pro_yearly' ? 'PRO' : status.plan === 'enterprise_yearly' ? 'ENTERPRISE' : 'STARTER',
     startedAt: Date.parse(status.startedAt), expiresAt: Date.parse(status.validUntil), serverTime: Date.parse(status.serverTime),
     receivedAt: Date.now(), lastSeenAt: Date.now(), active: !status.isExpired && ['TRIAL', 'ACTIVE'].includes(status.status),
   };
@@ -93,3 +95,4 @@ export function useSubscriptionDetails() {
   }, []);
   return details;
 }
+
