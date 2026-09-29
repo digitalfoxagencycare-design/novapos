@@ -45,6 +45,8 @@ jobs:
         run: pnpm build:packages
 
       - name: Build Admin Portal
+        env:
+          VITE_API_BASE_URL: https://api.novasaas.net
         run: pnpm --filter @novapos/admin build
 
       - name: Deploy to Cloudflare

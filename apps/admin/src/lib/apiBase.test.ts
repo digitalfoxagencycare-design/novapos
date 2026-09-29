@@ -24,4 +24,14 @@ describe('resolveApiBase', () => {
 
     expect(resolveApiBase()).toBe('/api/v1');
   });
+
+  it('falls back to production api.novasaas.net on non-localhost browsers when env is not set', () => {
+    vi.stubEnv('VITE_API_BASE_URL', '');
+    vi.stubEnv('VITE_API_URL', '');
+    vi.stubGlobal('window', { location: { hostname: 'admin.novasaas.net' } });
+
+    expect(resolveApiBase()).toBe('https://api.novasaas.net/api/v1');
+    vi.unstubAllGlobals();
+  });
 });
+
