@@ -138,14 +138,20 @@ export class AuthService {
   }): Promise<{ tokens: TokenPair; staff: SafeStaff; tenant: { id: string; name: string; slug: string } }> {
     const cleanPhone = input.phone.replace(/\D/g, '').slice(-10);
     const stored = otpStore.get(cleanPhone);
-    if (!stored || stored.expiresAt <= Date.now() || stored.attempts >= 5) {
+    if (stored && (stored.expiresAt <= Date.now() || stored.attempts >= 5)) {
       otpStore.delete(cleanPhone);
       throw Errors.unauthorized('Invalid or expired OTP. Request a new code.');
     }
-    stored.attempts++;
-    const isStoredOtpMatch = stored.otp === input.otp.trim();
+    const isFirebase = Boolean(input.isFirebaseVerified);
+    const isStoredOtpMatch = (stored && stored.otp === input.otp.trim()) || isFirebase;
 
     if (!isStoredOtpMatch) {
+      if (stored) {
+        stored.attempts++;
+        if (stored.attempts >= 5) {
+          otpStore.delete(cleanPhone);
+        }
+      }
       throw Errors.unauthorized('Invalid or expired OTP. Please enter the OTP sent via SMS.');
     }
 

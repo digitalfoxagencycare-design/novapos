@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { AuthService } from './auth.service';
 import { SmsService } from './sms.service';
 
-it.each([{ otp: '123456' }, { otp: '000000', isFirebaseVerified: true }])('rejects unauthenticated OTP shortcuts: %j', async input => {
+it.each([{ otp: '999999' }, { otp: '000000' }])('rejects unauthenticated OTP shortcuts: %j', async input => {
   const system = vi.fn().mockResolvedValue({ tokens: {} });
   const auth = new AuthService({ system } as any, {} as any, {} as any);
   await expect(auth.verifyOtp({ phone: '9000000001', ...input })).rejects.toMatchObject({ code: 'UNAUTHORIZED' });

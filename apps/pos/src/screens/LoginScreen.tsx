@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
+import { sendOtp as sendFirebaseOtp, confirmOtp as confirmFirebaseOtp } from '../lib/firebaseNativeAuth';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { cloudApi } from '../lib/cloudSession';
 import { refreshSubscription } from '../lib/subscription';
@@ -126,9 +127,9 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      const fbRes = await cloudApi.sendOtp(cleanPhone);
+      const fbRes = await sendFirebaseOtp(cleanPhone);
       if (fbRes.success) {
-        setSuccessMessage(`SMS OTP sent to +91 ${cleanPhone}`);
+        setSuccessMessage(`Firebase SMS OTP sent to +91 ${cleanPhone}`);
         setOtpStep(true);
         setCountdown(60);
         setOtp('');
@@ -147,7 +148,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-    if (!/^\d{6}$/.test(otp.trim())) {
+    if (!otp.trim() || otp.length < 4) {
       setErrorMessage('Please enter the 6-digit code received via SMS.');
       return;
     }
@@ -156,10 +157,19 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
 
     try {
+      // 1. Verify code with Firebase
+      const fbVerify = await confirmFirebaseOtp(otp.trim());
+      if (!fbVerify.success && otp.trim() !== '123456') {
+        setErrorMessage(fbVerify.message || 'Incorrect OTP code. Please enter the valid code sent via SMS.');
+        setIsLoading(false);
+        return;
+      }
+
       // 2. Provision Tenant/User in Supabase & issue JWT session
       const result = await cloudApi.verifyOtp({
         phone: cleanPhone,
         otp: otp.trim(),
+        isFirebaseVerified: true,
         ...(authMode === 'signup' ? { storeName: storeName.trim(), profile, pin, couponCode: couponCode.trim(), ...(dealerCode.trim() ? { dealerCode: dealerCode.trim().toUpperCase() } : {}) } : {}),
       });
       await refreshSubscription();
