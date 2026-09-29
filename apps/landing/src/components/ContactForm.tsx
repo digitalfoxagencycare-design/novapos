@@ -31,13 +31,13 @@ export const ContactForm: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Info */}
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 uppercase">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-xs font-bold text-orange-700 uppercase">
               <span>Book Machine Demo & Inquiry</span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
               Get Your Store Automated with <br />
-              <span className="text-gradient-purple">NovaPOS Today</span>
+              <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">NovaPOS Today</span>
             </h2>
 
             <p className="text-sm text-slate-600 leading-relaxed max-w-lg">
@@ -51,19 +51,19 @@ export const ContactForm: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-[11px] text-slate-500 uppercase font-bold block">Helpline & WhatsApp Orders</span>
-                  <a href="https://wa.me/919381563241" target="_blank" rel="noreferrer" className="text-sm font-bold text-slate-900 hover:text-indigo-600">
+                  <a href="https://wa.me/919381563241" target="_blank" rel="noreferrer" className="text-sm font-bold text-slate-900 hover:text-orange-600">
                     +91 9381563241
                   </a>
                 </div>
               </div>
 
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 flex-shrink-0">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[11px] text-slate-500 uppercase font-bold block">Support & Inquiries Email</span>
-                  <a href="mailto:support@novapos.in" className="text-sm font-bold text-slate-900 hover:text-indigo-600">
+                  <a href="mailto:support@novapos.in" className="text-sm font-bold text-slate-900 hover:text-orange-600">
                     support@novapos.in / care@digitalfox.in
                   </a>
                 </div>
@@ -118,7 +118,7 @@ export const ContactForm: React.FC = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     />
                   </div>
                   <div>
@@ -130,7 +130,7 @@ export const ContactForm: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                       required
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -144,7 +144,7 @@ export const ContactForm: React.FC = () => {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       required
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     />
                   </div>
                   <div>
@@ -152,7 +152,7 @@ export const ContactForm: React.FC = () => {
                     <select
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     >
                       <option value="Kirana / Supermarket">Kirana / Supermarket</option>
                       <option value="Restaurant / Cafe / KOT">Restaurant / Cafe / KOT</option>
@@ -169,7 +169,7 @@ export const ContactForm: React.FC = () => {
                   <select
                     value={requirement}
                     onChange={(e) => setRequirement(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                   >
                     <option value="NovaPOS Bada Billing Machine with 1-Year Software (₹6,499)">
                       NovaPOS Bada Billing Machine with 1-Year Software (₹6,499)
@@ -191,7 +191,7 @@ export const ContactForm: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-xs text-white flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+                  className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 font-bold text-xs text-white flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-all active:scale-95"
                 >
                   <MessageSquare className="w-4 h-4 text-emerald-300" />
                   <span>Connect with Sales on WhatsApp</span>

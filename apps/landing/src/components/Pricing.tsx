@@ -18,11 +18,11 @@ export const Pricing: React.FC = () => {
     <section id="pricing" className="py-16 md:py-24 bg-slate-50 border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-xs font-bold text-indigo-700 uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 uppercase tracking-wider">
             <span>Transparent Pricing & Plans</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-            Affordable Plans for <span className="text-gradient-purple">Every Retail Outlet</span>
+            Affordable Plans for <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">Every Retail Outlet</span>
           </h2>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             Get started with a 7-Day Free Trial on your own mobile, or choose our complete POS billing machine bundle with lifetime hardware ownership.
@@ -34,7 +34,7 @@ export const Pricing: React.FC = () => {
               onClick={() => setPricingTab('all')}
               className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
                 pricingTab === 'all'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-orange-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -44,7 +44,7 @@ export const Pricing: React.FC = () => {
               onClick={() => setPricingTab('software')}
               className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
                 pricingTab === 'software'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-orange-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -54,7 +54,7 @@ export const Pricing: React.FC = () => {
               onClick={() => setPricingTab('combos')}
               className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
                 pricingTab === 'combos'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-orange-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -104,22 +104,22 @@ export const Pricing: React.FC = () => {
             <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-slate-200 shadow-sm">
               <div>
                 <h3 className="text-2xl font-black text-slate-900">Starter Monthly</h3>
-                <p className="mt-4 text-4xl font-black text-indigo-600">₹499 <span className="text-sm">/ 30 days</span></p>
+                <p className="mt-4 text-4xl font-black text-orange-600">₹499 <span className="text-sm">/ 30 days</span></p>
                 <p className="mt-4 text-sm text-slate-600">One POS terminal, offline billing and basic reports. Upgrade securely inside the app after your seven-day trial.</p>
               </div>
-              <a href="#download" className="mt-8 block text-center rounded-xl bg-indigo-600 text-white p-3 font-bold">Get the app · Starter Monthly</a>
+              <a href="#download" className="mt-8 block text-center rounded-xl bg-orange-600 hover:bg-orange-700 text-white p-3 font-bold transition-all">Get the app · Starter Monthly</a>
             </div>
           )}
 
           {/* Plan 2: 1-Year Pro Software SaaS License (Featured) */}
           {(pricingTab === 'all' || pricingTab === 'software') && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-indigo-600 shadow-xl relative">
-              <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-2 border-orange-500 shadow-xl relative ring-4 ring-orange-500/10">
+              <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
                 POPULAR CHOICE
               </span>
 
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Full Cloud Software</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-600">Full Cloud Software</span>
                 <h3 className="text-2xl font-black text-slate-900 mt-1">1-Year Pro Software</h3>
                 <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                   Complete 365-day license for high volume stores with live multi-counter sync.
@@ -127,8 +127,7 @@ export const Pricing: React.FC = () => {
 
                 <div className="mt-6 mb-6">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-indigo-600">₹4,999</span>
-                    
+                    <span className="text-4xl font-black text-orange-600">₹4,999</span>
                     <span className="text-xs text-slate-500 font-semibold">/ year</span>
                   </div>
                   <span className="text-[11px] text-emerald-700 font-bold block mt-1">Billed annually</span>
@@ -149,7 +148,7 @@ export const Pricing: React.FC = () => {
                   href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20activate%20the%201-Year%20Software%20Plan%20(%E2%82%B94999)"
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition-all active:scale-95"
+                  className="w-full py-3.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 font-black text-xs text-white text-center flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-all active:scale-95"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
                   <span>Activate 1-Year License (₹4,999)</span>

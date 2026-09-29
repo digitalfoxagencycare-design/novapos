@@ -27,7 +27,7 @@ export const SavingsCalculator: React.FC = () => {
 
               <h2 className="text-3xl font-black text-slate-900 leading-tight">
                 Calculate Your Time & Money <br />
-                <span className="text-gradient-purple">Saved with NovaPOS</span>
+                <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">Saved with NovaPOS</span>
               </h2>
 
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -39,7 +39,7 @@ export const SavingsCalculator: React.FC = () => {
                 <div>
                   <div className="flex justify-between text-xs font-bold text-slate-800 mb-1.5">
                     <span>Average Daily Customer Bills:</span>
-                    <span className="text-indigo-600 font-mono font-black text-sm">{dailyBills} Bills / Day</span>
+                    <span className="text-orange-600 font-mono font-black text-sm">{dailyBills} Bills / Day</span>
                   </div>
                   <input
                     type="range"
@@ -48,14 +48,14 @@ export const SavingsCalculator: React.FC = () => {
                     step="10"
                     value={dailyBills}
                     onChange={(e) => setDailyBills(Number(e.target.value))}
-                    className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                    className="w-full accent-orange-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-bold text-slate-800 mb-1.5">
                     <span>Number of Billing Counters:</span>
-                    <span className="text-indigo-600 font-mono font-black text-sm">{counters} Counter{counters > 1 ? 's' : ''}</span>
+                    <span className="text-orange-600 font-mono font-black text-sm">{counters} Counter{counters > 1 ? 's' : ''}</span>
                   </div>
                   <input
                     type="range"
@@ -64,15 +64,15 @@ export const SavingsCalculator: React.FC = () => {
                     step="1"
                     value={counters}
                     onChange={(e) => setCounters(Number(e.target.value))}
-                    className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                    className="w-full accent-orange-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                 </div>
               </div>
             </div>
 
             {/* Right Output Box */}
-            <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 sm:p-8 rounded-2xl border border-indigo-200 space-y-5 text-center">
-              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">
+            <div className="bg-gradient-to-br from-orange-50 via-white to-amber-50 p-6 sm:p-8 rounded-2xl border border-orange-200 space-y-5 text-center shadow-lg shadow-orange-500/5">
+              <span className="text-xs font-bold text-orange-700 uppercase tracking-wider block">
                 Estimated Monthly Savings
               </span>
 
@@ -83,9 +83,9 @@ export const SavingsCalculator: React.FC = () => {
                 <span className="text-xs text-slate-500 block">per month in staff time & mistake prevention</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-indigo-100">
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-orange-100">
                 <div className="p-3 bg-white rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-center text-indigo-600 mb-1">
+                  <div className="flex items-center justify-center text-orange-600 mb-1">
                     <Clock className="w-4 h-4" />
                   </div>
                   <b className="text-lg font-black text-slate-900 block">{hoursSavedPerMonth} Hours</b>
@@ -103,7 +103,7 @@ export const SavingsCalculator: React.FC = () => {
 
               <a
                 href="#pricing"
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>Start Saving with Free Trial</span>

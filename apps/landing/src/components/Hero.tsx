@@ -22,15 +22,15 @@ export const Hero: React.FC = () => {
           {/* Left Column: Value Proposition & CTAs */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             {/* Top Announcement Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-xs font-bold text-orange-700 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>⚡ India's #1 Smart POS Billing Machines & Cloud Software</span>
+              <span>⚡ German Engineering Core · India's #1 Smart POS Cloud Software</span>
             </div>
 
             {/* Main Title */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.12]">
               Fast Retail Billing Machines &{' '}
-              <span className="text-gradient-purple">Smart POS Software</span>
+              <span className="text-gradient-orange">Smart POS Software</span>
             </h1>
 
             {/* Subtitle */}
@@ -42,9 +42,9 @@ export const Hero: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
               <a
                 href="#products"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-black text-sm text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95"
               >
-                <ShoppingBag className="w-4 h-4 text-amber-300" />
+                <ShoppingBag className="w-4 h-4 text-amber-200" />
                 <span>Explore All Products & Combos</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
@@ -55,7 +55,7 @@ export const Hero: React.FC = () => {
                 rel="noreferrer"
                 className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-xs transition-all"
               >
-                <Printer className="w-4 h-4 text-indigo-600" />
+                <Printer className="w-4 h-4 text-orange-600" />
                 <span>Order Machine on WhatsApp</span>
               </a>
             </div>
@@ -77,7 +77,7 @@ export const Hero: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
                 <span>1-Year Machine Warranty</span>
               </div>
             </div>
@@ -87,7 +87,7 @@ export const Hero: React.FC = () => {
           <div className="lg:col-span-5 relative">
             <div className="relative mx-auto max-w-md lg:max-w-none">
               {/* Outer Decorative Gradient Glow */}
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur-lg opacity-25"></div>
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl blur-lg opacity-25"></div>
 
               {/* Main Image Container */}
               <div className="relative bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xl">
@@ -106,7 +106,7 @@ export const Hero: React.FC = () => {
                 {/* Floating Overlay Badge 2: Bottom Bar */}
                 <div className="absolute bottom-3 inset-x-3 bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-white/10 text-white flex items-center justify-between shadow-lg">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-xs">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-black text-xs">
                       58mm
                     </div>
                     <div>
@@ -114,7 +114,7 @@ export const Hero: React.FC = () => {
                       <span className="text-[10px] text-slate-300">0.2s 1-Tap Thermal Print · 4G + WiFi</span>
                     </div>
                   </div>
-                  <span className="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
+                  <span className="bg-orange-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
                     Ready
                   </span>
                 </div>

@@ -15,7 +15,7 @@ export const DownloadSection: React.FC = () => {
 
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
                 Download NovaPOS Mobile App <br />
-                <span className="text-gradient-purple">for Android Phones & POS Terminals</span>
+                <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">for Android Phones & POS Terminals</span>
               </h2>
 
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -33,7 +33,7 @@ export const DownloadSection: React.FC = () => {
                 <a
                   href="/novapos-latest.apk"
                   download="NovaPOS-Mobile-v4.5-Razorpay-Release.apk"
-                  className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+                  className="px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition-all active:scale-95"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Android APK</span>
@@ -41,11 +41,9 @@ export const DownloadSection: React.FC = () => {
 
                 <a
                   href="#contact"
-                  target="_blank"
-                  rel="noreferrer"
                   className="px-6 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 border border-slate-300 transition-all"
                 >
-                  <Play className="w-4 h-4 text-indigo-600 fill-indigo-600" />
+                  <Play className="w-4 h-4 text-orange-600 fill-orange-600" />
                   <span>Get setup help</span>
                 </a>
               </div>
@@ -55,7 +53,7 @@ export const DownloadSection: React.FC = () => {
             <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-3.5 text-xs">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
                 <b className="text-slate-900">App Release Specifications</b>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-100 text-orange-800 font-bold">
                   v4.5 (Build 32)
                 </span>
               </div>
@@ -68,7 +66,7 @@ export const DownloadSection: React.FC = () => {
                 <div className="flex justify-between"><span>Printers Supported:</span><b className="text-slate-900">58mm / 80mm ESC/POS (Bluetooth / USB)</b></div>
               </div>
 
-              <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-[11px] text-indigo-800 flex items-center gap-2">
+              <div className="p-3 bg-orange-50 rounded-xl border border-orange-200/80 text-[11px] text-orange-900 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 <span>Web POS access also available on Chrome, Safari & Windows PC.</span>
               </div>

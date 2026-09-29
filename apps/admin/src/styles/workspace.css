@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 /* Scope the new workspace so the platform administration stays independent. */
-.store-workspace { color-scheme:light; --surface:#fff; --line:#e2e8f0; --text:#1e293b; --accent:#059669; font-family:Inter,system-ui,sans-serif; }
+.store-workspace { color-scheme:light; --surface:#fff; --line:#e2e8f0; --text:#1e293b; --accent:#ea580c; --accent-hover:#c2410c; font-family:Inter,system-ui,sans-serif; }
 .store-workspace *, .store-workspace *::before, .store-workspace *::after { border-style:solid; border-width:0; box-sizing:border-box; }
 .store-workspace h1,.store-workspace h2,.store-workspace h3,.store-workspace p { margin:0; }
 .store-workspace button,.store-workspace input,.store-workspace select,.store-workspace textarea { font:inherit; }
 .store-workspace button { touch-action:manipulation; }
 .store-workspace button:disabled { cursor:not-allowed; opacity:.55; }
-.store-workspace :focus-visible { outline:3px solid #059669; outline-offset:3px; }
+.store-workspace :focus-visible { outline:3px solid #ea580c; outline-offset:3px; }
 .store-workspace table { border-collapse:collapse; width:100%; }
 .store-workspace th,.store-workspace td { text-align:left; }
 .store-workspace input,.store-workspace select,.store-workspace textarea { background:white; color:#1e293b; border:1px solid #cbd5e1; }

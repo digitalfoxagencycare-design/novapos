@@ -77,12 +77,12 @@ export const HardwareShowcase: React.FC = () => {
       desc: 'Complete 365-day license for your Android mobile, tablet, or PC. Unlimited billing, thermal printing, multi-counter sync, and automated GSTR-1 reports.',
       image: null,
       icon: (
-        <div className="w-full h-48 bg-gradient-to-tr from-purple-50 via-indigo-50 to-emerald-50 rounded-xl flex items-center justify-center relative p-4 border border-purple-100">
+        <div className="w-full h-48 bg-gradient-to-tr from-amber-50 via-orange-50 to-amber-100 rounded-xl flex items-center justify-center relative p-4 border border-orange-100">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <div className="w-16 h-16 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
               <Sparkles className="w-8 h-8 text-amber-300" />
             </div>
-            <span className="text-xs font-black text-indigo-900 bg-white px-3 py-1 rounded-full border border-indigo-100 shadow-xs">
+            <span className="text-xs font-black text-orange-950 bg-white px-3 py-1 rounded-full border border-orange-100 shadow-xs">
               365 Days Pro License
             </span>
             <span className="text-[10px] text-slate-500 font-semibold">Multi-Counter Cloud Sync</span>
@@ -116,7 +116,7 @@ export const HardwareShowcase: React.FC = () => {
       desc: 'Wireless Bluetooth & USB thermal receipt printer. 1-Tap instant printing from NovaPOS mobile app or computer without ink or ribbon.',
       image: null,
       icon: (
-        <div className="w-full h-48 bg-gradient-to-tr from-amber-50 via-slate-50 to-indigo-50 rounded-xl flex items-center justify-center relative p-4 border border-amber-100">
+        <div className="w-full h-48 bg-gradient-to-tr from-amber-50 via-slate-50 to-orange-50 rounded-xl flex items-center justify-center relative p-4 border border-amber-100">
           <div className="w-32 h-28 bg-slate-900 rounded-xl border-2 border-slate-700 shadow-md p-2.5 flex flex-col justify-between">
             <div className="w-full h-4 bg-slate-800 rounded border-b border-slate-600 flex items-center justify-center">
               <div className="w-14 h-1 bg-white/40 rounded-full"></div>
@@ -176,7 +176,7 @@ export const HardwareShowcase: React.FC = () => {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
                   activeTab === tab.id
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -191,7 +191,7 @@ export const HardwareShowcase: React.FC = () => {
           {filteredProducts.map((p) => (
             <div
               key={p.id}
-              className="product-store-card p-5 bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-xl transition-all"
+              className="product-store-card p-5 bg-white rounded-2xl border border-slate-200 hover:border-orange-500 shadow-sm hover:shadow-xl transition-all"
             >
               <div>
                 {/* Visual Graphic: Real Photo or Clean Vector Card */}
@@ -212,7 +212,7 @@ export const HardwareShowcase: React.FC = () => {
 
                 {/* Offer Tag */}
                 <div className="mt-4 mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md inline-block">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md inline-block">
                     {p.offerTag}
                   </span>
                 </div>
@@ -260,7 +260,7 @@ export const HardwareShowcase: React.FC = () => {
                   )}%20for%20${encodeURIComponent(p.price)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-center flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                  className="w-full py-2.5 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs text-center flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>Order on WhatsApp</span>
@@ -273,7 +273,7 @@ export const HardwareShowcase: React.FC = () => {
         {/* 1 Year Pan-India Warranty Banner */}
         <div className="mt-12 p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center flex-shrink-0">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>

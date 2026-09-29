@@ -67,7 +67,7 @@ export const Testimonials: React.FC = () => {
                 <div>
                   <b className="text-xs font-bold text-slate-900 block">{r.name}</b>
                   <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <Store className="w-3 h-3 text-indigo-600" />
+                    <Store className="w-3 h-3 text-orange-600" />
                     <span>{r.store}</span>
                   </span>
                 </div>

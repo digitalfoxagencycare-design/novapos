@@ -50,20 +50,20 @@ body {
 }
 
 .product-store-card:hover {
-  border-color: #6366F1;
-  box-shadow: 0 14px 30px -8px rgba(99, 102, 241, 0.15), 0 4px 10px rgba(0, 0, 0, 0.03);
+  border-color: #F97316;
+  box-shadow: 0 14px 30px -8px rgba(249, 115, 22, 0.2), 0 4px 10px rgba(0, 0, 0, 0.03);
   transform: translateY(-3px);
 }
 
-/* Gradients & Accents */
-.text-gradient-purple {
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%);
+/* Gradients & Accents - Nova Orange Brand */
+.text-gradient-orange, .text-gradient-purple {
+  background: linear-gradient(135deg, #EA580C 0%, #F97316 50%, #F59E0B 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .bg-radial-soft {
-  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.06) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
 }
 
 /* Custom Scrollbar */

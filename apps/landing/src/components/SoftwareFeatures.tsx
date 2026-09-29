@@ -14,8 +14,8 @@ import {
 export const SoftwareFeatures: React.FC = () => {
   const features = [
     {
-      icon: <Receipt className="w-6 h-6 text-indigo-600" />,
-      bg: 'bg-indigo-50',
+      icon: <Receipt className="w-6 h-6 text-orange-600" />,
+      bg: 'bg-orange-50',
       title: 'Full GST & Non-GST Retail Invoicing',
       desc: 'Automatic CGST/SGST tax calculation, composition vs regular schemes, backward MRP-inclusive tax split, itemized thermal print slips, and GSTR-1 JSON export.',
     },
@@ -67,11 +67,11 @@ export const SoftwareFeatures: React.FC = () => {
     <section id="software" className="py-16 md:py-24 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-100 border border-purple-200 text-xs font-bold text-purple-700 uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-100 border border-orange-200 text-xs font-bold text-orange-700 uppercase tracking-wider">
             <span>SaaS POS Software Suite</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-            Designed specifically for <span className="text-gradient-purple">Indian Merchants & Retailers</span>
+            Designed specifically for <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">Indian Merchants & Retailers</span>
           </h2>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             From single-counter shops to 5-counter high volume supermarkets — NovaPOS handles all your inventory, GST billing, thermal printing, and UPI collection in one unified system.
@@ -83,7 +83,7 @@ export const SoftwareFeatures: React.FC = () => {
           {features.map((f, idx) => (
             <div
               key={idx}
-              className="p-6 bg-slate-50 hover:bg-white rounded-2xl border border-slate-200/80 hover:border-indigo-400 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+              className="p-6 bg-slate-50 hover:bg-white rounded-2xl border border-slate-200/80 hover:border-orange-500 shadow-xs hover:shadow-lg hover:shadow-orange-500/5 transition-all flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className={`w-12 h-12 rounded-xl ${f.bg} flex items-center justify-center`}>

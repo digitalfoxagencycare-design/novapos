@@ -12,8 +12,8 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
   return (
     <>
       {/* Top Special Offer Ribbon */}
-      <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-700 text-white text-xs py-2 px-4 text-center font-bold tracking-wide flex items-center justify-center gap-2">
-        <span className="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
+      <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 text-white text-xs py-2 px-4 text-center font-bold tracking-wide flex items-center justify-center gap-2">
+        <span className="bg-white text-orange-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase shadow-xs">
           Special Offer
         </span>
         <span>⚡ FLAT 45% OFF ON NOVAPOS SOFTWARE + SMART BILLING MACHINES | PAN-INDIA EXPRESS SHIPPING 🚚</span>
@@ -25,12 +25,12 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
           <div className="flex items-center justify-between h-20">
             {/* Brand Logo */}
             <a href="#" className="flex items-center gap-3 group">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-500 via-orange-600 to-amber-600 flex items-center justify-center shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform">
                 <Store className="w-6 h-6 text-white" />
               </div>
               <div>
                 <span className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
-                  NovaPOS <span className="text-[11px] bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold px-2 py-0.5 rounded-full uppercase">Smart POS</span>
+                  NovaPOS <span className="text-[11px] bg-orange-50 border border-orange-200 text-orange-700 font-bold px-2 py-0.5 rounded-full uppercase">Smart POS</span>
                 </span>
                 <span className="text-[11px] text-slate-500 font-semibold block">Hardware Billing Machines & Cloud Software</span>
               </div>
@@ -38,16 +38,16 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
 
             {/* Desktop Nav Links */}
             <nav className="hidden lg:flex items-center gap-7 text-sm font-bold text-slate-700">
-              <a href="#products" className="hover:text-indigo-600 transition-colors flex items-center gap-1">
-                <ShoppingBag className="w-4 h-4 text-indigo-500" />
+              <a href="#products" className="hover:text-orange-600 transition-colors flex items-center gap-1">
+                <ShoppingBag className="w-4 h-4 text-orange-500" />
                 <span>All Products</span>
               </a>
-              <a href="#products" className="hover:text-indigo-600 transition-colors">POS Machines</a>
-              <a href="#pricing" className="hover:text-indigo-600 transition-colors">Software Plans</a>
-              <a href="#software" className="hover:text-indigo-600 transition-colors">Features</a>
-              <a href="#calculator" className="hover:text-indigo-600 transition-colors">ROI Calculator</a>
-              <a href="#download" className="hover:text-indigo-600 transition-colors">Download App</a>
-              <a href="#contact" className="hover:text-indigo-600 transition-colors">Contact / Support</a>
+              <a href="#products" className="hover:text-orange-600 transition-colors">POS Machines</a>
+              <a href="#pricing" className="hover:text-orange-600 transition-colors">Software Plans</a>
+              <a href="#software" className="hover:text-orange-600 transition-colors">Features</a>
+              <a href="#calculator" className="hover:text-orange-600 transition-colors">ROI Calculator</a>
+              <a href="#download" className="hover:text-orange-600 transition-colors">Download App</a>
+              <a href="#contact" className="hover:text-orange-600 transition-colors">Contact / Support</a>
             </nav>
 
             {/* Desktop CTA Action */}
@@ -64,9 +64,9 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
 
               <a
                 href="#pricing"
-                className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all active:scale-95"
               >
-                <Sparkles className="w-4 h-4 text-amber-300" />
+                <Sparkles className="w-4 h-4 text-amber-200" />
                 <span>Start Free Trial</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
@@ -90,7 +90,7 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
           <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-4 shadow-xl">
             <div className="flex flex-col gap-2.5 text-sm font-bold text-slate-700">
               <a href="#products" onClick={() => setMobileMenuOpen(false)} className="p-2.5 hover:bg-slate-50 rounded-xl flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-indigo-600" />
+                <ShoppingBag className="w-4 h-4 text-orange-600" />
                 <span>All Products & Machines</span>
               </a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="p-2.5 hover:bg-slate-50 rounded-xl">Pricing & Plans</a>
@@ -112,7 +112,7 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
               <a
                 href="#pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-3.5 rounded-xl text-center text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-xl text-center text-xs font-black text-white bg-orange-600 hover:bg-orange-700 shadow-md shadow-orange-600/20 flex items-center justify-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>Start Free Trial</span>

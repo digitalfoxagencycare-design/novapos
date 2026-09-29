@@ -51,7 +51,7 @@ export function App() {
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center">
                   <Scale className="w-4 h-4" />
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export function App() {
                 onClick={() => setLegalModalTab('privacy')}
                 className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                   legalModalTab === 'privacy'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -85,7 +85,7 @@ export function App() {
                 onClick={() => setLegalModalTab('terms')}
                 className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                   legalModalTab === 'terms'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -97,7 +97,7 @@ export function App() {
                 onClick={() => setLegalModalTab('about')}
                 className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                   legalModalTab === 'about'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -110,7 +110,7 @@ export function App() {
             <div className="p-5 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
               {legalModalTab === 'privacy' && (
                 <div className="space-y-3">
-                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900">
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-950">
                     <b>Google Play Store Data Safety & Privacy Policy</b><br />
                     NovaPOS does not sell, rent, or commercialize merchant transaction records or customer telephone numbers.
                   </div>
@@ -121,7 +121,7 @@ export function App() {
                     <b>2. Device Hardware Permissions:</b> Bluetooth / USB access is requested solely to discover and send ESC/POS print commands to thermal receipt printers.
                   </p>
                   <p>
-                    <b>3. Data Retention & Erasure:</b> Store owners can request complete deletion of their account and database backups by emailing <a href="mailto:privacy@novapos.in" className="text-indigo-600 underline font-bold">privacy@novapos.in</a>.
+                    <b>3. Data Retention & Erasure:</b> Store owners can request complete deletion of their account and database backups by emailing <a href="mailto:privacy@novapos.in" className="text-orange-600 underline font-bold">privacy@novapos.in</a>.
                   </p>
                 </div>
               )}
@@ -148,7 +148,7 @@ export function App() {
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div><span className="text-slate-500 text-[10px] uppercase font-bold block">Brand Name:</span><b className="text-slate-900">NovaPOS & NovaSaaS</b></div>
-                      <div><span className="text-slate-500 text-[10px] uppercase font-bold block">Official Domain:</span><b className="text-indigo-600 font-mono">novasaas.net</b></div>
+                      <div><span className="text-slate-500 text-[10px] uppercase font-bold block">Official Domain:</span><b className="text-orange-600 font-mono">novasaas.net</b></div>
                       <div><span className="text-slate-500 text-[10px] uppercase font-bold block">Publisher Entity:</span><b className="text-slate-900">Digital Fox Agency & NovaPOS Technologies India</b></div>
                       <div><span className="text-slate-500 text-[10px] uppercase font-bold block">Target Android API:</span><b className="text-emerald-700 font-bold">API Level 35 (Android 15)</b></div>
                     </div>
@@ -167,7 +167,7 @@ export function App() {
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
               <button
                 onClick={() => setLegalModalTab(null)}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors"
+                className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition-colors shadow-md shadow-orange-600/20"
               >
                 Close
               </button>

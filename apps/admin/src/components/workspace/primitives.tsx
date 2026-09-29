@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, RefreshCw, SearchX, X } from 'lucide-react';
 export const button = 'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50';
-export const primary = 'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:opacity-50';
+export const primary = 'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-500/20 transition-all hover:from-orange-600 hover:to-amber-700 disabled:opacity-50';
 export const field = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800';
 export const card = 'rounded-xl border border-slate-200/80 bg-white shadow-sm';
 export function EmptyState({title,detail,action}:{title:string;detail:string;action?:ReactNode}) {return <div className="flex min-h-[230px] flex-col items-center justify-center gap-3 p-8 text-center"><div className="rounded-2xl bg-slate-100 p-4 text-slate-400"><SearchX size={28}/></div><h3 className="text-base font-semibold text-slate-800">{title}</h3><p className="max-w-md text-sm leading-relaxed text-slate-500">{detail}</p>{action}</div>;}
