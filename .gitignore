@@ -3,8 +3,13 @@ dist/
 build/
 .env
 .env.local
+.env.production
+.env*.local
 *.log
 *.apk
+*.aab
+*.keystore
+*.jks
 .DS_Store
 coverage/
 .turbo/

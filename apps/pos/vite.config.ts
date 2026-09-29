@@ -19,6 +19,14 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
         kds: path.resolve(__dirname, 'kds.html'),
       },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-firebase': ['firebase/app', 'firebase/auth'],
+          'vendor-db': ['dexie'],
+        },
+      },
     },
   },
   server: {

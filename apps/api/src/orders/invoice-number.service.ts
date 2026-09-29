@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { getBusinessDate } from '@novapos/shared';
 
 /**
  * Sequence allocation.
@@ -55,7 +56,7 @@ export class InvoiceNumberService {
     input: { tenantId: string; outletId: string; at?: Date },
   ): Promise<string> {
     const at = input.at ?? new Date();
-    const day = at.toISOString().slice(0, 10); // YYYY-MM-DD, resets daily
+    const day = getBusinessDate(at); // YYYY-MM-DD in outlet timezone, shifts at 05:00 AM
     const n = await this.allocate(db, {
       tenantId: input.tenantId, outletId: input.outletId,
       period: day, prefix: 'ORD',

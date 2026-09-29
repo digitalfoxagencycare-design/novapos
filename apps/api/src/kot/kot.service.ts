@@ -8,6 +8,7 @@ import { AuditService } from '../common/audit.service';
 import { InvoiceNumberService } from '../orders/invoice-number.service';
 import { Errors } from '../common/errors';
 import { requireTenantContext } from '../tenancy/tenant-context';
+import { getBusinessDate } from '@novapos/shared';
 
 export interface KotOrderView {
   id: string;
@@ -432,11 +433,10 @@ export class KotService {
   /**
    * The business day a ticket belongs to.
    *
-   * TODO (see docs/known-limitations.md): this uses the UTC date, so a
-   * restaurant open past midnight sees the number reset mid-service. It should
-   * use the outlet's timezone and a configurable day-start hour.
+   * Uses the outlet's timezone (defaults to 'Asia/Kolkata') and 05:00 AM shift start,
+   * so restaurants open past midnight do not see tickets reset mid-service.
    */
   private businessDate(at = new Date()): string {
-    return at.toISOString().slice(0, 10);
+    return getBusinessDate(at);
   }
 }

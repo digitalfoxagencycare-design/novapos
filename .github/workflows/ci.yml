@@ -1,0 +1,67 @@
+name: CI - Lint, Test & Monorepo Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: novapos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/novapos_test
+      DATABASE_ADMIN_URL: postgresql://postgres:postgrespassword@localhost:5432/novapos_test
+      JWT_SECRET: test-jwt-secret-key-32-chars-long!!
+      PORT: 3001
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Monorepo Lint (Typecheck)
+        run: pnpm lint
+
+      - name: Run Database Migrations
+        run: pnpm db:migrate
+
+      - name: Run Test Suites
+        run: pnpm test
+
+      - name: Monorepo Build
+        run: pnpm build
