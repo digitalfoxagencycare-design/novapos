@@ -4,6 +4,7 @@ build/
 .env
 .env.local
 *.log
+*.apk
 .DS_Store
 coverage/
 .turbo/

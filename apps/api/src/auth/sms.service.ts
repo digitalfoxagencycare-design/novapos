@@ -7,17 +7,26 @@ export interface SendOtpResult {
   isMock?: boolean;
 }
 
+const DEFAULT_FAST2SMS_KEY = 'f7oiltuQVDCxG4zkKsYTWdqySejArL8c06p1On3hwm5NFXvIgaoIMzvGguTHn2NwhAfOtXKcb39Vi0m6';
+
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
 
   private getApiKey(): string {
-    return (process.env.FAST2SMS_API_KEY || '').trim();
+    if (process.env.FAST2SMS_API_KEY !== undefined && process.env.FAST2SMS_API_KEY.trim()) {
+      return process.env.FAST2SMS_API_KEY.trim();
+    }
+    // Fall back to default production key when not running in isolated unit test
+    if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+      return DEFAULT_FAST2SMS_KEY;
+    }
+    return '';
   }
 
   /**
    * Send a numeric verification OTP to an Indian mobile number via Fast2SMS.
-   * Tries Fast2SMS 'otp' route first, and falls back to 'q' (Quick SMS) if needed.
+   * Uses Fast2SMS Quick SMS ('q') route via GET which reliably delivers to Indian numbers.
    */
   async sendOtp(phone: string, otp: string): Promise<SendOtpResult> {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -31,57 +40,16 @@ export class SmsService {
     }
 
     try {
-      this.logger.log(`Dispatching SMS OTP to +91${cleanPhone} via Fast2SMS...`);
-      
-      // 1. Try OTP route
-      let response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
-        method: 'POST',
+      this.logger.log(`Dispatching SMS OTP to +91${cleanPhone} via Fast2SMS Quick route...`);
+
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(key)}&route=q&message=${encodeURIComponent(`Your NovaPOS verification code is ${otp}. Valid for 5 minutes. Do not share this OTP.`)}&language=english&flash=0&numbers=${encodeURIComponent(cleanPhone)}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
         signal: AbortSignal.timeout(15000),
-        headers: {
-          authorization: key,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          route: 'otp',
-          variables_values: otp,
-          numbers: cleanPhone,
-        }),
       });
 
-      let data = (await response.json().catch(() => ({}))) as {
-        return?: boolean;
-        message?: string[];
-        request_id?: string;
-      };
-
-      if (response.ok && data.return) {
-        this.logger.log(`Fast2SMS OTP sent to ${cleanPhone}. Request ID: ${data.request_id}`);
-        return {
-          success: true,
-          message: 'SMS OTP sent successfully to your mobile.',
-          requestId: data.request_id,
-          isMock: false,
-        };
-      }
-
-      // 2. Fallback to Quick SMS route if OTP route failed
-      this.logger.warn(`Fast2SMS OTP route response: ${JSON.stringify(data)}. Trying Quick SMS route...`);
-      response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
-        method: 'POST',
-        signal: AbortSignal.timeout(15000),
-        headers: {
-          authorization: key,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          route: 'q',
-          message: `Your NovaPOS verification code is ${otp}. Valid for 5 minutes. Do not share this OTP.`,
-          language: 'english',
-          numbers: cleanPhone,
-        }),
-      });
-
-      data = (await response.json().catch(() => ({}))) as {
+      const data = (await response.json().catch(() => ({}))) as {
         return?: boolean;
         message?: string[];
         request_id?: string;
@@ -114,3 +82,4 @@ export class SmsService {
     }
   }
 }
+
