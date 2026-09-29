@@ -26,9 +26,35 @@ export type ItemEditorUpdate = {
   taxSlabId: string;
   hsnSac: string;
   isActive: boolean;
+  imageUrl?: string | null;
   variants: VariantInput[];
   modifierGroups: ModifierGroupInput[];
 };
+
+const DEFAULT_FOOD_IMAGES: Record<string, string> = {
+  chai: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80',
+  tea: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80',
+  biryani: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80',
+  dosa: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=400&q=80',
+  samosa: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80',
+  biscuit: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80',
+  chicken: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=400&q=80',
+  mutton: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80',
+  idli: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80',
+  vada: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80',
+  thali: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=400&q=80',
+  bun: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80',
+  paneer: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=400&q=80',
+};
+
+export function getFoodImage(name: string, imageUrl?: string | null): string {
+  if (imageUrl && imageUrl.startsWith('http')) return imageUrl;
+  const lower = name.toLowerCase();
+  for (const [key, url] of Object.entries(DEFAULT_FOOD_IMAGES)) {
+    if (lower.includes(key)) return url;
+  }
+  return 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=400&q=80';
+}
 
 const gstSlabs = [
   { id: 'gst-0', label: '0% GST' },
@@ -90,6 +116,7 @@ export function ItemEditor({ item, categories, onClose, onSave }: ItemEditorProp
   const [tax, setTax] = useState(item.taxSlabId);
   const [hsn, setHsn] = useState(item.hsnSac ?? '');
   const [isActive, setIsActive] = useState(item.isActive);
+  const [imageUrl, setImageUrl] = useState(item.imageUrl ?? '');
   const [variants, setVariants] = useState(getVariants(item));
   const [groups, setGroups] = useState<ModifierGroupDraft[]>(getGroups(item));
   const [busy, setBusy] = useState(false);
@@ -150,6 +177,7 @@ export function ItemEditor({ item, categories, onClose, onSave }: ItemEditorProp
           taxSlabId: tax,
           hsnSac: hsn.trim(),
           isActive,
+          ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
           variants: normalizedVariants,
           modifierGroups: normalizedGroups,
         });
@@ -164,6 +192,18 @@ export function ItemEditor({ item, categories, onClose, onSave }: ItemEditorProp
         <label className="block text-xs font-semibold text-slate-600">Item name
           <input required maxLength={150} className={`${field} mt-2`} value={name} onChange={event => setName(event.target.value)} />
         </label>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600">Item Photo URL
+            <input className={`${field} mt-2`} placeholder="Paste image link or choose preset below" value={imageUrl} onChange={event => setImageUrl(event.target.value)} />
+          </label>
+          <div className="mt-2.5 flex items-center gap-3">
+            <img src={getFoodImage(name, imageUrl)} alt={name} className="h-14 w-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
+            <div className="text-[11px] text-slate-500">
+              <span className="font-semibold text-slate-700">Live Photo Preview:</span>
+              <p className="mt-0.5">Appetizing item photos appear on your web catalog and counter bill screen.</p>
+            </div>
+          </div>
+        </div>
         <label className="block text-xs font-semibold text-slate-600">Description
           <textarea maxLength={2000} rows={3} className={`${field} mt-2`} value={description} onChange={event => setDescription(event.target.value)} />
         </label>
@@ -308,14 +348,25 @@ export function CatalogWorkspace({ api, outlet, canWrite }: { api: AdminApi; out
           <div className="flex gap-1"><button className={button} aria-label="Table view" aria-pressed={!grid} onClick={() => setGrid(false)}><List size={17} /></button><button className={button} aria-label="Grid view" aria-pressed={grid} onClick={() => setGrid(true)}><LayoutGrid size={17} /></button></div>
         </div>
         {!visible.length ? <EmptyState title="No items found" detail="Choose another category or clear your search." /> : grid
-          ? <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">{visible.map(item => <article key={item.id} className="rounded-xl border border-slate-200 p-4">
-            <div className="mb-4 flex h-20 items-center justify-center rounded-lg bg-slate-50 text-slate-300"><UtensilTile name={item.name} /></div><h3 className="truncate text-sm font-bold">{item.name}</h3><p className="mt-1 font-mono text-lg font-bold text-forest">{format(item.priceMinor)}</p>
-            <div className="mt-4 flex items-center justify-between">{availability(item)}<button disabled={!canWrite || saving.includes(item.id)} className={button} onClick={() => setEditing(item)}><Pencil size={14} />Edit Item</button></div>
+          ? <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">{visible.map(item => <article key={item.id} className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div>
+              <div className="relative h-32 w-full bg-slate-100 overflow-hidden">
+                <img src={getFoodImage(item.name, item.imageUrl)} alt={item.name} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" loading="lazy" />
+                <span className={`absolute top-2.5 left-2.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${item.isVeg !== false ? 'bg-emerald-600' : 'bg-rose-600'}`} title={item.isVeg !== false ? 'Vegetarian' : 'Non-Vegetarian'} />
+                {item.code && <span className="absolute top-2.5 right-2.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-mono font-bold text-white backdrop-blur-sm">{item.code}</span>}
+              </div>
+              <div className="p-4 pb-2">
+                <h3 className="text-sm font-bold text-slate-900 truncate">{item.name}</h3>
+                <p className="mt-1 font-mono text-base font-bold text-emerald-800">{format(item.priceMinor)}</p>
+                {item.description && <p className="mt-1 text-xs text-slate-500 line-clamp-2">{item.description}</p>}
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-slate-100 p-4 pt-3 bg-slate-50/50">{availability(item)}<button disabled={!canWrite || saving.includes(item.id)} className={button} onClick={() => setEditing(item)}><Pencil size={14} />Edit Item</button></div>
           </article>)}</div>
           : <div className="overflow-x-auto"><table><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400"><tr>{['Item details', 'Category', 'Price', 'GST', 'Available', ''].map((value, index) => <th className="px-4 py-3 font-semibold" key={index}>{value}</th>)}</tr></thead><tbody>
             {visible.map(item => <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/70">
-              <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}><Package size={15} /></span><div><strong className="text-sm font-semibold">{item.name}</strong><p className="mt-1 font-mono text-[11px] text-slate-400">{item.code || 'No code'}</p></div></div></td>
-              <td className="px-4 py-4 text-xs text-slate-500">{categories.find(row => row.id === item.categoryId)?.name ?? '—'}</td><td className="whitespace-nowrap px-4 py-4 font-mono text-sm font-semibold">{format(item.priceMinor)}</td><td className="px-4 py-4 text-xs text-slate-500">{item.taxSlabId}</td><td className="px-4 py-4">{availability(item)}</td>
+              <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"><img src={getFoodImage(item.name, item.imageUrl)} alt={item.name} className="h-full w-full object-cover" loading="lazy" /><span className={`absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-full border border-white ${item.isVeg !== false ? 'bg-emerald-600' : 'bg-rose-600'}`} /></div><div><strong className="text-sm font-semibold text-slate-900">{item.name}</strong><p className="mt-0.5 font-mono text-[11px] text-slate-400">{item.code || 'Standard'}</p></div></div></td>
+              <td className="px-4 py-4 text-xs text-slate-500">{categories.find(row => row.id === item.categoryId)?.name ?? '—'}</td><td className="whitespace-nowrap px-4 py-4 font-mono text-sm font-semibold text-emerald-900">{format(item.priceMinor)}</td><td className="px-4 py-4 text-xs text-slate-500">{item.taxSlabId}</td><td className="px-4 py-4">{availability(item)}</td>
               <td className="px-4 py-4"><button className={button} disabled={!canWrite || saving.includes(item.id)} aria-label={`Edit ${item.name}`} onClick={() => setEditing(item)}><Pencil size={14} /><span className="sr-only">Edit Item</span></button></td>
             </tr>)}
           </tbody></table></div>}

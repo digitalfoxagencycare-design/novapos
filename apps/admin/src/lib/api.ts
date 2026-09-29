@@ -129,6 +129,8 @@ export class AdminApi {
 
   /* orders */
   openOrders(outletId: string) { return this.get(`/orders?outletId=${outletId}`); }
+  recentSales(outletId: string, limit = 50) { return this.get(`/orders/sales?outletId=${outletId}&limit=${limit}`); }
+  recordPosSale(body: unknown) { return this.post('/orders/pos-sale', body); }
 
   /* ── internals ── */
 

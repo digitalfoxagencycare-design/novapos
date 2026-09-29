@@ -84,7 +84,25 @@ export function Portal() {
     {supportWarning && <p className="support-session-error" role="alert">{supportWarning}</p>}
     <MerchantsManagement actor={actor} onLogout={logout} onImpersonate={beginImpersonation} />
   </>;
-  if (mode === 'USER') return <><button className="portal-role-back" onClick={() => { setMode('ADMIN'); history.replaceState(null, '', '/'); }}>Switch to Admin Portal →</button><TenantApp /></>;
+  if (mode === 'USER') {
+    const showAdminSwitch = !adminApi.isAuthenticated || actor !== null;
+    return (
+      <>
+        {showAdminSwitch && (
+          <button
+            className="portal-role-back"
+            onClick={() => {
+              setMode('ADMIN');
+              history.replaceState(null, '', '/');
+            }}
+          >
+            ← Switch to Admin Portal
+          </button>
+        )}
+        <TenantApp />
+      </>
+    );
+  }
 
   return <div className="platform-login">
     <section><small>NOVAPOS · OPERATIONS</small><h1>One workspace.<br />Every store connected.</h1><p>Manage partners, merchant access and license validity.</p></section>

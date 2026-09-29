@@ -9,6 +9,7 @@ export interface MenuModifierGroup {
 export interface MenuItem {
  id:string; name:string; code?:string; description?:string|null; categoryId:string; priceMinor:number;
  packagingChargeMinor:number; taxSlabId:string; hsnSac?:string|null; isActive:boolean; isVeg?:boolean|null;
+ imageUrl?:string|null;
  variants?:MenuVariant[]; modifierGroups?:MenuModifierGroup[];
 }
 export interface Category { id:string; name:string; itemCount?:number }

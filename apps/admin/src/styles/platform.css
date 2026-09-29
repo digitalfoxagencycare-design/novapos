@@ -81,7 +81,31 @@
 .platform-login form > p { color: #58665d; }
 .platform-primary { color: #fff; background: #173e2f; }
 .platform-login .platform-primary { width: 100%; }
-.portal-role-back { position: fixed; z-index: 50; top: 8px; right: 20px; min-height: 40px; }
+.portal-role-back {
+  position: fixed;
+  z-index: 40;
+  bottom: 20px;
+  left: 20px;
+  min-height: 36px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: #0f172a;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.portal-role-back:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
 .portal-mode-switch { width: 100%; margin-top: 12px; background: transparent; }
 .platform-onboard-button { width: auto; }
 .platform-table tbody tr[role="button"] { cursor: pointer; }

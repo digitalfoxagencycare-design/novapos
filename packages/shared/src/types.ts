@@ -59,14 +59,17 @@ export const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     'menu:read',
     'customer:read', 'customer:write',
     'report:read',
+    'outlet:read',
+    'settings:read',
   ],
   WAITER: [
     'order:create', 'order:read', 'order:update',
     'kot:read',
     'menu:read',
     'customer:read',
+    'outlet:read',
   ],
-  KITCHEN: ['kot:read', 'kot:update', 'kot:reprint', 'order:read', 'menu:read'],
+  KITCHEN: ['kot:read', 'kot:update', 'kot:reprint', 'order:read', 'menu:read', 'outlet:read'],
 };
 
 export interface JwtClaims {
