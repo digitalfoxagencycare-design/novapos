@@ -15,7 +15,7 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
-import { sendOtp as sendFirebaseOtp, confirmOtp as confirmFirebaseOtp } from '../lib/firebaseNativeAuth';
+import { sendFirebasePhoneOtp, confirmFirebasePhoneOtp } from '../lib/firebaseAuth';
 import { type BusinessProfile, PROFILES } from '../lib/business';
 import { cloudApi } from '../lib/cloudSession';
 import { refreshSubscription } from '../lib/subscription';
@@ -127,9 +127,9 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      const fbRes = await sendFirebaseOtp(cleanPhone);
+      const fbRes = await sendFirebasePhoneOtp(cleanPhone);
       if (fbRes.success) {
-        setSuccessMessage(`Firebase SMS OTP sent to +91 ${cleanPhone}`);
+        setSuccessMessage(`SMS OTP sent to +91 ${cleanPhone}`);
         setOtpStep(true);
         setCountdown(60);
         setOtp('');
@@ -158,7 +158,7 @@ export const LoginScreen: React.FC<Props> = ({ onLoginSuccess }) => {
 
     try {
       // 1. Verify code with Firebase
-      const fbVerify = await confirmFirebaseOtp(otp.trim());
+      const fbVerify = await confirmFirebasePhoneOtp(otp.trim());
       if (!fbVerify.success && otp.trim() !== '123456') {
         setErrorMessage(fbVerify.message || 'Incorrect OTP code. Please enter the valid code sent via SMS.');
         setIsLoading(false);
