@@ -29,6 +29,12 @@ export interface TaxContext {
   /** Explicit exemption certificate on file (US resale, diplomatic, SEZ). */
   customerExempt?: boolean;
   channel?: string;
+  /**
+   * Calendar day (YYYY-MM-DD, in the outlet's timezone) the bill belongs to.
+   * Slabs are only usable when this day falls inside [validFrom, validTo).
+   * Defaults to today (UTC) so callers that predate this field keep working.
+   */
+  billingDate?: string;
   /** Free-form flags a tenant can set for bespoke rules. */
   flags?: Record<string, string | number | boolean>;
 }

@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../db/db.service';
 import { tenants } from '../db/schema';
+
+/** Free-trial length. Signup, dealer onboarding, the fallback below and the landing page must all agree. */
+export const TRIAL_DAYS = 7;
 import { Errors } from '../common/errors';
 
 export interface PlanDetails {
@@ -42,7 +45,7 @@ export function subscriptionStatus(tenant: { id: string; name: string; createdAt
   const settings = (tenant.settings || {}) as Record<string, any>;
   const sub = settings.subscription ?? {
     status: 'TRIAL', plan: 'starter_monthly',
-    validUntil: new Date(new Date(tenant.createdAt).getTime() + 72 * 60 * 60 * 1000).toISOString(),
+    validUntil: new Date(new Date(tenant.createdAt).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
   };
   const now = Date.now();
   const expiry = Date.parse(sub.validUntil);

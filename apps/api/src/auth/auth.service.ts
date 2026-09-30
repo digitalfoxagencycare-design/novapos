@@ -10,6 +10,7 @@ import { Errors } from '../common/errors';
 import { ROLE_PERMISSIONS, type JwtClaims, type Permission, type StaffRole } from '@novapos/shared';
 
 import { SmsService } from './sms.service';
+import { TRIAL_DAYS } from '../payments/subscription.service';
 
 /**
  * Argon2id parameters.
@@ -197,7 +198,7 @@ export class AuthService {
 
       // Every new merchant gets a 7-day free trial on signup
       const isCouponValid = (input.couponCode || '').trim().toUpperCase() === 'NOVAPOSNEW';
-      const trialDays = 7; // 7-days free trial on new store registration
+      const trialDays = TRIAL_DAYS; // single source of truth: payments/subscription.service
       const validUntil = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
       const code = input.dealerCode?.trim().toUpperCase();

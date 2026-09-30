@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { SubscriptionService } from './subscription.service';
+import { SubscriptionService, TRIAL_DAYS } from './subscription.service';
 
 describe('subscription security', () => {
   let tenant: any;
@@ -21,9 +21,10 @@ describe('subscription security', () => {
       : { id: input.paymentId, order_id: input.orderId, amount: 49900, currency: 'INR', status: 'captured' } })));
   });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-  it('anchors a missing trial to tenant creation plus exactly 72 hours', async () => {
+  it('anchors a missing trial to tenant creation plus exactly TRIAL_DAYS (7) days', async () => {
     const status = await service.getStatus('tenant-a');
-    expect(status.validUntil).toBe('2026-01-04T00:00:00.000Z');
+    expect(TRIAL_DAYS).toBe(7);
+    expect(status.validUntil).toBe('2026-01-08T00:00:00.000Z'); // created 2026-01-01 + 7 days
     expect(status.isExpired).toBe(true);
     expect(status.features.offlineBilling).toBe(false);
   });

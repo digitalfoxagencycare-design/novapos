@@ -62,7 +62,8 @@ describe('India GST', () => {
       amountMinor: 1237 + i * 313,
       slabId: ['gst-5', 'gst-12', 'gst-18', 'gst-28'][i % 4],
     }));
-    const r = computeTax(IN_GST, lines, KARNATAKA);
+    // 12% and 28% only existed before GST 2.0, so this mixed-slab run is dated inside that window.
+    const r = computeTax(IN_GST, lines, { ...KARNATAKA, billingDate: '2025-06-15' });
     const grossSum = lines.reduce((s, l) => s + l.amountMinor, 0);
     // Tax-inclusive pricing: the sum of line grosses is the pre-rounding total.
     expect(r.totalBeforeRoundingMinor).toBe(grossSum);
@@ -250,5 +251,27 @@ describe('preview helper used by the admin UI', () => {
   it('finds a shipped rule set by id', () => {
     expect(findRuleSet('IN-GST')?.country).toBe('IN');
     expect(findRuleSet('nope')).toBeUndefined();
+  });
+
+  describe('slab effective dating (GST 2.0, 22 Sep 2025)', () => {
+    const line = (slabId: string) => [{ lineId: 'l1', amountMinor: 10000, slabId }];
+    it('bills the retired 12% and 28% slabs on old dates', () => {
+      expect(computeTax(IN_GST, line('gst-12'), { ...KARNATAKA, billingDate: '2025-09-21' }).taxMinor).toBeGreaterThan(0);
+      expect(computeTax(IN_GST, line('gst-28'), { ...KARNATAKA, billingDate: '2025-01-01' }).taxMinor).toBeGreaterThan(0);
+    });
+    it('refuses the retired slabs from the reform date onwards, including the boundary day', () => {
+      for (const slab of ['gst-12', 'gst-28']) {
+        expect(() => computeTax(IN_GST, line(slab), { ...KARNATAKA, billingDate: '2025-09-22' })).toThrow(/not valid on 2025-09-22/);
+        expect(() => computeTax(IN_GST, line(slab), { ...KARNATAKA, billingDate: '2026-03-01' })).toThrow(/Reassign the item/);
+      }
+    });
+    it('refuses the new slabs before they existed and accepts them after', () => {
+      expect(() => computeTax(IN_GST, line('gst-40'), { ...KARNATAKA, billingDate: '2025-09-21' })).toThrow(/not valid/);
+      expect(computeTax(IN_GST, line('gst-40'), { ...KARNATAKA, billingDate: '2025-09-22' }).taxMinor).toBeGreaterThan(0);
+      expect(computeTax(IN_GST, line('gst-18'), { ...KARNATAKA, billingDate: '2026-09-30' }).taxMinor).toBeGreaterThan(0);
+    });
+    it('defaults to today when no billing date is given', () => {
+      expect(() => computeTax(IN_GST, line('gst-12'), KARNATAKA)).toThrow(/not valid/);
+    });
   });
 });
