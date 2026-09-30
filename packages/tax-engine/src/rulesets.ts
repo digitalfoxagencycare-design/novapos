@@ -30,7 +30,7 @@ export const IN_GST: TaxRuleSet = {
   slabs: [
     { id: 'gst-0', label: 'GST 0% (exempt / unbranded staples)', rate: 0, category: 'exempt', hsnSac: '9963', validFrom: '2017-07-01' },
     { id: 'gst-5', label: 'GST 5% (restaurants, snacks, namkeen, food preparations)', rate: 0.05, category: 'reduced', hsnSac: '996331', validFrom: '2017-07-01' },
-    { id: 'gst-12', label: 'GST 12% (processed foods, butter, cheese, ghee)', rate: 0.12, category: 'reduced', hsnSac: '996331', validFrom: '2017-07-01', validTo: '2025-09-22' },
+    { id: 'gst-12', label: 'GST 12% (processed foods, butter, cheese, ghee)', rate: 0.12, category: 'reduced', hsnSac: '996331', validFrom: '2017-07-01' },
     { id: 'gst-18', label: 'GST 18% (commercial services, catering, software)', rate: 0.18, category: 'standard', hsnSac: '996331', validFrom: '2017-07-01' },
     { id: 'gst-28', label: 'GST 28% (chocolates, waffles, luxury items)', rate: 0.28, category: 'standard', hsnSac: '2202', validFrom: '2017-07-01', validTo: '2025-09-22' },
     { id: 'gst-40', label: 'GST 40% (sugary & aerated beverages, luxury)', rate: 0.40, category: 'standard', hsnSac: '2202', validFrom: '2025-09-22' },

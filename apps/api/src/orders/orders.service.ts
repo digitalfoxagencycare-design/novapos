@@ -783,25 +783,30 @@ export class OrdersService {
         }
 
         // 6. The order
+        const isCredit = input.paymentMode === 'credit';
+        const orderStatus = isCredit ? 'BILLED' : 'PAID';
+        const paidMinor = isCredit ? 0 : totalMinor;
+        const paidAt = isCredit ? null : placedAt;
+
         const [newOrder] = await db.insert(orders).values({
           tenantId: ctx.tenantId,
           outletId,
           clientOrderId: input.clientOrderId,
           orderNumber: orderNum,
           channel: 'QUICK_BILL',
-          status: 'PAID',
+          status: orderStatus,
           staffId: ctx.staffId ?? null,
           currency: 'INR',
           subtotalMinor: subtotalFromSnapshot ?? totalMinor,
           discountMinor: impliedDiscountMinor,
           taxMinor,
           totalMinor,
-          paidMinor: totalMinor,
+          paidMinor,
           invoiceNumber: invoiceNum,
           taxSnapshot: input.taxSnapshot ?? null,
           notes: input.notes ?? (input.customerName ? `Customer: ${input.customerName}${input.customerPhone ? ` (${input.customerPhone})` : ''}` : null),
           billedAt: placedAt,
-          paidAt: placedAt,
+          paidAt,
           placedAt,
           createdAt: placedAt,
           updatedAt: new Date(),
@@ -841,8 +846,11 @@ export class OrdersService {
         const methodMap: Record<string, 'CASH' | 'UPI' | 'CARD' | 'CREDIT'> = { cash: 'CASH', upi: 'UPI', card: 'CARD', credit: 'CREDIT' };
         await db.insert(payments).values({
           tenantId: ctx.tenantId, orderId: newOrder.id, clientPaymentId: randomUUID(),
-          method: methodMap[input.paymentMode] || 'CASH', status: 'CAPTURED', amountMinor: totalMinor,
-          currency: 'INR', gateway: 'counter', reference: invoiceNum, capturedAt: placedAt,
+          method: methodMap[input.paymentMode] || 'CASH',
+          status: isCredit ? 'PENDING' : 'CAPTURED',
+          amountMinor: totalMinor,
+          currency: 'INR', gateway: 'counter', reference: invoiceNum,
+          capturedAt: isCredit ? null : placedAt,
         });
 
         // 9. Leave a trail for anything a reviewer would want to look at.

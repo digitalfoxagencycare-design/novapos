@@ -133,24 +133,36 @@ describe('GST slabs', () => {
     const lines = await withSystemDb((db) => db.query.orderLines.findMany({ where: (t, { eq: e }) => e(t.orderId, r.body.id) }));
     expect(lines[0].taxSlabId).toBe('gst-18');
   });
-  it('refuses a retired slab on a live sale, unknown slabs and unknown rates', async () => {
-    expect((await sale(fx.ownerToken, { amount: 10, lines: [line({ taxSlabId: 'gst-12' })] })).status).toBe(400);
+  it('accepts active 12% slab on live sales, refuses retired 28% slab, unknown slabs and unknown rates', async () => {
+    expect((await sale(fx.ownerToken, { amount: 112, lines: [line({ price: 112, taxSlabId: 'gst-12' })] })).status).toBe(201);
+    expect((await sale(fx.ownerToken, { amount: 10, lines: [line({ taxSlabId: 'gst-28' })] })).status).toBe(400);
     expect((await sale(fx.ownerToken, { amount: 10, lines: [line({ taxSlabId: 'gst-999' })] })).status).toBe(400);
     expect((await sale(fx.ownerToken, { amount: 10, lines: [line({ gstRate: 3 })] })).status).toBe(400);
   });
   it('records an already-printed offline receipt on a retired slab, but flags it', async () => {
-    const r = await sale(fx.ownerToken, { amount: 112, invoiceNumber: 'OLD-0001', lines: [line({ quantity: 1, price: 112, gstRate: 12 })] });
+    const r = await sale(fx.ownerToken, { amount: 128, invoiceNumber: 'OLD-0001', lines: [line({ quantity: 1, price: 128, gstRate: 28 })] });
     expect(r.status).toBe(201);
     const logs = await withSystemDb((db) => db.select().from(auditLogs).where(eq(auditLogs.entityId, r.body.id)));
     expect(logs.map((l) => l.action)).toContain('POS_SALE_RETIRED_SLAB');
   });
-  it('the catalog refuses to assign a retired slab and accepts the new 40% slab', async () => {
+  it('the catalog refuses to assign a retired slab (28%) and accepts 12% and 40% slabs', async () => {
     const cats = await request(fx.app, 'GET', '/menu/categories', { token: fx.ownerToken });
     const categoryId = (cats.body.items ?? cats.body)[0]?.id;
     const mk = (taxSlabId: string) => request(fx.app, 'POST', '/menu/items', {
       token: fx.ownerToken, body: { name: `Slab ${taxSlabId} ${randomUUID().slice(0, 4)}`, categoryId, priceMinor: 1000, taxSlabId },
     });
-    expect((await mk('gst-12')).status).toBe(400);
+    expect((await mk('gst-28')).status).toBe(400);
+    expect((await mk('gst-12')).status).toBe(201);
     expect((await mk('gst-40')).status).toBe(201);
+  });
+});
+
+describe('payment modes', () => {
+  beforeAll(cool);
+  it('credit sales record as BILLED with PENDING payment so balance remains in ledger', async () => {
+    const r = await sale(fx.ownerToken, { amount: 500, paymentMode: 'credit' });
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe('BILLED');
+    expect(r.body.paidMinor).toBe(0);
   });
 });
