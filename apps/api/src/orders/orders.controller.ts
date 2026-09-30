@@ -1,8 +1,21 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString,
-  Min, ValidateNested, IsUUID,
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsISO8601,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrdersService } from './orders.service';
@@ -50,29 +63,35 @@ class VoidOrderDto {
 }
 
 export class PosSaleLineDto {
-  @IsOptional() @IsString() itemId?: string;
-  @IsString() name!: string;
-  @IsNumber() @Min(0.001) quantity!: number;
-  @IsNumber() @Min(0) price!: number;
-  @IsOptional() @IsString() uom?: string;
-  @IsOptional() @IsString() taxSlabId?: string;
-  @IsOptional() @IsString() hsnSac?: string;
-  @IsOptional() @IsNumber() netMinor?: number;
+  @IsOptional() @IsString() @MaxLength(64) itemId?: string;
+  @IsString() @MaxLength(200) name!: string;
+  @IsNumber() @Min(0.001) @Max(100_000) quantity!: number;
+  @IsNumber() @Min(0) @Max(10_000_000) price!: number;
+  @IsOptional() @IsString() @MaxLength(16) uom?: string;
+  @IsOptional() @IsString() @MaxLength(32) taxSlabId?: string;
+  /** Sent by the native POS app instead of a slab id: the GST percentage printed on the receipt. */
+  @IsOptional() @IsNumber() @Min(0) @Max(100) gstRate?: number;
+  @IsOptional() @IsString() @MaxLength(16) hsnSac?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(1_000_000_000) netMinor?: number;
 }
 
 export class PosSaleDto {
-  @IsString() clientOrderId!: string;
-  @IsOptional() @IsString() orderNumber?: string;
-  @IsOptional() @IsString() invoiceNumber?: string;
-  @IsNumber() @Min(0) amount!: number;
+  @IsString() @MaxLength(64) clientOrderId!: string;
+  @IsOptional() @IsString() @MaxLength(40) orderNumber?: string;
+  /**
+   * Only for receipts already issued by an offline terminal. Omit it for live sales and the
+   * server allocates the next number from the outlet's gapless series.
+   */
+  @IsOptional() @Matches(/^[A-Za-z0-9][A-Za-z0-9/_.-]{2,39}$/, { message: 'invoiceNumber may only contain letters, digits and / _ . - (3-40 chars)' }) invoiceNumber?: string;
+  @IsNumber() @Min(0.01) @Max(1_000_000) amount!: number;
   @IsEnum(['cash', 'upi', 'card', 'credit']) paymentMode!: 'cash' | 'upi' | 'card' | 'credit';
-  @IsOptional() @IsString() customerName?: string;
-  @IsOptional() @IsString() customerPhone?: string;
-  @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() @MaxLength(120) customerName?: string;
+  @IsOptional() @IsString() @MaxLength(20) customerPhone?: string;
+  @IsOptional() @IsString() @MaxLength(500) notes?: string;
   @IsOptional() taxSnapshot?: any;
   @IsOptional() receiptSnapshot?: any;
-  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => PosSaleLineDto) lines?: PosSaleLineDto[];
-  @IsOptional() @IsString() placedAt?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(500) @ValidateNested({ each: true }) @Type(() => PosSaleLineDto) lines?: PosSaleLineDto[];
+  @IsOptional() @IsISO8601() placedAt?: string;
 }
 
 @ApiTags('orders')
@@ -84,7 +103,8 @@ export class OrdersController {
   ) {}
 
   @Post('pos-sale')
-  @RequirePermissions('order:create')
+  // A sale is an order AND a captured payment, so the caller needs both rights (waiters have only the first).
+  @RequirePermissions('order:create', 'payment:create')
   @ApiOperation({ summary: 'Record completed retail/counter POS sale directly' })
   recordPosSale(@Body() dto: PosSaleDto) {
     return this.orders.recordPosSale(dto);

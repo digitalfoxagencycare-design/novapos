@@ -129,6 +129,11 @@ export function resolveComponents(
     .filter((c) => c.rate > 0);
 }
 
+/** True when `slab` may be used on a bill dated `day` (YYYY-MM-DD). validTo is exclusive. */
+export function isSlabEffective(slab: { validFrom?: string; validTo?: string }, day: string): boolean {
+  return (!slab.validFrom || slab.validFrom <= day) && (!slab.validTo || day < slab.validTo);
+}
+
 function computeLine(
   ruleSet: TaxRuleSet,
   line: TaxableLine,
@@ -139,6 +144,13 @@ function computeLine(
   if (!slab) {
     throw new TaxConfigError(
       `Line ${line.lineId} references tax slab "${line.slabId}", which rule set "${ruleSet.id}" does not define.`,
+    );
+  }
+  const billingDay = (ctx.billingDate ?? new Date().toISOString()).slice(0, 10);
+  if (!isSlabEffective(slab, billingDay)) {
+    throw new TaxConfigError(
+      `Tax slab "${slab.id}" is not valid on ${billingDay} (valid ${slab.validFrom ?? 'always'} to ${slab.validTo ?? 'open-ended'}). ` +
+      `Reassign the item to a current slab before billing it.`,
     );
   }
   const resolved = resolveComponents(ruleSet, slab, ctx);

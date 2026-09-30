@@ -109,7 +109,7 @@ export async function seedFixture(app: INestApplication): Promise<TestFixture> {
       { tenantId: tenant.id, categoryId: food.id, name: 'Test Rice', code: 'RICE',
         priceMinor: 10500, taxSlabId: 'gst-5', hsnSac: '996331' },
       { tenantId: tenant.id, categoryId: drink.id, name: 'Test Cola', code: 'COLA',
-        priceMinor: 6400, taxSlabId: 'gst-28', hsnSac: '2202' },
+        priceMinor: 6400, taxSlabId: 'gst-40', hsnSac: '2202' },
       // Priced so it cannot divide cleanly — exercises rounding.
       { tenantId: tenant.id, categoryId: food.id, name: 'Awkward Item', code: 'AWK',
         priceMinor: 9900, taxSlabId: 'gst-5', hsnSac: '996331' },

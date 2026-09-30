@@ -11,7 +11,7 @@ import {
   dealerAllocations, dealerStoreAttribution, dealerCommissionEntries, dealerPayouts, platformTelemetry,
   storeHealthSnapshots, orders,
 } from '../db/schema';
-import { SAAS_PLANS, subscriptionStatus } from '../payments/subscription.service';
+import { SAAS_PLANS, TRIAL_DAYS, subscriptionStatus } from '../payments/subscription.service';
 
 export interface PlatformActor { sub: string; role: 'SUPER_ADMIN' | 'DEALER'; name: string; dealerId?: string; dealerCode?: string; authVersion?: number }
 export interface SupportSession {
@@ -259,7 +259,7 @@ export class PlatformService implements OnModuleInit, OnModuleDestroy {
     if (storeName.length < 2 || phone.length !== 10) throw new BadRequestException('Enter a store name and a valid 10-digit owner mobile number.');
     const trial = input.initialPlan === 'trial';
     const plan = trial ? 'starter_monthly' : input.initialPlan;
-    const validUntil = new Date(Date.now() + (trial ? 14 : SAAS_PLANS[plan].durationDays) * 86400000);
+    const validUntil = new Date(Date.now() + (trial ? TRIAL_DAYS : SAAS_PLANS[plan].durationDays) * 86400000);
     const ownerPin = String(randomInt(0,10000)).padStart(4,'0');
     const slugBase = storeName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48) || 'store';
     const slug = `${slugBase}-${phone.slice(-4)}-${randomUUID().slice(0,6)}`;

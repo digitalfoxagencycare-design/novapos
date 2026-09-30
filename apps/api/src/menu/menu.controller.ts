@@ -37,7 +37,7 @@ class UpdateItemDto {
   @IsOptional() @IsUUID() categoryId?: string;
   @IsOptional() @IsInt() @Min(0) @Max(2147483647) priceMinor?: number;
   @IsOptional() @IsInt() @Min(0) @Max(2147483647) packagingChargeMinor?: number;
-  @IsOptional() @IsIn(['gst-0', 'gst-5', 'gst-12', 'gst-18']) taxSlabId?: string;
+  @IsOptional() @IsIn(['gst-0', 'gst-5', 'gst-12', 'gst-18', 'gst-40']) taxSlabId?: string;
   @IsOptional() @IsString() @MaxLength(12) hsnSac?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => MenuVariantDto)
@@ -50,7 +50,8 @@ class CreateItemDto {
   @IsString() name!: string;
   @IsUUID() categoryId!: string;
   @IsInt() @Min(0) priceMinor!: number;
-  @IsString() taxSlabId!: string;
+  /** Active slabs in force: 0%, 5%, 12%, 18%, and 40% (aerated/luxury). 28% was retired. */
+  @IsIn(['gst-0', 'gst-5', 'gst-12', 'gst-18', 'gst-40']) taxSlabId!: string;
   @IsOptional() @IsString() code?: string;
   @IsOptional() @IsString() hsnSac?: string;
   @IsOptional() @IsUUID() stationId?: string;

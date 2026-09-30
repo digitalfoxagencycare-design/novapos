@@ -56,11 +56,13 @@ export function getFoodImage(name: string, imageUrl?: string | null): string {
   return 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=400&q=80';
 }
 
+// GST 2.0 (22 Sep 2025) abolished 12% and 28% and introduced 40%. Only current slabs are offered;
+// an item still on a retired slab keeps showing it (disabled, flagged) until the owner reassigns it.
 const gstSlabs = [
   { id: 'gst-0', label: '0% GST' },
   { id: 'gst-5', label: '5% GST' },
-  { id: 'gst-12', label: '12% GST' },
   { id: 'gst-18', label: '18% GST' },
+  { id: 'gst-40', label: '40% GST (aerated & sugary drinks, sin goods)' },
 ];
 
 function amountText(minor: number) {
@@ -218,7 +220,7 @@ export function ItemEditor({ item, categories, onClose, onSave }: ItemEditorProp
           </label>
           <label className="block text-xs font-semibold text-slate-600">GST slab
             <select className={`${field} mt-2`} value={tax} onChange={event => setTax(event.target.value)}>
-              {!gstSlabs.some(slab => slab.id === tax) && <option value={tax}>{tax}</option>}
+              {!gstSlabs.some(slab => slab.id === tax) && <option value={tax} disabled>{tax.replace('gst-', '')}% GST — retired, choose a current slab</option>}
               {gstSlabs.map(slab => <option key={slab.id} value={slab.id}>{slab.label}</option>)}
             </select>
           </label>

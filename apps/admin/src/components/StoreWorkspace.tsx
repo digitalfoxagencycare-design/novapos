@@ -13,9 +13,14 @@ import { type DateRange, type WorkspaceOutlet, presetRange } from './workspace/t
 import '../styles/workspace.css';
 export interface StoreWorkspaceProps {api:AdminApi;outlets:WorkspaceOutlet[];outlet:WorkspaceOutlet|null;onOutlet:(id:string)=>void;identity:{role:string;permissions:string[]}|null;loading:boolean;error:string|null;onRetry:()=>void;onLogout:()=>void;}
 const nav=[{key:'live-ops',path:'/store/live-ops',label:'Live Orders & KDS',section:'OPERATIONS',icon:Flame,permission:'menu:read'},{key:'dashboard',path:'/store/dashboard',label:'Analytics & Sales',icon:LayoutDashboard,permission:'report:read'},{key:'catalog',path:'/store/catalog',label:'Menu & Catalog',icon:UtensilsCrossed,permission:'menu:read'},{key:'reports',path:'/store/reports',label:'Sales Reports',section:'FINANCE & SETUP',icon:ChartNoAxesCombined,permission:'report:read'},{key:'hardware',path:'/store/hardware',label:'Thermal Printing',icon:Printer,permission:'settings:read'} ,{key:'tax',path:'/store/tax',label:'GST Tax Rules',icon:ShieldCheck,permission:'settings:read'}] as const;
+/** The store page the URL points at; anything outside /store/* falls back to Live Orders. Keeps refresh and Back/Forward on the right screen. */
+export function resolveStorePath(pathname: string = typeof location === 'undefined' ? '' : location.pathname): string {
+  return pathname.startsWith('/store/') ? pathname : '/store/live-ops';
+}
+
 export function StoreWorkspace({api,outlets,outlet,onOutlet,identity,loading,error,onRetry,onLogout}:StoreWorkspaceProps){
- const [path,setPath]=useState('/store/live-ops');const [mobile,setMobile]=useState(false);const [range,setRange]=useState<DateRange>(()=>presetRange('Today',outlet?.timezone));const [quick,setQuick]=useState<'order'|'cash'|'profile'|null>(null);
- useEffect(()=>{const update=()=>setPath(location.pathname === '/store/dashboard' ? '/store/live-ops' : location.pathname);window.addEventListener('popstate',update);return()=>window.removeEventListener('popstate',update);},[]);
+ const [path,setPath]=useState(resolveStorePath);const [mobile,setMobile]=useState(false);const [range,setRange]=useState<DateRange>(()=>presetRange('Today',outlet?.timezone));const [quick,setQuick]=useState<'order'|'cash'|'profile'|null>(null);
+ useEffect(()=>{const update=()=>setPath(resolveStorePath());window.addEventListener('popstate',update);return()=>window.removeEventListener('popstate',update);},[]);
  useEffect(()=>{setRange(presetRange('Today',outlet?.timezone));},[outlet?.id]);
  const allowed=identity?nav.filter(n=>identity.permissions.includes(n.permission)):[];const current=allowed.find(n=>n.path===path)??allowed[0];
  const navigate=(url:string)=>{history.pushState(null,'',url);setPath(url);setMobile(false);};

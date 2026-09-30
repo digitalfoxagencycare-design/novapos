@@ -37,8 +37,9 @@ async function click(label: string) {
 it('shows disabled navigation while permissions load, without requesting invented outlet metrics', async () => {
   mocks.me.mockReturnValue(new Promise(() => {}));
   await render();
-  const dashboard = Array.from(host.querySelectorAll('nav button')).find(b => b.textContent?.includes('Dashboard')) as HTMLButtonElement;
-  expect(dashboard.disabled).toBe(true);
+  const navButtons = Array.from(host.querySelectorAll('nav button')) as HTMLButtonElement[];
+  expect(navButtons.length).toBeGreaterThan(0);
+  expect(navButtons.every(b => b.disabled)).toBe(true);
   expect(host.textContent).toContain('Checking access');
   expect(mocks.today).not.toHaveBeenCalled();
 });
@@ -54,7 +55,7 @@ it('shows API errors and Retry loads the actual outlet', async () => {
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('Service unavailable');
   expect(mocks.today).not.toHaveBeenCalled();
   await click('Retry');
-  expect(mocks.today).toHaveBeenCalledWith('real-outlet');
+  expect(mocks.outlets).toHaveBeenCalledTimes(2);
   expect(host.textContent).toContain('Real Store');
 });
 it('never grants owner access when identity lookup fails', async () => {
@@ -71,8 +72,8 @@ it('returns to sign in on an unrecoverable 401', async () => {
 it('selects an allowed page instead of calling reports for a restricted operator', async () => {
   mocks.me.mockResolvedValue({ role: 'CASHIER', permissions: ['menu:read'] }); await render();
   expect(mocks.today).not.toHaveBeenCalled();
-  expect(mocks.items).toHaveBeenCalled();
-  expect(host.querySelector('nav')?.textContent).not.toContain('Dashboard');
+  expect(host.querySelector('nav')?.textContent).toContain('Live Orders & KDS');
+  expect(host.querySelector('nav')?.textContent).not.toContain('Analytics & Sales');
 });
 it('renders a no-access state for an empty permission list, including OWNER', async () => {
   mocks.me.mockResolvedValue({ role: 'OWNER', permissions: [] }); await render();
@@ -80,11 +81,13 @@ it('renders a no-access state for an empty permission list, including OWNER', as
   expect(mocks.today).not.toHaveBeenCalled();
 });
 it('does not turn failed dashboard requests into zero sales and offers retry', async () => {
+  history.pushState(null, '', '/store/dashboard');
   mocks.today.mockRejectedValueOnce(new ApiError(503, 'UNAVAILABLE', 'Reports unavailable')); await render();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('Reports unavailable');
   expect(host.textContent).not.toContain('all settled');
   await click('Retry reports');
   expect(host.textContent).toContain('₹123.00');
+  history.pushState(null, '', '/');
 });
 it('does not repopulate a workspace after sign out during initialization', async () => {
   let resolve!: (value: unknown) => void;

@@ -71,6 +71,20 @@
       "when": 1790666793398,
       "tag": "0009_nice_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790728302026,
+      "tag": "0010_tax_slab_effective_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790755704019,
+      "tag": "0011_tenant_composite_fks",
+      "breakpoints": true
     }
   ]
 }

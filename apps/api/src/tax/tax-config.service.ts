@@ -79,6 +79,8 @@ export class TaxConfigService {
     } | null;
     channel: OrderChannel;
     flags?: Record<string, string | number | boolean>;
+    /** YYYY-MM-DD in the outlet's timezone; see TaxContext.billingDate. */
+    billingDate?: string;
   }): TaxContext {
     const deliveredOffsite = input.channel === 'DELIVERY';
     const customerCountry = input.customer?.country ?? null;
@@ -94,6 +96,7 @@ export class TaxConfigService {
       customerExempt: input.customer?.taxExempt ?? false,
       channel: input.channel,
       flags: input.flags,
+      billingDate: input.billingDate,
     };
   }
 

@@ -18,6 +18,7 @@ import { KotService } from '../kot/kot.service';
 import { Errors } from '../common/errors';
 import { requireTenantContext } from '../tenancy/tenant-context';
 import type { OrderInput, DiscountType } from '@novapos/shared';
+import { isSlabEffective } from '@novapos/tax-engine';
 
 /**
  * Order lifecycle.
@@ -557,6 +558,7 @@ export class OrdersService {
       outlet: { country: outlet.country, region: outlet.region },
       customer,
       channel: input.channel,
+      billingDate: localCalendarDay(input.placedAt ? new Date(input.placedAt) : new Date(), outlet.timezone ?? tenant.timezone),
     });
 
     return this.pricing.price({
@@ -675,83 +677,149 @@ export class OrdersService {
       price: number;
       uom?: string;
       taxSlabId?: string;
+      gstRate?: number;
       hsnSac?: string;
       netMinor?: number;
     }[];
     placedAt?: string;
   }) {
     const ctx = requireTenantContext();
-    return this.db.tx(async (db) => {
-      // 1. Resolve outlet
-      let outletId = ctx.outletId;
-      if (!outletId) {
-        const [firstOutlet] = await db.select().from(outlets)
-          .where(eq(outlets.tenantId, ctx.tenantId)).limit(1);
-        if (!firstOutlet) throw Errors.notFound('Outlet', 'None configured for tenant');
-        outletId = firstOutlet.id;
-      }
+    // A receipt number supplied by the client means an offline terminal already printed it.
+    const offlineIssued = !!input.invoiceNumber;
 
-      // 2. Check for existing order by clientOrderId (Idempotent)
-      const existing = await db.select().from(orders)
-        .where(and(
-          eq(orders.tenantId, ctx.tenantId),
-          eq(orders.clientOrderId, input.clientOrderId),
-        )).limit(1);
-      if (existing.length > 0) {
-        return existing[0];
-      }
+    // ---- Validate everything the client asserts BEFORE touching the database ----
+    const totalMinor = Math.round(input.amount * 100);
+    if (!Number.isFinite(input.amount) || totalMinor < 1 || totalMinor > POS_SALE_MAX_PAISE) {
+      throw Errors.validation(`Sale amount must be between ₹0.01 and ₹${POS_SALE_MAX_PAISE / 100}.`);
+    }
+    const now = Date.now();
+    const placedAt = input.placedAt ? new Date(input.placedAt) : new Date(now);
+    if (Number.isNaN(placedAt.getTime())) throw Errors.validation('placedAt is not a valid date.');
+    if (placedAt.getTime() > now + POS_SALE_MAX_FUTURE_MS) throw Errors.validation('placedAt cannot be in the future.');
+    if (placedAt.getTime() < now - POS_SALE_MAX_BACKLOG_MS) {
+      throw Errors.validation(`placedAt is older than ${POS_SALE_MAX_BACKLOG_MS / 86_400_000} days; backdated sales are not accepted.`);
+    }
 
-      const totalMinor = Math.round(input.amount * 100);
-      const placedAt = input.placedAt ? new Date(input.placedAt) : new Date();
-      const invoiceNum = input.invoiceNumber || input.orderNumber || `INV-${Date.now()}`;
-      const orderNum = input.orderNumber || invoiceNum;
+    // Tax figures are a client-side snapshot. Keep them (the receipt the customer holds), but never let
+    // impossible numbers into the books.
+    const snap = input.taxSnapshot as { taxableMinor?: unknown; totalTaxMinor?: unknown } | null | undefined;
+    const inRange = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= totalMinor;
+    if (snap?.totalTaxMinor !== undefined && !inRange(snap.totalTaxMinor)) {
+      throw Errors.validation('taxSnapshot.totalTaxMinor must be a whole number of paise between 0 and the bill total.');
+    }
+    if (snap?.taxableMinor !== undefined && !inRange(snap.taxableMinor)) {
+      throw Errors.validation('taxSnapshot.taxableMinor must be a whole number of paise between 0 and the bill total.');
+    }
+    const taxMinor = (snap?.totalTaxMinor as number | undefined) ?? 0;
+    const subtotalFromSnapshot = snap?.taxableMinor as number | undefined;
 
-      // 3. Ensure a general Category for this tenant exists
-      let [generalCat] = await db.select().from(categories)
-        .where(and(eq(categories.tenantId, ctx.tenantId), eq(categories.name, 'General')))
-        .limit(1);
-      if (!generalCat) {
-        [generalCat] = await db.insert(categories).values({
+    // What the lines add up to vs what was charged. The gap is an implied discount: record it so the
+    // books reconcile, and require discount authority when it is large.
+    const lines = input.lines ?? [];
+    const lineTotal = (l: (typeof lines)[number]) => l.netMinor ?? Math.round(l.price * l.quantity * 100);
+    const linesMinor = lines.reduce((sum, l) => sum + lineTotal(l), 0);
+    const impliedDiscountMinor = lines.length ? Math.max(0, linesMinor - totalMinor) : 0;
+    if (linesMinor > 0 && impliedDiscountMinor / linesMinor > POS_SALE_DISCOUNT_APPROVAL_RATIO
+        && !ctx.permissions.includes('order:discount')) {
+      throw Errors.forbidden(`record a sale discounted by more than ${POS_SALE_DISCOUNT_APPROVAL_RATIO * 100}% (needs the order:discount permission)`);
+    }
+
+    try {
+      return await this.db.tx(async (db) => {
+        // 1. Resolve outlet
+        let outletId = ctx.outletId;
+        if (!outletId) {
+          const [firstOutlet] = await db.select().from(outlets)
+            .where(eq(outlets.tenantId, ctx.tenantId)).limit(1);
+          if (!firstOutlet) throw Errors.notFound('Outlet', 'None configured for tenant');
+          outletId = firstOutlet.id;
+        }
+
+        // 2. Idempotent replay: the same clientOrderId always returns the order already recorded.
+        const existing = await db.select().from(orders)
+          .where(and(eq(orders.tenantId, ctx.tenantId), eq(orders.clientOrderId, input.clientOrderId))).limit(1);
+        if (existing.length > 0) return existing[0];
+
+        // A live sale must come from a licensed store; an offline receipt was already issued, so keep it.
+        if (!offlineIssued) await this.assertLicense(db);
+
+        const [outlet] = await db.select().from(outlets).where(eq(outlets.id, outletId)).limit(1);
+        if (!outlet) throw Errors.notFound('Outlet', outletId);
+        const [tenant] = await db.select().from(tenants).where(eq(tenants.id, ctx.tenantId)).limit(1);
+
+        // 3. Tax slabs: must exist, and must have been in force on the bill's date.
+        const ruleSet = await this.tax.resolveForOutlet(outlet, tenant);
+        const billingDay = localCalendarDay(placedAt, outlet.timezone ?? tenant.timezone);
+        const retiredSlabs = new Set<string>();
+        const resolvedSlab = (l: (typeof lines)[number]): string => {
+          const id = l.taxSlabId
+            ?? (l.gstRate != null ? POS_GST_RATE_TO_SLAB[String(Number(l.gstRate.toFixed(2)))] : 'gst-0');
+          if (!id) throw Errors.validation(`Line "${l.name}": GST rate ${l.gstRate}% does not match any tax slab.`);
+          const slab = ruleSet.slabs.find((x) => x.id === id);
+          if (!slab) throw Errors.validation(`Line "${l.name}": unknown tax slab "${id}".`);
+          if (!isSlabEffective(slab, billingDay)) {
+            // Live billing on a retired slab is refused. An offline receipt was already printed with that
+            // tax, so we record it faithfully and flag it instead of losing the sale.
+            if (!offlineIssued) {
+              throw Errors.validation(`Line "${l.name}": tax slab "${id}" is not valid on ${billingDay}. Reassign the item to a current slab.`);
+            }
+            retiredSlabs.add(id);
+          }
+          return id;
+        };
+        const slabIds = lines.map(resolvedSlab);
+
+        // 4. Invoice number: server-issued from the gapless series unless an offline terminal supplied one.
+        const invoiceNum = input.invoiceNumber
+          ?? await this.invoiceNumbers.next(db, { tenantId: ctx.tenantId, outletId, prefix: outlet.invoicePrefix, at: placedAt });
+        const orderNum = input.orderNumber ?? invoiceNum;
+
+        // 5. A general category for ad-hoc items
+        let [generalCat] = await db.select().from(categories)
+          .where(and(eq(categories.tenantId, ctx.tenantId), eq(categories.name, 'General')))
+          .limit(1);
+        if (!generalCat) {
+          [generalCat] = await db.insert(categories).values({ tenantId: ctx.tenantId, name: 'General', sortOrder: 0 }).returning();
+        }
+
+        // 6. The order
+        const isCredit = input.paymentMode === 'credit';
+        const orderStatus = isCredit ? 'BILLED' : 'PAID';
+        const paidMinor = isCredit ? 0 : totalMinor;
+        const paidAt = isCredit ? null : placedAt;
+
+        const [newOrder] = await db.insert(orders).values({
           tenantId: ctx.tenantId,
-          name: 'General',
-          sortOrder: 0,
+          outletId,
+          clientOrderId: input.clientOrderId,
+          orderNumber: orderNum,
+          channel: 'QUICK_BILL',
+          status: orderStatus,
+          staffId: ctx.staffId ?? null,
+          currency: 'INR',
+          subtotalMinor: subtotalFromSnapshot ?? totalMinor,
+          discountMinor: impliedDiscountMinor,
+          taxMinor,
+          totalMinor,
+          paidMinor,
+          invoiceNumber: invoiceNum,
+          taxSnapshot: input.taxSnapshot ?? null,
+          notes: input.notes ?? (input.customerName ? `Customer: ${input.customerName}${input.customerPhone ? ` (${input.customerPhone})` : ''}` : null),
+          billedAt: placedAt,
+          paidAt,
+          placedAt,
+          createdAt: placedAt,
+          updatedAt: new Date(),
         }).returning();
-      }
 
-      // 4. Insert into orders table
-      const [newOrder] = await db.insert(orders).values({
-        tenantId: ctx.tenantId,
-        outletId,
-        clientOrderId: input.clientOrderId,
-        orderNumber: orderNum,
-        channel: 'QUICK_BILL',
-        status: 'PAID',
-        staffId: ctx.staffId ?? null,
-        currency: 'INR',
-        subtotalMinor: input.taxSnapshot?.taxableMinor ?? totalMinor,
-        taxMinor: input.taxSnapshot?.totalTaxMinor ?? 0,
-        totalMinor,
-        paidMinor: totalMinor,
-        invoiceNumber: invoiceNum,
-        taxSnapshot: input.taxSnapshot ?? null,
-        notes: input.notes ?? (input.customerName ? `Customer: ${input.customerName}${input.customerPhone ? ` (${input.customerPhone})` : ''}` : null),
-        billedAt: placedAt,
-        paidAt: placedAt,
-        placedAt,
-        createdAt: placedAt,
-        updatedAt: new Date(),
-      }).returning();
-
-      // 5. Handle lines if provided
-      if (input.lines && input.lines.length > 0) {
-        for (const line of input.lines) {
+        // 7. Lines
+        for (const [idx, line] of lines.entries()) {
           let menuItemId: string | null = null;
           if (line.itemId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(line.itemId)) {
             const [itemExists] = await db.select({ id: menuItems.id }).from(menuItems)
               .where(and(eq(menuItems.tenantId, ctx.tenantId), eq(menuItems.id, line.itemId))).limit(1);
             if (itemExists) menuItemId = itemExists.id;
           }
-
           if (!menuItemId) {
             const itemName = (line.name || 'General Item').trim();
             const [byName] = await db.select({ id: menuItems.id }).from(menuItems)
@@ -760,59 +828,62 @@ export class OrdersService {
               menuItemId = byName.id;
             } else {
               const [createdItem] = await db.insert(menuItems).values({
-                tenantId: ctx.tenantId,
-                categoryId: generalCat.id,
-                name: itemName,
-                priceMinor: Math.round(line.price * 100),
-                taxSlabId: line.taxSlabId || 'gst-0',
-                hsnSac: line.hsnSac ?? null,
-                isActive: true,
+                tenantId: ctx.tenantId, categoryId: generalCat.id, name: itemName,
+                priceMinor: Math.round(line.price * 100), taxSlabId: slabIds[idx], hsnSac: line.hsnSac ?? null, isActive: true,
               }).returning();
               menuItemId = createdItem.id;
             }
           }
-
-          const lineTotal = line.netMinor != null ? line.netMinor : Math.round(line.price * line.quantity * 100);
           await db.insert(orderLines).values({
-            tenantId: ctx.tenantId,
-            orderId: newOrder.id,
-            clientLineId: randomUUID(),
-            itemId: menuItemId,
-            nameSnapshot: line.name || 'Item',
-            quantity: String(line.quantity),
-            unitPriceMinor: Math.round(line.price * 100),
-            lineTotalMinor: lineTotal,
-            taxSlabId: line.taxSlabId || 'gst-0',
-            hsnSac: line.hsnSac ?? null,
-            status: 'SERVED',
+            tenantId: ctx.tenantId, orderId: newOrder.id, clientLineId: randomUUID(), itemId: menuItemId,
+            nameSnapshot: line.name || 'Item', quantity: String(line.quantity),
+            unitPriceMinor: Math.round(line.price * 100), lineTotalMinor: lineTotal(line),
+            taxSlabId: slabIds[idx], hsnSac: line.hsnSac ?? null, status: 'SERVED',
           });
         }
-      }
 
-      // 6. Record payment in payments table
-      const methodMap: Record<string, 'CASH' | 'UPI' | 'CARD' | 'CREDIT'> = {
-        cash: 'CASH',
-        upi: 'UPI',
-        card: 'CARD',
-        credit: 'CREDIT',
-      };
-      const mappedMethod = methodMap[input.paymentMode] || 'CASH';
+        // 8. Payment
+        const methodMap: Record<string, 'CASH' | 'UPI' | 'CARD' | 'CREDIT'> = { cash: 'CASH', upi: 'UPI', card: 'CARD', credit: 'CREDIT' };
+        await db.insert(payments).values({
+          tenantId: ctx.tenantId, orderId: newOrder.id, clientPaymentId: randomUUID(),
+          method: methodMap[input.paymentMode] || 'CASH',
+          status: isCredit ? 'PENDING' : 'CAPTURED',
+          amountMinor: totalMinor,
+          currency: 'INR', gateway: 'counter', reference: invoiceNum,
+          capturedAt: isCredit ? null : placedAt,
+        });
 
-      await db.insert(payments).values({
-        tenantId: ctx.tenantId,
-        orderId: newOrder.id,
-        clientPaymentId: randomUUID(),
-        method: mappedMethod,
-        status: 'CAPTURED',
-        amountMinor: totalMinor,
-        currency: 'INR',
-        gateway: 'counter',
-        reference: invoiceNum,
-        capturedAt: placedAt,
+        // 9. Leave a trail for anything a reviewer would want to look at.
+        if (impliedDiscountMinor > 0 && linesMinor > 0 && impliedDiscountMinor / linesMinor > POS_SALE_DISCOUNT_AUDIT_RATIO) {
+          await this.audit.record({
+            action: 'POS_SALE_DISCOUNT', entityType: 'order', entityId: newOrder.id, outletId,
+            detail: { linesMinor, totalMinor, impliedDiscountMinor, invoiceNumber: invoiceNum },
+          });
+        }
+        if (retiredSlabs.size) {
+          await this.audit.record({
+            action: 'POS_SALE_RETIRED_SLAB', entityType: 'order', entityId: newOrder.id, outletId,
+            detail: { slabs: [...retiredSlabs], billingDay, invoiceNumber: invoiceNum },
+          });
+        }
+        return newOrder;
       });
-
-      return newOrder;
-    });
+    } catch (err) {
+      // Two terminals issued the same receipt number, or two requests raced on one clientOrderId.
+      // Report it plainly (409) instead of a 500; a retry of the same clientOrderId then replays idempotently.
+      const pg = (err as { cause?: { code?: string; constraint?: string }; code?: string });
+      const code = pg.cause?.code ?? pg.code;
+      if (code === '23505') {
+        const what = pg.cause?.constraint ?? '';
+        throw Errors.conflict(
+          /client_order/.test(what) ? 'DUPLICATE_CLIENT_ORDER' : 'INVOICE_NUMBER_TAKEN',
+          /client_order/.test(what)
+            ? 'This sale is already being recorded; retry to receive the saved order.'
+            : `Invoice number "${input.invoiceNumber ?? ''}" is already used by another sale in this outlet.`,
+        );
+      }
+      throw err;
+    }
   }
 
   async listSales(outletId: string, limit = 100) {
@@ -860,4 +931,20 @@ function stableStringify(value: unknown): string {
     .filter(([, v]) => v !== undefined)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
+}
+
+/** The calendar day (YYYY-MM-DD) `at` falls on in `timezone` — used to pick date-effective tax slabs. */
+/** Guard rails for POST /orders/pos-sale (a sale the client says already happened). */
+export const POS_SALE_MAX_PAISE = 1_000_000_00; // ₹10,00,000 per bill
+export const POS_SALE_MAX_FUTURE_MS = 5 * 60_000;
+export const POS_SALE_MAX_BACKLOG_MS = 90 * 86_400_000; // an offline terminal may sync up to 90 days late
+export const POS_SALE_DISCOUNT_AUDIT_RATIO = 0.05; // >5% below the lines' total is logged
+export const POS_SALE_DISCOUNT_APPROVAL_RATIO = 0.5; // >50% needs order:discount
+/** GST percentage (as sent by the native POS app) → tax slab id. */
+export const POS_GST_RATE_TO_SLAB: Record<string, string> = {
+  '0': 'gst-0', '5': 'gst-5', '12': 'gst-12', '18': 'gst-18', '28': 'gst-28', '40': 'gst-40',
+};
+
+export function localCalendarDay(at: Date, timezone = 'Asia/Kolkata'): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
 }
