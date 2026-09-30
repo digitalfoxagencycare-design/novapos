@@ -68,8 +68,9 @@ import { OutletsController, OutletsService } from './outlets/outlets.controller'
     SyncController,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: AuthGuard },
+    // Order matters: rate-limit first so a flood of garbage bearer tokens is rejected before JWT verification.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     AuditService,
     IdempotencyService,

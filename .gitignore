@@ -28,3 +28,7 @@ packages/*/src/**/*.d.ts
 packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts.map
 .catalog-images/
+
+# Local scratch scripts (these have leaked live DB credentials before)
+scratch_*.js
+**/check_db.js
