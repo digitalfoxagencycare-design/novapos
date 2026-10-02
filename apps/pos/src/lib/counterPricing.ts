@@ -12,7 +12,7 @@ export function priceCounterSale(lines: CounterLine[], discountPercent: number, 
   }
   return priceOrder({
     lines: lines.map(line => {
-      if (![0, 5, 12, 18, 28].includes(line.gstRate as number)) throw new Error('Re-add this item to confirm its GST rate.');
+      if (![0, 5, 12, 18, 28, 40].includes(line.gstRate as number)) throw new Error('Re-add this item to confirm its GST rate.');
       if (!Number.isFinite(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.price) || line.price < 0 ||
           !Number.isSafeInteger(Math.round(line.price * line.quantity * 100))) throw new Error('Invalid item price or quantity.');
       return { clientLineId: line.id, itemId: line.itemId, name: line.name, quantity: line.quantity,

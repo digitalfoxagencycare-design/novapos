@@ -20,7 +20,12 @@ export interface SupportSession {
   expiresAt: string;
   tenant: { id: string; name: string; slug: string };
 }
-const ADMIN_PHONE_ALIAS: Record<string,string> = { '93815463241': '9381546324' };
+const ADMIN_PHONE_ALIAS: Record<string, string> = {
+  '9381546324': '9381563241',
+  '93815463241': '9381563241',
+  '+919381563241': '9381563241',
+  '919381563241': '9381563241',
+};
 export function normalizePlatformIdentifier(identifier: string) {
   const normalized = identifier.trim().toLowerCase();
   return ADMIN_PHONE_ALIAS[normalized] ?? normalized;
@@ -66,7 +71,7 @@ export class PlatformService implements OnModuleInit, OnModuleDestroy {
     const id = normalizePlatformIdentifier(identifier);
     const actor = await this.db.system(async db => {
       const [admin] = await db.select().from(platformAdmins).where(or(eq(platformAdmins.email, id), eq(platformAdmins.phone, id))).limit(1);
-      const [dealer] = admin ? [] : await db.select().from(dealers).where(or(eq(dealers.email, id), eq(dealers.phone, id))).limit(1);
+      const [dealer] = admin ? [] : await db.select().from(dealers).where(or(eq(dealers.email, id), eq(dealers.phone, id), sql`lower(${dealers.dealerCode}) = lower(${id})`)).limit(1);
       const account = admin ?? dealer;
       // Always perform a password hash check, including unknown accounts.
       const hash = account?.passwordHash ?? await argon2.hash('invalid-account-password');

@@ -42,12 +42,20 @@ interface Kot {
   order?: { orderNumber: string; channel: string; notes: string | null };
 }
 
-const API_BASE = import.meta.env.VITE_API_URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')}/api/v1`
+  : import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/v1`
+  : typeof window !== 'undefined' && window.location?.hostname && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? 'https://api.novasaas.net/api/v1'
   : '/api/v1';
 
-const WS_BASE = import.meta.env.VITE_API_URL
+const WS_BASE = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
+  : import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+  : typeof window !== 'undefined' && window.location?.hostname && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? 'https://api.novasaas.net'
   : '';
 
 const api = new ApiClient(API_BASE, (tokens) => {

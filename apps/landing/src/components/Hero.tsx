@@ -41,22 +41,32 @@ export const Hero: React.FC = () => {
             {/* Hero CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
               <a
-                href="#products"
+                href="https://pos.novasaas.net"
+                target="_blank"
+                rel="noreferrer"
                 className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-black text-sm text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-500/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95"
               >
-                <ShoppingBag className="w-4 h-4 text-amber-200" />
-                <span>Explore All Products & Combos</span>
+                <Store className="w-4 h-4 text-amber-200" />
+                <span>Launch Web POS (pos.novasaas.net)</span>
                 <ArrowRight className="w-4 h-4" />
+              </a>
+
+              <a
+                href="#products"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold text-sm text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-xs transition-all"
+              >
+                <ShoppingBag className="w-4 h-4 text-orange-600" />
+                <span>Hardware Machines</span>
               </a>
 
               <a
                 href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20want%20to%20order%20a%20Touch%20POS%20Machine%20for%20my%20store"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-xs transition-all"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl font-bold text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-2 shadow-xs transition-all"
               >
-                <Printer className="w-4 h-4 text-orange-600" />
-                <span>Order Machine on WhatsApp</span>
+                <Printer className="w-4 h-4 text-emerald-600" />
+                <span>Order on WhatsApp</span>
               </a>
             </div>
 

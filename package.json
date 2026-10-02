@@ -21,6 +21,7 @@
     "lint": "pnpm -r lint",
     "deploy:admin": "pnpm --filter @novapos/admin build && wrangler deploy --cwd apps/admin",
     "deploy:landing": "pnpm --filter @novapos/landing build && wrangler deploy --cwd apps/landing",
+    "deploy:pos": "pnpm build:packages && pnpm --filter @novapos/pos build && wrangler deploy --cwd apps/pos",
     "dev:kds": "echo \"The kitchen screen is served by the POS app at /kds.html — run pnpm dev:pos\""
   },
   "devDependencies": {

@@ -51,23 +51,25 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
             </nav>
 
             {/* Desktop CTA Action */}
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2.5">
               <a
-                href="https://wa.me/919381563241?text=Hi%20NovaPOS%2C%20I%20am%20interested%20in%20NovaPOS%20Machine%20and%20Software%20Demo"
+                href="https://admin.novasaas.net"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-2 transition-all"
+                className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 flex items-center gap-1.5 transition-all"
+                title="Admin Backoffice Portal"
               >
-                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>+91 9381563241</span>
+                <span>Admin</span>
               </a>
 
               <a
-                href="#pricing"
-                className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all active:scale-95"
+                href="https://pos.novasaas.net"
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all active:scale-95"
               >
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                <span>Start Free Trial</span>
+                <Store className="w-3.5 h-3.5 text-amber-200" />
+                <span>Web POS</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -101,21 +103,33 @@ export const Navbar: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms }) => {
             </div>
             <div className="pt-2 border-t border-slate-100 flex flex-col gap-2.5">
               <a
+                href="https://pos.novasaas.net"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 rounded-xl text-center text-xs font-black text-white bg-orange-600 hover:bg-orange-700 shadow-md shadow-orange-600/20 flex items-center justify-center gap-2"
+              >
+                <Store className="w-4 h-4 text-amber-300" />
+                <span>Launch Web POS (pos.novasaas.net)</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
+
+              <a
+                href="https://admin.novasaas.net"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200 flex items-center justify-center gap-2"
+              >
+                <span>Admin Merchant Portal</span>
+              </a>
+
+              <a
                 href="https://wa.me/919381563241"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3 rounded-xl text-center text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200 flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 flex items-center justify-center gap-2"
               >
                 <Phone className="w-4 h-4 text-emerald-600" />
                 <span>WhatsApp: +91 9381563241</span>
-              </a>
-              <a
-                href="#pricing"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-3.5 rounded-xl text-center text-xs font-black text-white bg-orange-600 hover:bg-orange-700 shadow-md shadow-orange-600/20 flex items-center justify-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>Start Free Trial</span>
               </a>
             </div>
           </div>

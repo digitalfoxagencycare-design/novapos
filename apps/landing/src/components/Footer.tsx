@@ -31,10 +31,12 @@ export const Footer: React.FC<Props> = ({ onOpenPrivacy, onOpenTerms, onOpenAbou
             </div>
           </div>
 
-          {/* Products & Combos */}
+          {/* Products & Portals */}
           <div className="space-y-2.5">
-            <b className="text-white text-xs uppercase tracking-wider block font-black">All Products</b>
+            <b className="text-white text-xs uppercase tracking-wider block font-black">Apps & Hardware</b>
             <ul className="space-y-1.5 text-slate-400">
+              <li><a href="https://pos.novasaas.net" target="_blank" rel="noreferrer" className="text-orange-400 font-bold hover:text-orange-300">⚡ Live Web POS (pos.novasaas.net)</a></li>
+              <li><a href="https://admin.novasaas.net" target="_blank" rel="noreferrer" className="text-orange-400 font-bold hover:text-orange-300">🛡️ Admin Merchant Portal</a></li>
               <li><a href="#products" className="hover:text-white">Bada Machine + 1-Yr Software (₹6,499)</a></li>
               <li><a href="#products" className="hover:text-white">Touch POS Hardware Standalone (₹2,999)</a></li>
               <li><a href="#products" className="hover:text-white">1-Year Software SaaS License (₹4,999)</a></li>

@@ -6,7 +6,7 @@ import { ROLE_PERMISSIONS } from '@novapos/shared';
 const now = Date.parse('2026-09-29T00:00:00Z');
 const trial = {status:'TRIAL',plan:'starter_monthly',validUntil:new Date(now+86400000).toISOString()};
 describe('platform license boundaries',()=>{
- it('normalizes both supported super-admin mobile IDs and ordinary login IDs',()=>{expect(normalizePlatformIdentifier('9381546324')).toBe('9381546324');expect(normalizePlatformIdentifier('93815463241')).toBe('9381546324');expect(normalizePlatformIdentifier(' DEALER@NOVAPOS.IN ')).toBe('dealer@novapos.in');});
+ it('normalizes both supported super-admin mobile IDs and ordinary login IDs',()=>{expect(normalizePlatformIdentifier('9381563241')).toBe('9381563241');expect(normalizePlatformIdentifier('9381546324')).toBe('9381563241');expect(normalizePlatformIdentifier('93815463241')).toBe('9381563241');expect(normalizePlatformIdentifier(' DEALER@NOVAPOS.IN ')).toBe('dealer@novapos.in');});
  it('activates the requested plan for exactly 365 days',()=>{const s=licenseChange(trial,'ACTIVATE','pro_yearly',undefined,now);expect(s.status).toBe('ACTIVE');expect(Date.parse(s.validUntil)-now).toBe(365*86400000);});
  it('extends a trial from its future expiry without making it paid',()=>{const s=licenseChange(trial,'EXTEND',undefined,7,now);expect(s.status).toBe('TRIAL');expect(Date.parse(s.validUntil)-now).toBe(8*86400000);});
  it('extends an expired license from now',()=>{expect(Date.parse(licenseChange({...trial,validUntil:'2020-01-01'},'EXTEND',undefined,30,now).validUntil)-now).toBe(30*86400000);});

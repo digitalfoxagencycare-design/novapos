@@ -61,6 +61,7 @@ export function getFoodImage(name: string, imageUrl?: string | null): string {
 const gstSlabs = [
   { id: 'gst-0', label: '0% GST' },
   { id: 'gst-5', label: '5% GST' },
+  { id: 'gst-12', label: '12% GST' },
   { id: 'gst-18', label: '18% GST' },
   { id: 'gst-40', label: '40% GST (aerated & sugary drinks, sin goods)' },
 ];
