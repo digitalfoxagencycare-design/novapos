@@ -1,4 +1,5 @@
-name = "novasaas"
+# Monorepo root config - each app (apps/pos, apps/admin, apps/landing) has its own dedicated wrangler.toml
+name = "novapos-monorepo"
 compatibility_date = "2024-09-01"
 
 [assets]

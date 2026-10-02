@@ -1,15 +1,8 @@
 name: Deploy NovaSaaS Landing to Cloudflare
 
+# Note: Landing page for novasaas.net is deployed directly to Cloudflare via Manus.
+# Automatic push deployment from this repo is disabled to prevent overwriting Manus deployments.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'apps/landing/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - '.github/workflows/deploy-cloudflare.yml'
   workflow_dispatch:
 
 jobs:
